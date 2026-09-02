@@ -1,2 +1,15 @@
+[project]
+name = "varshaguard-og"
+version = "0.1.0"
+description = "VARSHAGUARD SIH flood warning prototype"
+requires-python = ">=3.10"
+dependencies = [
+    "Flask",
+    "flask-cors",
+    "pandas",
+    "scikit-learn",
+    "joblib",
+]
+
 [tool.vercel]
 entrypoint = "backend.app:app"
