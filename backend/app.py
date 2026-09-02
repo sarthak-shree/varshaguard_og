@@ -3,9 +3,14 @@ from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from model import load_model
-from prediction import REGIONS, get_history, get_rainfall_series, get_stations, predict_probability
-from risk import get_risk, get_warning
+try:
+    from .model import load_model
+    from .prediction import REGIONS, get_history, get_rainfall_series, get_stations, predict_probability
+    from .risk import get_risk, get_warning
+except ImportError:
+    from model import load_model
+    from prediction import REGIONS, get_history, get_rainfall_series, get_stations, predict_probability
+    from risk import get_risk, get_warning
 
 
 app = Flask(__name__)
