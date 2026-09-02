@@ -1,6 +1,7 @@
+import os
 from datetime import datetime
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 try:
@@ -12,6 +13,9 @@ except ImportError:
     from prediction import REGIONS, get_history, get_rainfall_series, get_stations, predict_probability
     from risk import get_risk, get_warning
 
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
 app = Flask(__name__)
 CORS(app)
@@ -146,6 +150,23 @@ def stations():
         "region": region,
         "stations": rows,
     })
+
+
+@app.route("/")
+def dashboard():
+    """Show the dashboard when someone opens the Vercel site."""
+    return send_from_directory(FRONTEND_DIR, "index.html")
+
+
+@app.route("/<path:file_name>")
+def frontend_files(file_name):
+    """Serve CSS, JavaScript, and other frontend files."""
+    file_path = os.path.join(FRONTEND_DIR, file_name)
+
+    if os.path.exists(file_path):
+        return send_from_directory(FRONTEND_DIR, file_name)
+
+    return send_from_directory(FRONTEND_DIR, "index.html")
 
 
 if __name__ == "__main__":
