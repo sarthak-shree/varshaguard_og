@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,19 +7,19 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
     <header class="topbar">
         <div>
-            <h1>VARSHAGUARD</h1>
-            <p>AI/ML-Based Heavy Rainfall Early Warning & Inundation Prediction System</p>
+            <!-- <h1>VARSHA<span>GUARD  &#8623;</span></h1> -->
+            <h1><a href="#">VARSHA<span>GUARD &#8623;</a></span></h1>
+            <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning & Inundation Prediction System</p>
         </div>
-        <div class="prototype-badge">Prototype</div>
+        <div class="prototype-badge">Prototype WIP (0.1.1)</div>
     </header>
 
     <main class="layout">
         <aside class="sidebar">
-            <section class="panel">
+            <section class="panel hoverbx">
                 <label for="regionSelect">Select Region</label>
                 <select id="regionSelect">
                     <option value="Assam">Assam</option>
@@ -28,7 +27,7 @@
                 </select>
             </section>
 
-            <section id="riskCard" class="risk-card risk-low">
+            <section id="riskCard" class="risk-card risk-low hoverbx">
                 <p class="small-title">Flood Risk</p>
                 <h2 id="riskLevel">Loading...</h2>
                 <p id="probability">--%</p>
@@ -36,7 +35,7 @@
                 <div class="horizon">Prediction horizon: <span id="horizon">24</span> hours</div>
             </section>
 
-            <section class="panel">
+            <section class="panel hoverbx">
                 <h3>System Status</h3>
                 <div class="status-row"><span>Backend API</span><strong id="apiStatus">CHECKING</strong></div>
                 <div class="status-row"><span>ML Model</span><strong id="modelStatus">CHECKING</strong></div>
@@ -46,31 +45,30 @@
         </aside>
 
         <section class="main-area">
-            <section class="map-section">
+            <section class="map-section hoverbx">
                 <div id="map"></div>
             </section>
 
             <section class="grid">
-                <div class="panel">
+                <div class="panel hoverbx">
                     <h3>Recent Rainfall Trend</h3>
-
+                
                     <div class="chart-container">
                         <canvas id="rainfallChart"></canvas>
                     </div>
                 </div>
 
-                <div class="panel">
+                <div class="panel hoverbx">
                     <h3>Why This Warning?</h3>
                     <p class="plain-text">
-                        The Random Forest model uses recent rainfall patterns and time features to estimate flood
-                        likelihood.
+                        The Random Forest model uses recent rainfall patterns and time features to estimate flood likelihood.
                         This is a probabilistic prototype, not a guaranteed prediction.
                     </p>
                     <div id="featureList" class="feature-list"></div>
                 </div>
             </section>
 
-            <section class="panel">
+            <section class="panel hoverbx">
                 <h3>Prediction Information</h3>
                 <div id="historyList" class="history-list">Loading records...</div>
             </section>
@@ -79,9 +77,12 @@
 
     <div id="message" class="message hidden"></div>
 
+    <footer>
+
+    </footer>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
 </body>
-
 </html>

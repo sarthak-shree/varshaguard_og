@@ -64,7 +64,6 @@ def regions():
 
 
 @app.route("/api/flood-risk")
-@app.route("/api/flood-risk")
 def flood_risk():
     region, station, error = get_region_from_request()
 
