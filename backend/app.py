@@ -31,13 +31,14 @@ def error_response(message, status_code=400):
 
 
 def get_region_from_request():
-    """Read and validate ?region=Assam from the URL."""
     region = request.args.get("region", "Assam").strip()
 
     if region not in REGIONS:
-        return None, "Unsupported region"
+        return None, None, "Unsupported region"
 
-    return region, None
+    station = request.args.get("station", "").strip()
+
+    return region, station or None, None
 
 
 @app.route("/api/health")
@@ -63,17 +64,27 @@ def regions():
 
 
 @app.route("/api/flood-risk")
+@app.route("/api/flood-risk")
 def flood_risk():
-    region, error = get_region_from_request()
+    region, station, error = get_region_from_request()
+
     if error:
         return error_response(error, 400)
 
     model_info = load_model()
-    probability, record, error = predict_probability(model_info, region)
+
+    probability, record, error = predict_probability(
+        model_info,
+        region,
+        station
+    )
+
     if error:
         return error_response(error, 500)
-
-    risk = get_risk(probability, model_info["decision_threshold"])
+    risk = get_risk(
+    probability,
+    model_info["decision_threshold"]
+)
 
     important_features = {
         "rainfall_1h": float(record.get("rainfall_1h", 0)),
@@ -103,7 +114,7 @@ def flood_risk():
 
 @app.route("/api/rainfall")
 def rainfall():
-    region, error = get_region_from_request()
+    region, station, error = get_region_from_request()
     if error:
         return error_response(error, 400)
 
@@ -120,7 +131,7 @@ def rainfall():
 
 @app.route("/api/history")
 def history():
-    region, error = get_region_from_request()
+    region, station, error = get_region_from_request()
     if error:
         return error_response(error, 400)
 
@@ -137,7 +148,7 @@ def history():
 
 @app.route("/api/stations")
 def stations():
-    region, error = get_region_from_request()
+    region, station, error = get_region_from_request()
     if error:
         return error_response(error, 400)
 

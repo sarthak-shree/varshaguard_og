@@ -238,3 +238,9 @@ select {
         grid-template-columns: 1fr;
     }
 }
+
+.chart-container {
+    position: relative;
+    height: 320px;
+    width: 100%;
+}

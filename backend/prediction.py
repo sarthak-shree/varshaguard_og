@@ -66,18 +66,30 @@ def filter_by_region(data, region):
     return region_data, None
 
 
-def get_latest_record(region):
-    """Get the latest row for the selected region."""
+def get_latest_record(region, station=None):
+    """Get the latest row for the selected region and optional station."""
     data, error = load_data()
     if error:
         return None, error
 
     data = clean_data(data)
+
     region_data, error = filter_by_region(data, region)
     if error:
         return None, error
 
-    return region_data.iloc[-1].to_dict(), None
+    if station:
+        station_data = region_data[
+            region_data["station"].str.lower() == station.lower()
+        ].copy()
+
+        if station_data.empty:
+            return None, "No data available for station: " + station
+
+        station_data = station_data.sort_values("timestamp")
+        return station_data.iloc[-1].to_dict(), None
+
+    return region_data.sort_values("timestamp").iloc[-1].to_dict(), None
 
 
 def prepare_features(record, features):
@@ -97,12 +109,12 @@ def prepare_features(record, features):
     return pd.DataFrame([values], columns=features), None
 
 
-def predict_probability(model_info, region):
-    """Run model.predict_proba() and return a flood probability."""
+def predict_probability(model_info, region, station=None):
+    """Run model.predict_proba() for a region and optional station."""
     if not model_info["ok"]:
         return None, None, model_info["error"]
 
-    record, error = get_latest_record(region)
+    record, error = get_latest_record(region, station)
     if error:
         return None, None, error
 

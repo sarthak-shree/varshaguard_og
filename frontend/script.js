@@ -1,7 +1,4 @@
-const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
-    ? "http://127.0.0.1:5001"
-    : "";
-
+const API_BASE = "http://127.0.0.1:5001";
 let map;
 let markerLayer;
 let rainfallChart;
