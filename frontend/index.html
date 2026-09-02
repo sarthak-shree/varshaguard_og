@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VARSHAGUARD</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1>VARSHAGUARD</h1>
+            <p>AI/ML-Based Heavy Rainfall Early Warning & Inundation Prediction System</p>
+        </div>
+        <div class="prototype-badge">Prototype</div>
+    </header>
+
+    <main class="layout">
+        <aside class="sidebar">
+            <section class="panel">
+                <label for="regionSelect">Select Region</label>
+                <select id="regionSelect">
+                    <option value="Assam">Assam</option>
+                    <option value="Uttarakhand">Uttarakhand</option>
+                </select>
+            </section>
+
+            <section id="riskCard" class="risk-card risk-low">
+                <p class="small-title">Flood Risk</p>
+                <h2 id="riskLevel">Loading...</h2>
+                <p id="probability">--%</p>
+                <p id="warning">Checking latest prototype data.</p>
+                <div class="horizon">Prediction horizon: <span id="horizon">24</span> hours</div>
+            </section>
+
+            <section class="panel">
+                <h3>System Status</h3>
+                <div class="status-row"><span>Backend API</span><strong id="apiStatus">CHECKING</strong></div>
+                <div class="status-row"><span>ML Model</span><strong id="modelStatus">CHECKING</strong></div>
+                <div class="status-row"><span>Data</span><strong id="dataStatus">CHECKING</strong></div>
+                <div class="status-row"><span>Prediction</span><strong id="predictionStatus">CHECKING</strong></div>
+            </section>
+        </aside>
+
+        <section class="main-area">
+            <section class="map-section">
+                <div id="map"></div>
+            </section>
+
+            <section class="grid">
+                <div class="panel">
+                    <h3>Recent Rainfall Trend</h3>
+                    <canvas id="rainfallChart"></canvas>
+                </div>
+
+                <div class="panel">
+                    <h3>Why This Warning?</h3>
+                    <p class="plain-text">
+                        The Random Forest model uses recent rainfall patterns and time features to estimate flood likelihood.
+                        This is a probabilistic prototype, not a guaranteed prediction.
+                    </p>
+                    <div id="featureList" class="feature-list"></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <h3>Prediction Information</h3>
+                <div id="historyList" class="history-list">Loading records...</div>
+            </section>
+        </section>
+    </main>
+
+    <div id="message" class="message hidden"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
