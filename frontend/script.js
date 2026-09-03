@@ -109,15 +109,15 @@ function setupChart() {
                 {
                     label: "1h rainfall (mm)",
                     data: [],
-                    borderColor: "#1976a3",
-                    backgroundColor: "rgba(25, 118, 163, 0.12)",
+                    borderColor: "#2FB8C6",
+                    backgroundColor: "rgba(47, 184, 198, 0.15)",
                     tension: 0.3,
                 },
                 {
                     label: "24h rainfall (mm)",
                     data: [],
-                    borderColor: "#c93636",
-                    backgroundColor: "rgba(201, 54, 54, 0.12)",
+                    borderColor: "#F2A93B",
+                    backgroundColor: "rgba(242, 169, 59, 0.15)",
                     tension: 0.3,
                 },
             ],
@@ -125,12 +125,24 @@ function setupChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: "#8FA7B8" },
+                },
+            },
             scales: {
+                x: {
+                    ticks: { color: "#8FA7B8" },
+                    grid: { color: "rgba(255,255,255,0.06)" },
+                },
                 y: {
                     beginAtZero: true,
+                    ticks: { color: "#8FA7B8" },
+                    grid: { color: "rgba(255,255,255,0.06)" },
                     title: {
                         display: true,
                         text: "Rainfall (mm)",
+                        color: "#8FA7B8",
                     },
                 },
             },
