@@ -10,7 +10,7 @@ REGIONS = ["Assam", "Uttarakhand"]
 
 
 def load_data():
-    """Load the processed rainfall/flood dataset."""
+    """Load the processed rainfall/flood dataset and normalize its schema."""
     if not os.path.exists(DATA_PATH):
         return None, "Processed data file is missing."
 
@@ -19,6 +19,28 @@ def load_data():
     except Exception as error:
         return None, "Processed data could not be read: " + str(error)
 
+    required_source_columns = [
+        "state",
+        "Station",
+        "Latitude",
+        "Longitude",
+        "hour",
+    ]
+    missing_source = [column for column in required_source_columns if column not in data.columns]
+
+    # The older prototype CSV already uses the normalized names. Keep it compatible.
+    if missing_source:
+        normalized_columns = ["region", "station", "latitude", "longitude", "timestamp"]
+        missing_normalized = [column for column in normalized_columns if column not in data.columns]
+        if missing_normalized:
+            return None, "Data schema is missing columns: " + ", ".join(missing_source)
+    else:
+        data["region"] = data["state"].astype(str).str.strip()
+        data["station"] = data["Station"].astype(str).str.strip()
+        data["latitude"] = pd.to_numeric(data["Latitude"], errors="coerce")
+        data["longitude"] = pd.to_numeric(data["Longitude"], errors="coerce")
+        data["timestamp"] = pd.to_datetime(data["hour"], errors="coerce")
+
     return data, None
 
 
@@ -26,25 +48,30 @@ def clean_data(data):
     """Clean the in-memory API copy without changing the source CSV."""
     data = data.copy()
 
-    if "timestamp" in data.columns:
-        data["timestamp"] = pd.to_datetime(data["timestamp"], errors="coerce")
-        data = data.dropna(subset=["timestamp"])
+    data["timestamp"] = pd.to_datetime(data["timestamp"], errors="coerce")
+    data = data.dropna(subset=["timestamp", "region", "station", "latitude", "longitude"])
 
-    rainfall_columns = [column for column in data.columns if column.startswith("rainfall_")]
+    rainfall_columns = [
+        column
+        for column in data.columns
+        if column.startswith("rainfall_") and column != "rainfall_mm"
+    ]
     for column in rainfall_columns:
         data[column] = pd.to_numeric(data[column], errors="coerce")
         data[column] = data[column].fillna(0)
         data = data[data[column] >= 0]
         data = data[data[column] <= 1000]
 
-    duplicate_columns = [column for column in [
-        "region", "station", "latitude", "longitude", "timestamp"
-    ] if column in data.columns]
+    duplicate_columns = [
+        "region",
+        "station",
+        "latitude",
+        "longitude",
+        "timestamp",
+    ]
+    data = data.drop_duplicates(subset=duplicate_columns, keep="last")
 
-    if duplicate_columns:
-        data = data.drop_duplicates(subset=duplicate_columns, keep="last")
-
-    return data
+    return data.sort_values("timestamp")
 
 
 def filter_by_region(data, region):
@@ -52,10 +79,9 @@ def filter_by_region(data, region):
     if region not in REGIONS:
         return None, "Unsupported region"
 
-    if "region" not in data.columns:
-        return None, "Data does not contain a region column."
-
-    region_data = data[data["region"].astype(str).str.lower() == region.lower()].copy()
+    region_data = data[
+        data["region"].astype(str).str.strip().str.lower() == region.lower()
+    ].copy()
 
     if region_data.empty:
         return None, "No data available for " + region
@@ -65,11 +91,9 @@ def filter_by_region(data, region):
 
 def filter_by_station(region_data, station):
     """Return rows for one station inside the selected region."""
-    if "station" not in region_data.columns:
-        return None, "Data does not contain a station column."
-
     station_data = region_data[
-        region_data["station"].astype(str).str.strip().str.lower() == station.strip().lower()
+        region_data["station"].astype(str).str.strip().str.lower()
+        == station.strip().lower()
     ].copy()
 
     if station_data.empty:
@@ -181,7 +205,14 @@ def get_history(region, station=None):
         if error:
             return None, error
 
-    columns = ["timestamp", "region", "station", "rainfall_24h", "rainfall_72h", "flood_soon"]
+    columns = [
+        "timestamp",
+        "region",
+        "station",
+        "rainfall_24h",
+        "rainfall_72h",
+        "flood_soon",
+    ]
     available_columns = [column for column in columns if column in region_data.columns]
 
     rows = region_data.tail(12)[available_columns].copy()
@@ -203,14 +234,10 @@ def get_stations(region):
         return None, error
 
     needed = ["station", "latitude", "longitude"]
-    for column in needed:
-        if column not in region_data.columns:
-            return [], None
-
     stations = (
         region_data[needed]
         .dropna()
-        .drop_duplicates(subset=["station", "latitude", "longitude"])
+        .drop_duplicates(subset=needed)
         .sort_values("station")
     )
 
