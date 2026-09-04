@@ -23,11 +23,7 @@ def load_data():
 
 
 def clean_data(data):
-    """
-    Do gentle in-memory cleaning.
-
-    We do not edit the CSV file. We only clean the copy used by the API.
-    """
+    """Clean the in-memory API copy without changing the source CSV."""
     data = data.copy()
 
     if "timestamp" in data.columns:
@@ -41,8 +37,12 @@ def clean_data(data):
         data = data[data[column] >= 0]
         data = data[data[column] <= 1000]
 
-    if "region" in data.columns and "timestamp" in data.columns:
-        data = data.drop_duplicates(subset=["region", "timestamp"], keep="last")
+    duplicate_columns = [column for column in [
+        "region", "station", "latitude", "longitude", "timestamp"
+    ] if column in data.columns]
+
+    if duplicate_columns:
+        data = data.drop_duplicates(subset=duplicate_columns, keep="last")
 
     return data
 
@@ -55,41 +55,46 @@ def filter_by_region(data, region):
     if "region" not in data.columns:
         return None, "Data does not contain a region column."
 
-    region_data = data[data["region"].str.lower() == region.lower()].copy()
+    region_data = data[data["region"].astype(str).str.lower() == region.lower()].copy()
 
     if region_data.empty:
         return None, "No data available for " + region
 
-    if "timestamp" in region_data.columns:
-        region_data = region_data.sort_values("timestamp")
+    return region_data.sort_values("timestamp"), None
 
-    return region_data, None
+
+def filter_by_station(region_data, station):
+    """Return rows for one station inside the selected region."""
+    if "station" not in region_data.columns:
+        return None, "Data does not contain a station column."
+
+    station_data = region_data[
+        region_data["station"].astype(str).str.strip().str.lower() == station.strip().lower()
+    ].copy()
+
+    if station_data.empty:
+        return None, "No data available for station: " + station
+
+    return station_data.sort_values("timestamp"), None
 
 
 def get_latest_record(region, station=None):
-    """Get the latest row for the selected region and optional station."""
+    """Get the latest row for a region and optional station."""
     data, error = load_data()
     if error:
         return None, error
 
     data = clean_data(data)
-
     region_data, error = filter_by_region(data, region)
     if error:
         return None, error
 
     if station:
-        station_data = region_data[
-            region_data["station"].str.lower() == station.lower()
-        ].copy()
+        region_data, error = filter_by_station(region_data, station)
+        if error:
+            return None, error
 
-        if station_data.empty:
-            return None, "No data available for station: " + station
-
-        station_data = station_data.sort_values("timestamp")
-        return station_data.iloc[-1].to_dict(), None
-
-    return region_data.sort_values("timestamp").iloc[-1].to_dict(), None
+    return region_data.iloc[-1].to_dict(), None
 
 
 def prepare_features(record, features):
@@ -131,8 +136,8 @@ def predict_probability(model_info, region, station=None):
     return flood_probability, record, None
 
 
-def get_rainfall_series(region):
-    """Return recent rainfall values for charts."""
+def get_rainfall_series(region, station=None):
+    """Return the latest rainfall values for a region or selected station."""
     data, error = load_data()
     if error:
         return None, error
@@ -142,12 +147,17 @@ def get_rainfall_series(region):
     if error:
         return None, error
 
-    region_data = region_data.tail(12)
+    if station:
+        region_data, error = filter_by_station(region_data, station)
+        if error:
+            return None, error
 
+    rows = region_data.tail(24)
     result = []
-    for _, row in region_data.iterrows():
+    for _, row in rows.iterrows():
         result.append({
             "timestamp": str(row.get("timestamp", "")),
+            "station": str(row.get("station", "")),
             "rainfall_1h": float(row.get("rainfall_1h", 0)),
             "rainfall_24h": float(row.get("rainfall_24h", 0)),
         })
@@ -155,8 +165,8 @@ def get_rainfall_series(region):
     return result, None
 
 
-def get_history(region):
-    """Return recent prototype rows for the dashboard table/list."""
+def get_history(region, station=None):
+    """Return recent prototype prediction records."""
     data, error = load_data()
     if error:
         return None, error
@@ -166,10 +176,15 @@ def get_history(region):
     if error:
         return None, error
 
+    if station:
+        region_data, error = filter_by_station(region_data, station)
+        if error:
+            return None, error
+
     columns = ["timestamp", "region", "station", "rainfall_24h", "rainfall_72h", "flood_soon"]
     available_columns = [column for column in columns if column in region_data.columns]
 
-    rows = region_data.tail(10)[available_columns].copy()
+    rows = region_data.tail(12)[available_columns].copy()
     if "timestamp" in rows.columns:
         rows["timestamp"] = rows["timestamp"].astype(str)
 
@@ -177,7 +192,7 @@ def get_history(region):
 
 
 def get_stations(region):
-    """Return simple station points for the map."""
+    """Return unique station points for the selected region."""
     data, error = load_data()
     if error:
         return None, error
@@ -192,5 +207,11 @@ def get_stations(region):
         if column not in region_data.columns:
             return [], None
 
-    stations = region_data[needed].drop_duplicates().dropna()
+    stations = (
+        region_data[needed]
+        .dropna()
+        .drop_duplicates(subset=["station", "latitude", "longitude"])
+        .sort_values("station")
+    )
+
     return stations.to_dict(orient="records"), None
