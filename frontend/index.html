@@ -6,24 +6,13 @@
     <title>VARSHAGUARD</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌧️</text></svg>">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Header should scroll normally instead of stacking over content. */
-        .topbar {
-            position: relative;
-            top: auto;
-        }
-    </style>
 </head>
 <body>
-    <div class="bg-fx" aria-hidden="true"></div>
-
     <header class="topbar">
         <div class="brand">
             <div>
-                <h1><a href="#">VARSHA<span>GUARD &#8623;</span></a></h1>
+                <h1><a href="#">VARSHA<span>GUARD</span></a></h1>
                 <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
             </div>
         </div>
@@ -39,7 +28,7 @@
 
     <main class="layout">
         <aside class="sidebar">
-            <section class="panel hoverbx fade-in" style="--d:0s">
+            <section class="panel hoverbx">
                 <label for="regionSelect">Select Region</label>
                 <div class="select-wrap">
                     <select id="regionSelect">
@@ -47,7 +36,6 @@
                         <option value="Uttarakhand">Uttarakhand</option>
                     </select>
                 </div>
-
                 <label for="stationSelect" class="station-label">Select Station</label>
                 <div class="select-wrap">
                     <select id="stationSelect" disabled>
@@ -56,7 +44,7 @@
                 </div>
             </section>
 
-            <section id="riskCard" class="risk-card risk-low hoverbx fade-in" style="--d:.08s">
+            <section id="riskCard" class="risk-card risk-low hoverbx">
                 <p class="small-title">Flood Risk</p>
                 <h2 id="riskLevel">Loading...</h2>
                 <p id="probability">--%</p>
@@ -65,7 +53,7 @@
                 <div class="selected-station">Station: <strong id="selectedStationName">—</strong></div>
             </section>
 
-            <section class="panel hoverbx fade-in" style="--d:.16s">
+            <section class="panel hoverbx">
                 <h3><svg class="ic" viewBox="0 0 24 24"><path d="M12 2a5 5 0 015 5v2a5 5 0 01-10 0V7a5 5 0 015-5zM5 11a7 7 0 0014 0M12 18v4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>System Status</h3>
                 <div class="status-row"><span>Backend API</span><strong id="apiStatus">CHECKING</strong></div>
                 <div class="status-row"><span>ML Model</span><strong id="modelStatus">CHECKING</strong></div>
@@ -75,7 +63,7 @@
         </aside>
 
         <section class="main-area">
-            <section class="map-section hoverbx fade-in" style="--d:.1s">
+            <section class="map-section hoverbx">
                 <div class="map-head">
                     <h3>Prototype Station Map</h3>
                     <div class="legend"><span class="dot low"></span>Low <span class="dot medium"></span>Medium <span class="dot high"></span>High</div>
@@ -84,21 +72,20 @@
             </section>
 
             <section class="grid">
-                <div class="panel hoverbx fade-in" style="--d:.2s">
+                <div class="panel hoverbx">
                     <h3><svg class="ic" viewBox="0 0 24 24"><path d="M4 19V5m6 14V9m6 10V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Recent Rainfall Trend</h3>
                     <div class="chart-meta">Selected station: <strong id="chartStation">—</strong></div>
                     <div class="chart-container"><canvas id="rainfallChart"></canvas></div>
                 </div>
-
-                <div class="panel hoverbx fade-in" style="--d:.26s">
-                    <h3><svg class="ic" viewBox="0 0 24 24"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>Why This Warning?</h3>
+                <div class="panel hoverbx">
+                    <h3>Why This Warning?</h3>
                     <p class="plain-text">The Random Forest model uses recent rainfall patterns and time features to estimate flood likelihood. This is a probabilistic prototype, not a guaranteed prediction.</p>
                     <div id="featureList" class="feature-list"></div>
                 </div>
             </section>
 
-            <section class="panel hoverbx fade-in" style="--d:.32s">
-                <h3><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Prediction Information</h3>
+            <section class="panel hoverbx">
+                <h3>Prediction Information</h3>
                 <div class="history-head"><span>Timestamp</span><span>Station</span><span>24h Rainfall</span><span>Flood Soon</span></div>
                 <div id="historyList" class="history-list">Loading records...</div>
             </section>
@@ -106,7 +93,6 @@
     </main>
 
     <div id="message" class="message hidden"></div>
-
     <footer><p>Prototype only &bull; historical / demo data &bull; not an operational government-grade warning system.</p></footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
