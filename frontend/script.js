@@ -1,8 +1,9 @@
-const API_BASE = "http://127.0.0.1:5001";
+const API_BASE = "";
 
 let map;
 let markerLayer;
 let rainfallChart;
+let stationMarkers = new Map();
 
 const regionCenters = {
     Assam: [26.1445, 91.7362],
@@ -11,12 +12,14 @@ const regionCenters = {
 
 function showMessage(text) {
     const message = document.getElementById("message");
+    if (!message) return;
     message.textContent = text;
     message.classList.remove("hidden");
 }
 
 function hideMessage() {
-    document.getElementById("message").classList.add("hidden");
+    const message = document.getElementById("message");
+    if (message) message.classList.add("hidden");
 }
 
 async function getJson(url) {
@@ -42,14 +45,8 @@ function setupMap() {
 }
 
 function riskClassName(risk) {
-    if (risk === "HIGH") {
-        return "risk-high";
-    }
-
-    if (risk === "MEDIUM") {
-        return "risk-medium";
-    }
-
+    if (risk === "HIGH") return "risk-high";
+    if (risk === "MEDIUM") return "risk-medium";
     return "risk-low";
 }
 
@@ -61,13 +58,19 @@ function updateRiskCard(data) {
     document.getElementById("probability").textContent = Math.round(data.flood_probability * 100) + "%";
     document.getElementById("warning").textContent = data.warning;
     document.getElementById("horizon").textContent = data.prediction_horizon_hours;
+
+    const stationName = document.getElementById("selectedStationName");
+    if (stationName) stationName.textContent = data.station || "Selected station";
+
+    const dataTime = document.getElementById("dataTimestamp");
+    if (dataTime) dataTime.textContent = data.data_timestamp || "—";
 }
 
 function updateFeatures(features) {
     const featureList = document.getElementById("featureList");
     featureList.innerHTML = "";
 
-    Object.keys(features).forEach((name) => {
+    Object.keys(features || {}).forEach((name) => {
         const item = document.createElement("div");
         item.className = "feature";
         item.innerHTML = `<span>${name}</span><strong>${features[name]}</strong>`;
@@ -75,26 +78,40 @@ function updateFeatures(features) {
     });
 }
 
+function markerColor(risk) {
+    if (risk === "HIGH") return "#F87171";
+    if (risk === "MEDIUM") return "#FBBF24";
+    return "#34D399";
+}
+
 function updateMap(data, stations) {
     markerLayer.clearLayers();
+    stationMarkers.clear();
 
-    const center = [data.latitude, data.longitude];
-    map.setView(center, 8);
-
-    L.circleMarker(center, {
-        radius: 12,
-        color: "white",
-        weight: 2,
-        fillColor: data.risk === "HIGH" ? "#c93636" : data.risk === "MEDIUM" ? "#c47a10" : "#18895b",
-        fillOpacity: 0.9,
-    })
-        .bindPopup(`${data.region}<br>${data.risk} risk<br>${Math.round(data.flood_probability * 100)}% probability`)
-        .addTo(markerLayer);
+    const selectedCenter = [data.latitude, data.longitude];
+    map.setView(selectedCenter, 9);
 
     stations.forEach((station) => {
-        L.marker([station.latitude, station.longitude])
-            .bindPopup(station.station)
+        const isSelected = station.station === data.station;
+        const marker = L.circleMarker([station.latitude, station.longitude], {
+            radius: isSelected ? 10 : 7,
+            color: isSelected ? "white" : "#2FB8C6",
+            weight: isSelected ? 3 : 2,
+            fillColor: isSelected ? markerColor(data.risk) : "#2FB8C6",
+            fillOpacity: isSelected ? 0.95 : 0.65,
+        })
+            .bindPopup(`<strong>${station.station}</strong><br>${isSelected ? `${data.risk} risk · ${Math.round(data.flood_probability * 100)}%` : "Click to select this station"}`)
             .addTo(markerLayer);
+
+        marker.on("click", () => {
+            const stationSelect = document.getElementById("stationSelect");
+            if (stationSelect) {
+                stationSelect.value = station.station;
+                loadStation(station.station);
+            }
+        });
+
+        stationMarkers.set(station.station, marker);
     });
 }
 
@@ -126,9 +143,7 @@ function setupChart() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    labels: { color: "#8FA7B8" },
-                },
+                legend: { labels: { color: "#8FA7B8" } },
             },
             scales: {
                 x: {
@@ -139,11 +154,7 @@ function setupChart() {
                     beginAtZero: true,
                     ticks: { color: "#8FA7B8" },
                     grid: { color: "rgba(255,255,255,0.06)" },
-                    title: {
-                        display: true,
-                        text: "Rainfall (mm)",
-                        color: "#8FA7B8",
-                    },
+                    title: { display: true, text: "Rainfall (mm)", color: "#8FA7B8" },
                 },
             },
         },
@@ -161,14 +172,19 @@ function updateHistory(rows) {
     const historyList = document.getElementById("historyList");
     historyList.innerHTML = "";
 
-    rows.forEach((row) => {
+    if (!rows.length) {
+        historyList.textContent = "No history available.";
+        return;
+    }
+
+    rows.slice().reverse().forEach((row) => {
         const item = document.createElement("div");
         item.className = "history-item";
         item.innerHTML = `
             <span>${row.timestamp}</span>
             <span>${row.station || row.region}</span>
             <span>24h: ${row.rainfall_24h} mm</span>
-            <span>Flood soon: ${row.flood_soon}</span>
+            <span>Flood soon: ${Number(row.flood_soon) === 1 ? "YES" : "NO"}</span>
         `;
         historyList.appendChild(item);
     });
@@ -176,7 +192,7 @@ function updateHistory(rows) {
 
 async function updateHealth() {
     try {
-        const data = await fetch(`${API_BASE}/api/health`).then((response) => response.json());
+        const data = await getJson(`${API_BASE}/api/health`);
         document.getElementById("apiStatus").textContent = data.status === "ok" ? "ONLINE" : "OFFLINE";
         document.getElementById("modelStatus").textContent = data.model;
         document.getElementById("dataStatus").textContent = data.data;
@@ -189,14 +205,47 @@ async function updateHealth() {
     }
 }
 
-async function loadRegion(region) {
+async function loadStations(region) {
+    const stationSelect = document.getElementById("stationSelect");
+    if (!stationSelect) return [];
+
+    stationSelect.innerHTML = `<option value="">Loading stations...</option>`;
+    stationSelect.disabled = true;
+
+    const data = await getJson(`${API_BASE}/api/stations?region=${encodeURIComponent(region)}`);
+    const stations = data.stations || [];
+
+    stationSelect.innerHTML = "";
+    if (!stations.length) {
+        stationSelect.innerHTML = `<option value="">No stations available</option>`;
+        return stations;
+    }
+
+    stations.forEach((station) => {
+        const option = document.createElement("option");
+        option.value = station.station;
+        option.textContent = station.station;
+        stationSelect.appendChild(option);
+    });
+
+    stationSelect.disabled = false;
+    return stations;
+}
+
+async function loadStation(station) {
+    const region = document.getElementById("regionSelect").value;
+    if (!station) return;
+
     hideMessage();
 
     try {
-        const risk = await getJson(`${API_BASE}/api/flood-risk?region=${region}`);
-        const rainfall = await getJson(`${API_BASE}/api/rainfall?region=${region}`);
-        const history = await getJson(`${API_BASE}/api/history?region=${region}`);
-        const stations = await getJson(`${API_BASE}/api/stations?region=${region}`);
+        const query = `region=${encodeURIComponent(region)}&station=${encodeURIComponent(station)}`;
+        const [risk, rainfall, history, stations] = await Promise.all([
+            getJson(`${API_BASE}/api/flood-risk?${query}`),
+            getJson(`${API_BASE}/api/rainfall?${query}`),
+            getJson(`${API_BASE}/api/history?${query}`),
+            getJson(`${API_BASE}/api/stations?region=${encodeURIComponent(region)}`),
+        ]);
 
         updateRiskCard(risk);
         updateFeatures(risk.features);
@@ -210,15 +259,33 @@ async function loadRegion(region) {
     }
 }
 
+async function loadRegion(region) {
+    hideMessage();
+
+    try {
+        const stations = await loadStations(region);
+        if (!stations.length) throw new Error(`No stations available for ${region}`);
+
+        const stationSelect = document.getElementById("stationSelect");
+        const firstStation = stations[0].station;
+        stationSelect.value = firstStation;
+        await loadStation(firstStation);
+    } catch (error) {
+        showMessage(error.message);
+        await updateHealth();
+    }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     setupMap();
     setupChart();
 
-    const selector = document.getElementById("regionSelect");
-    selector.addEventListener("change", () => {
-        loadRegion(selector.value);
-    });
+    const regionSelect = document.getElementById("regionSelect");
+    const stationSelect = document.getElementById("stationSelect");
+
+    regionSelect.addEventListener("change", () => loadRegion(regionSelect.value));
+    stationSelect.addEventListener("change", () => loadStation(stationSelect.value));
 
     await updateHealth();
-    await loadRegion(selector.value);
+    await loadRegion(regionSelect.value);
 });
