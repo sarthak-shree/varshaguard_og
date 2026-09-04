@@ -4,57 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VARSHAGUARD</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌧️</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header class="topbar">
-        <div class="brand">
-            <div>
-                <h1><a href="#">VARSHA<span>GUARD</span></a></h1>
-                <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
-            </div>
+        <div>
+            <h1><a href="#">VARSHA<span>GUARD ⚡</span></a></h1>
+            <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
         </div>
-        <div class="prototype-badge"><i class="pulse-dot"></i>Prototype WIP (0.1.2)</div>
+        <div class="prototype-badge">Prototype WIP (0.1.1)</div>
     </header>
-
-    <div class="stat-strip">
-        <div class="stat"><strong>2</strong><span>Study regions</span></div>
-        <div class="stat"><strong>24h</strong><span>Prediction horizon</span></div>
-        <div class="stat"><strong>RF</strong><span>Random Forest model</span></div>
-        <div class="stat"><strong>API</strong><span>API-driven dashboard</span></div>
-    </div>
 
     <main class="layout">
         <aside class="sidebar">
             <section class="panel hoverbx">
                 <label for="regionSelect">Select Region</label>
-                <div class="select-wrap">
-                    <select id="regionSelect">
-                        <option value="Assam">Assam</option>
-                        <option value="Uttarakhand">Uttarakhand</option>
-                    </select>
-                </div>
+                <select id="regionSelect">
+                    <option value="Assam">Assam</option>
+                    <option value="Uttarakhand">Uttarakhand</option>
+                </select>
                 <label for="stationSelect" class="station-label">Select Station</label>
-                <div class="select-wrap">
-                    <select id="stationSelect" disabled>
-                        <option value="">Loading stations...</option>
-                    </select>
-                </div>
+                <select id="stationSelect" disabled>
+                    <option value="">Loading stations...</option>
+                </select>
             </section>
 
             <section id="riskCard" class="risk-card risk-low hoverbx">
                 <p class="small-title">Flood Risk</p>
                 <h2 id="riskLevel">Loading...</h2>
                 <p id="probability">--%</p>
-                <p id="warning">Checking prototype data.</p>
+                <p id="warning">Checking latest prototype data.</p>
                 <div class="horizon">Prediction horizon: <span id="horizon">24</span> hours</div>
                 <div class="selected-station">Station: <strong id="selectedStationName">—</strong></div>
             </section>
 
             <section class="panel hoverbx">
-                <h3><svg class="ic" viewBox="0 0 24 24"><path d="M12 2a5 5 0 015 5v2a5 5 0 01-10 0V7a5 5 0 015-5zM5 11a7 7 0 0014 0M12 18v4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>System Status</h3>
+                <h3>System Status</h3>
                 <div class="status-row"><span>Backend API</span><strong id="apiStatus">CHECKING</strong></div>
                 <div class="status-row"><span>ML Model</span><strong id="modelStatus">CHECKING</strong></div>
                 <div class="status-row"><span>Data</span><strong id="dataStatus">CHECKING</strong></div>
@@ -64,36 +51,37 @@
 
         <section class="main-area">
             <section class="map-section hoverbx">
-                <div class="map-head">
-                    <h3>Prototype Station Map</h3>
-                    <div class="legend"><span class="dot low"></span>Low <span class="dot medium"></span>Medium <span class="dot high"></span>High</div>
-                </div>
                 <div id="map"></div>
             </section>
 
             <section class="grid">
                 <div class="panel hoverbx">
-                    <h3><svg class="ic" viewBox="0 0 24 24"><path d="M4 19V5m6 14V9m6 10V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Recent Rainfall Trend</h3>
-                    <div class="chart-meta">Selected station: <strong id="chartStation">—</strong></div>
-                    <div class="chart-container"><canvas id="rainfallChart"></canvas></div>
+                    <h3>Recent Rainfall Trend</h3>
+                    <div class="chart-container">
+                        <canvas id="rainfallChart"></canvas>
+                    </div>
                 </div>
+
                 <div class="panel hoverbx">
                     <h3>Why This Warning?</h3>
-                    <p class="plain-text">The Random Forest model uses recent rainfall patterns and time features to estimate flood likelihood. This is a probabilistic prototype, not a guaranteed prediction.</p>
+                    <p class="plain-text">
+                        The Random Forest model uses recent rainfall patterns and time features to estimate flood likelihood.
+                        This is a probabilistic prototype, not a guaranteed prediction.
+                    </p>
                     <div id="featureList" class="feature-list"></div>
                 </div>
             </section>
 
             <section class="panel hoverbx">
                 <h3>Prediction Information</h3>
-                <div class="history-head"><span>Timestamp</span><span>Station</span><span>24h Rainfall</span><span>Flood Soon</span></div>
                 <div id="historyList" class="history-list">Loading records...</div>
             </section>
         </section>
     </main>
 
     <div id="message" class="message hidden"></div>
-    <footer><p>Prototype only &bull; historical / demo data &bull; not an operational government-grade warning system.</p></footer>
+
+    <footer></footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
