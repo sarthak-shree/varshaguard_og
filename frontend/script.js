@@ -162,6 +162,10 @@ function setupChart() {
 }
 
 function updateChart(rows) {
+    const stationName = document.getElementById("selectedStationName")?.textContent || "—";
+    const chartStation = document.getElementById("chartStation");
+    if (chartStation) chartStation.textContent = stationName;
+
     rainfallChart.data.labels = rows.map((row) => row.timestamp.slice(5, 16));
     rainfallChart.data.datasets[0].data = rows.map((row) => row.rainfall_1h);
     rainfallChart.data.datasets[1].data = rows.map((row) => row.rainfall_24h);
