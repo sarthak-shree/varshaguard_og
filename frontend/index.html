@@ -40,6 +40,24 @@
                 <div class="selected-station">Station: <strong id="selectedStationName">—</strong></div>
             </section>
 
+            <section class="panel percentage-risk-panel hoverbx">
+                <div class="percentage-risk-header">
+                    <div>
+                        <h3>Percentage Risk</h3>
+                        <p>Model-estimated flood probability</p>
+                    </div>
+                    <strong id="percentageRiskValue">--%</strong>
+                </div>
+                <div class="risk-bar" aria-label="Flood probability">
+                    <div id="percentageRiskFill" class="risk-bar-fill" style="width: 0%"></div>
+                </div>
+                <div class="risk-bar-scale">
+                    <span>0%</span>
+                    <span>50%</span>
+                    <span>100%</span>
+                </div>
+            </section>
+
             <section class="panel hoverbx">
                 <h3>System Status</h3>
                 <div class="status-row"><span>Backend API</span><strong id="apiStatus">CHECKING</strong></div>
