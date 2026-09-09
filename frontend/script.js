@@ -50,30 +50,22 @@ function riskClassName(risk) {
     return "risk-low";
 }
 
-function updatePercentageRisk(probability) {
-    const numericProbability = Number(probability);
-    if (!Number.isFinite(numericProbability)) return;
-
-    const percent = Math.max(0, Math.min(100, Math.round(numericProbability * 100)));
-    const value = document.getElementById("percentageRiskValue");
-    const fill = document.getElementById("percentageRiskFill");
-
-    if (value) value.textContent = `${percent}%`;
-    if (fill) {
-        fill.style.width = `${percent}%`;
-        fill.setAttribute("aria-valuenow", String(percent));
-    }
-}
-
 function updateRiskCard(data) {
     const card = document.getElementById("riskCard");
     card.className = "risk-card " + riskClassName(data.risk);
 
     document.getElementById("riskLevel").textContent = data.risk;
-    document.getElementById("probability").textContent = Math.round(data.flood_probability * 100) + "%";
+
+    const probability = Number(data.flood_probability) || 0;
+    const percentage = Math.max(0, Math.min(100, Math.round(probability * 100)));
+    const probabilityValue = document.getElementById("probabilityValue");
+    const probabilityFill = document.getElementById("riskCardBarFill");
+
+    if (probabilityValue) probabilityValue.textContent = `${percentage}%`;
+    if (probabilityFill) probabilityFill.style.width = `${percentage}%`;
+
     document.getElementById("warning").textContent = data.warning;
     document.getElementById("horizon").textContent = data.prediction_horizon_hours;
-    updatePercentageRisk(data.flood_probability);
 
     const stationName = document.getElementById("selectedStationName");
     if (stationName) stationName.textContent = data.station || "Selected station";
