@@ -34,28 +34,23 @@
             <section id="riskCard" class="risk-card risk-low hoverbx">
                 <p class="small-title">Flood Risk</p>
                 <h2 id="riskLevel">Loading...</h2>
-                <p id="probability">--%</p>
+                <div class="risk-card-probability">
+                    <div class="risk-card-probability-header">
+                        <span>Flood probability</span>
+                        <strong id="probabilityValue">--%</strong>
+                    </div>
+                    <div class="risk-card-bar" aria-label="Flood probability">
+                        <div id="riskCardBarFill" class="risk-card-bar-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="risk-card-bar-scale">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
                 <p id="warning">Checking latest prototype data.</p>
                 <div class="horizon">Prediction horizon: <span id="horizon">24</span> hours</div>
                 <div class="selected-station">Station: <strong id="selectedStationName">—</strong></div>
-            </section>
-
-            <section class="panel percentage-risk-panel hoverbx">
-                <div class="percentage-risk-header">
-                    <div>
-                        <h3>Percentage Risk</h3>
-                        <p>Model-estimated flood probability</p>
-                    </div>
-                    <strong id="percentageRiskValue">--%</strong>
-                </div>
-                <div class="risk-bar" aria-label="Flood probability">
-                    <div id="percentageRiskFill" class="risk-bar-fill" style="width: 0%"></div>
-                </div>
-                <div class="risk-bar-scale">
-                    <span>0%</span>
-                    <span>50%</span>
-                    <span>100%</span>
-                </div>
             </section>
 
             <section class="panel hoverbx">
