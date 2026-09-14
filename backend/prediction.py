@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 
 import pandas as pd
 
@@ -9,15 +10,26 @@ DATA_PATH = os.path.join(BASE_DIR, "data", "processed", "flood_warning_ml_ready_
 REGIONS = ["Assam", "Uttarakhand"]
 
 
-def load_data():
-    """Load the processed rainfall/flood dataset and normalize its schema."""
+@lru_cache(maxsize=1)
+def _load_raw_data_cached():
+    """Read the processed dataset once per backend process."""
     if not os.path.exists(DATA_PATH):
         return None, "Processed data file is missing."
 
     try:
-        data = pd.read_csv(DATA_PATH)
+        return pd.read_csv(DATA_PATH), None
     except Exception as error:
         return None, "Processed data could not be read: " + str(error)
+
+
+@lru_cache(maxsize=1)
+def _load_clean_data_cached():
+    """Clean and normalize the dataset once per backend process."""
+    data, error = _load_raw_data_cached()
+    if error:
+        return None, error
+
+    data = data.copy()
 
     required_source_columns = [
         "state",
@@ -41,13 +53,6 @@ def load_data():
         data["longitude"] = pd.to_numeric(data["Longitude"], errors="coerce")
         data["timestamp"] = pd.to_datetime(data["hour"], errors="coerce")
 
-    return data, None
-
-
-def clean_data(data):
-    """Clean the in-memory API copy without changing the source CSV."""
-    data = data.copy()
-
     data["timestamp"] = pd.to_datetime(data["timestamp"], errors="coerce")
     data = data.dropna(subset=["timestamp", "region", "station", "latitude", "longitude"])
 
@@ -70,8 +75,23 @@ def clean_data(data):
         "timestamp",
     ]
     data = data.drop_duplicates(subset=duplicate_columns, keep="last")
+    return data.sort_values("timestamp").reset_index(drop=True), None
 
-    return data.sort_values("timestamp")
+
+def clear_data_cache():
+    """Clear cached dataset state, useful after replacing the processed CSV."""
+    _load_clean_data_cached.cache_clear()
+    _load_raw_data_cached.cache_clear()
+
+
+def load_data():
+    """Return the cached processed rainfall/flood dataset and normalized schema."""
+    return _load_clean_data_cached()
+
+
+def clean_data(data):
+    """Return a copy of data; retained for compatibility with existing callers."""
+    return data.copy() if data is not None else data
 
 
 def filter_by_region(data, region):
@@ -86,7 +106,7 @@ def filter_by_region(data, region):
     if region_data.empty:
         return None, "No data available for " + region
 
-    return region_data.sort_values("timestamp"), None
+    return region_data, None
 
 
 def filter_by_station(region_data, station):
@@ -99,7 +119,7 @@ def filter_by_station(region_data, station):
     if station_data.empty:
         return None, "No data available for station: " + station
 
-    return station_data.sort_values("timestamp"), None
+    return station_data, None
 
 
 def get_latest_record(region, station=None):
@@ -108,7 +128,6 @@ def get_latest_record(region, station=None):
     if error:
         return None, error
 
-    data = clean_data(data)
     region_data, error = filter_by_region(data, region)
     if error:
         return None, error
@@ -166,7 +185,6 @@ def get_rainfall_series(region, station=None):
     if error:
         return None, error
 
-    data = clean_data(data)
     region_data, error = filter_by_region(data, region)
     if error:
         return None, error
@@ -195,7 +213,6 @@ def get_history(region, station=None):
     if error:
         return None, error
 
-    data = clean_data(data)
     region_data, error = filter_by_region(data, region)
     if error:
         return None, error
@@ -228,7 +245,6 @@ def get_stations(region):
     if error:
         return None, error
 
-    data = clean_data(data)
     region_data, error = filter_by_region(data, region)
     if error:
         return None, error
@@ -253,33 +269,40 @@ def get_flood_risk_map(model_info, region):
     if error:
         return None, error
 
-    data = clean_data(data)
     region_data, error = filter_by_region(data, region)
     if error:
         return None, error
 
+    latest_rows = region_data.sort_values("timestamp").groupby("station", sort=True).tail(1)
+
+    try:
+        model_inputs = pd.DataFrame(
+            [prepare_features(row.to_dict(), model_info["features"])[0].iloc[0].to_dict() for _, row in latest_rows.iterrows()],
+            columns=model_info["features"],
+        )
+    except Exception as feature_error:
+        return None, "Feature preparation failed: " + str(feature_error)
+
+    try:
+        probabilities = model_info["model"].predict_proba(model_inputs)[:, 1]
+    except Exception as prediction_error:
+        return None, "Map prediction failed: " + str(prediction_error)
+
     results = []
-    for station_name, station_rows in region_data.groupby("station", sort=True):
-        record = station_rows.sort_values("timestamp").iloc[-1].to_dict()
-        model_input, feature_error = prepare_features(record, model_info["features"])
-        if feature_error:
-            return None, feature_error
-
-        try:
-            probabilities = model_info["model"].predict_proba(model_input)[0]
-            probability = float(probabilities[1])
-        except Exception as prediction_error:
-            return None, "Prediction failed for station " + str(station_name) + ": " + str(prediction_error)
-
-        risk = get_risk(probability, model_info["decision_threshold"])
+    for (_, record), probability in zip(latest_rows.iterrows(), probabilities):
+        probability = float(probability)
         results.append({
             "region": region,
-            "station": str(record.get("station", station_name)),
+            "station": str(record.get("station", "")),
             "latitude": float(record.get("latitude", 0)),
             "longitude": float(record.get("longitude", 0)),
             "flood_probability": round(probability, 4),
-            "risk": risk,
+            "risk": get_risk(probability, model_info["decision_threshold"]),
             "data_timestamp": str(record.get("timestamp", "")),
         })
 
     return results, None
+
+
+# Imported lazily to avoid changing the existing module dependency structure.
+from .risk import get_risk  # noqa: E402
