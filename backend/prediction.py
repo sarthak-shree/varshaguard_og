@@ -3,6 +3,10 @@ from functools import lru_cache
 
 import pandas as pd
 
+try:
+    from .risk import get_risk
+except ImportError:
+    from risk import get_risk
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, "data", "processed", "flood_warning_ml_ready_v2.csv")
@@ -11,25 +15,15 @@ REGIONS = ["Assam", "Uttarakhand"]
 
 
 @lru_cache(maxsize=1)
-def _load_raw_data_cached():
-    """Read the processed dataset once per backend process."""
+def _load_clean_data_cached():
+    """Read, normalize, and clean the processed dataset once per process."""
     if not os.path.exists(DATA_PATH):
         return None, "Processed data file is missing."
 
     try:
-        return pd.read_csv(DATA_PATH), None
+        data = pd.read_csv(DATA_PATH)
     except Exception as error:
         return None, "Processed data could not be read: " + str(error)
-
-
-@lru_cache(maxsize=1)
-def _load_clean_data_cached():
-    """Clean and normalize the dataset once per backend process."""
-    data, error = _load_raw_data_cached()
-    if error:
-        return None, error
-
-    data = data.copy()
 
     required_source_columns = [
         "state",
@@ -40,7 +34,6 @@ def _load_clean_data_cached():
     ]
     missing_source = [column for column in required_source_columns if column not in data.columns]
 
-    # The older prototype CSV already uses the normalized names. Keep it compatible.
     if missing_source:
         normalized_columns = ["region", "station", "latitude", "longitude", "timestamp"]
         missing_normalized = [column for column in normalized_columns if column not in data.columns]
@@ -62,47 +55,35 @@ def _load_clean_data_cached():
         if column.startswith("rainfall_") and column != "rainfall_mm"
     ]
     for column in rainfall_columns:
-        data[column] = pd.to_numeric(data[column], errors="coerce")
-        data[column] = data[column].fillna(0)
+        data[column] = pd.to_numeric(data[column], errors="coerce").fillna(0)
         data = data[data[column] >= 0]
         data = data[data[column] <= 1000]
 
-    duplicate_columns = [
-        "region",
-        "station",
-        "latitude",
-        "longitude",
-        "timestamp",
-    ]
+    duplicate_columns = ["region", "station", "latitude", "longitude", "timestamp"]
     data = data.drop_duplicates(subset=duplicate_columns, keep="last")
     return data.sort_values("timestamp").reset_index(drop=True), None
 
 
 def clear_data_cache():
-    """Clear cached dataset state, useful after replacing the processed CSV."""
+    """Clear the cached data, useful after replacing the processed CSV."""
     _load_clean_data_cached.cache_clear()
-    _load_raw_data_cached.cache_clear()
 
 
 def load_data():
-    """Return the cached processed rainfall/flood dataset and normalized schema."""
+    """Return the cached cleaned/normalized dataset."""
     return _load_clean_data_cached()
 
 
 def clean_data(data):
-    """Return a copy of data; retained for compatibility with existing callers."""
+    """Compatibility helper; data is already cleaned by load_data()."""
     return data.copy() if data is not None else data
 
 
 def filter_by_region(data, region):
-    """Return rows for one supported region."""
     if region not in REGIONS:
         return None, "Unsupported region"
 
-    region_data = data[
-        data["region"].astype(str).str.strip().str.lower() == region.lower()
-    ].copy()
-
+    region_data = data[data["region"].astype(str).str.strip().str.lower() == region.lower()].copy()
     if region_data.empty:
         return None, "No data available for " + region
 
@@ -110,12 +91,9 @@ def filter_by_region(data, region):
 
 
 def filter_by_station(region_data, station):
-    """Return rows for one station inside the selected region."""
     station_data = region_data[
-        region_data["station"].astype(str).str.strip().str.lower()
-        == station.strip().lower()
+        region_data["station"].astype(str).str.strip().str.lower() == station.strip().lower()
     ].copy()
-
     if station_data.empty:
         return None, "No data available for station: " + station
 
@@ -123,7 +101,6 @@ def filter_by_station(region_data, station):
 
 
 def get_latest_record(region, station=None):
-    """Get the latest row for a region and optional station."""
     data, error = load_data()
     if error:
         return None, error
@@ -141,7 +118,6 @@ def get_latest_record(region, station=None):
 
 
 def prepare_features(record, features):
-    """Build the exact columns the ML model expects."""
     missing = []
     values = {}
 
@@ -158,7 +134,6 @@ def prepare_features(record, features):
 
 
 def predict_probability(model_info, region, station=None):
-    """Run model.predict_proba() for a region and optional station."""
     if not model_info["ok"]:
         return None, None, model_info["error"]
 
@@ -180,7 +155,6 @@ def predict_probability(model_info, region, station=None):
 
 
 def get_rainfall_series(region, station=None):
-    """Return the latest rainfall values for a region or selected station."""
     data, error = load_data()
     if error:
         return None, error
@@ -208,7 +182,6 @@ def get_rainfall_series(region, station=None):
 
 
 def get_history(region, station=None):
-    """Return recent prototype prediction records."""
     data, error = load_data()
     if error:
         return None, error
@@ -222,17 +195,10 @@ def get_history(region, station=None):
         if error:
             return None, error
 
-    columns = [
-        "timestamp",
-        "region",
-        "station",
-        "rainfall_24h",
-        "rainfall_72h",
-        "flood_soon",
-    ]
+    columns = ["timestamp", "region", "station", "rainfall_24h", "rainfall_72h", "flood_soon"]
     available_columns = [column for column in columns if column in region_data.columns]
-
     rows = region_data.tail(12)[available_columns].copy()
+
     if "timestamp" in rows.columns:
         rows["timestamp"] = rows["timestamp"].astype(str)
 
@@ -240,7 +206,6 @@ def get_history(region, station=None):
 
 
 def get_stations(region):
-    """Return unique station points for the selected region."""
     data, error = load_data()
     if error:
         return None, error
@@ -261,7 +226,7 @@ def get_stations(region):
 
 
 def get_flood_risk_map(model_info, region):
-    """Return one model probability/risk result for every station in a region."""
+    """Batch-predict all station risks using one vectorized model call."""
     if not model_info["ok"]:
         return None, model_info["error"]
 
@@ -273,15 +238,14 @@ def get_flood_risk_map(model_info, region):
     if error:
         return None, error
 
-    latest_rows = region_data.sort_values("timestamp").groupby("station", sort=True).tail(1)
+    latest_rows = region_data.groupby("station", sort=True, as_index=False).tail(1).copy()
+    latest_rows = latest_rows.sort_values("station").reset_index(drop=True)
 
     try:
-        model_inputs = pd.DataFrame(
-            [prepare_features(row.to_dict(), model_info["features"])[0].iloc[0].to_dict() for _, row in latest_rows.iterrows()],
-            columns=model_info["features"],
-        )
-    except Exception as feature_error:
-        return None, "Feature preparation failed: " + str(feature_error)
+        model_inputs = latest_rows[model_info["features"]]
+    except KeyError as error:
+        missing = [feature for feature in model_info["features"] if feature not in latest_rows.columns]
+        return None, "Missing model feature: " + ", ".join(missing)
 
     try:
         probabilities = model_info["model"].predict_proba(model_inputs)[:, 1]
@@ -302,7 +266,3 @@ def get_flood_risk_map(model_info, region):
         })
 
     return results, None
-
-
-# Imported lazily to avoid changing the existing module dependency structure.
-from .risk import get_risk  # noqa: E402
