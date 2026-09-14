@@ -127,42 +127,49 @@ function setupChart() {
     const canvas = document.getElementById("rainfallChart");
 
     rainfallChart = new Chart(canvas, {
-        type: "line",
+        type: "bar",
         data: {
             labels: [],
             datasets: [
                 {
                     label: "1h rainfall (mm)",
                     data: [],
-                    borderColor: "#2FB8C6",
-                    backgroundColor: "rgba(47, 184, 198, 0.15)",
-                    tension: 0.3,
+                    backgroundColor: "rgba(47, 184, 198, 0.75)",
+                    borderColor: "#197f89",
+                    borderWidth: 1,
+                    borderRadius: 4,
                 },
                 {
                     label: "24h rainfall (mm)",
                     data: [],
-                    borderColor: "#F2A93B",
-                    backgroundColor: "rgba(242, 169, 59, 0.15)",
-                    tension: 0.3,
+                    backgroundColor: "rgba(245, 158, 11, 0.75)",
+                    borderColor: "#a87514",
+                    borderWidth: 1,
+                    borderRadius: 4,
                 },
             ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false,
+            },
             plugins: {
-                legend: { labels: { color: "#8FA7B8" } },
+                legend: { labels: { color: "#667280" } },
             },
             scales: {
                 x: {
-                    ticks: { color: "#8FA7B8" },
-                    grid: { color: "rgba(255,255,255,0.06)" },
+                    stacked: false,
+                    ticks: { color: "#667280" },
+                    grid: { color: "rgba(23,33,43,0.06)" },
                 },
                 y: {
                     beginAtZero: true,
-                    ticks: { color: "#8FA7B8" },
-                    grid: { color: "rgba(255,255,255,0.06)" },
-                    title: { display: true, text: "Rainfall (mm)", color: "#8FA7B8" },
+                    ticks: { color: "#667280" },
+                    grid: { color: "rgba(23,33,43,0.06)" },
+                    title: { display: true, text: "Rainfall (mm)", color: "#667280" },
                 },
             },
         },
