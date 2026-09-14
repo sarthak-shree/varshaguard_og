@@ -92,35 +92,60 @@ function markerColor(risk) {
     return "#34D399";
 }
 
-function updateMap(data, stations) {
+function createRiskMarker(station) {
+    const percentage = Math.round(Number(station.flood_probability || 0) * 100);
+    const isSelected = station.station === document.getElementById("stationSelect")?.value;
+
+    const marker = L.circleMarker([station.latitude, station.longitude], {
+        radius: isSelected ? 11 : 8,
+        color: "white",
+        weight: isSelected ? 3 : 2,
+        fillColor: markerColor(station.risk),
+        fillOpacity: 0.92,
+    })
+        .bindPopup(`
+            <strong>${station.station}</strong><br>
+            Risk: <strong>${station.risk}</strong><br>
+            Flood probability: <strong>${percentage}%</strong><br>
+            Data: ${station.data_timestamp || "—"}
+        `)
+        .addTo(markerLayer);
+
+    marker.on("click", () => {
+        const stationSelect = document.getElementById("stationSelect");
+        if (stationSelect) {
+            stationSelect.value = station.station;
+            loadStation(station.station);
+        }
+    });
+
+    return marker;
+}
+
+function updateMap(data, riskMap) {
     markerLayer.clearLayers();
     stationMarkers.clear();
 
+    const stations = riskMap?.stations || [];
     const selectedCenter = [data.latitude, data.longitude];
     map.setView(selectedCenter, 9);
 
     stations.forEach((station) => {
-        const isSelected = station.station === data.station;
-        const marker = L.circleMarker([station.latitude, station.longitude], {
-            radius: isSelected ? 10 : 7,
-            color: isSelected ? "white" : "#2FB8C6",
-            weight: isSelected ? 3 : 2,
-            fillColor: isSelected ? markerColor(data.risk) : "#2FB8C6",
-            fillOpacity: isSelected ? 0.95 : 0.65,
-        })
-            .bindPopup(`<strong>${station.station}</strong><br>${isSelected ? `${data.risk} risk · ${Math.round(data.flood_probability * 100)}%` : "Click to select this station"}`)
-            .addTo(markerLayer);
-
-        marker.on("click", () => {
-            const stationSelect = document.getElementById("stationSelect");
-            if (stationSelect) {
-                stationSelect.value = station.station;
-                loadStation(station.station);
-            }
-        });
-
+        const marker = createRiskMarker(station);
         stationMarkers.set(station.station, marker);
     });
+
+    if (!stations.length) {
+        const fallbackStation = {
+            station: data.station,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            flood_probability: data.flood_probability,
+            risk: data.risk,
+            data_timestamp: data.data_timestamp,
+        };
+        stationMarkers.set(data.station, createRiskMarker(fallbackStation));
+    }
 }
 
 function setupChart() {
@@ -251,6 +276,10 @@ async function loadStations(region) {
     return stations;
 }
 
+async function loadRiskMap(region) {
+    return getJson(`${API_BASE}/api/flood-risk-map?region=${encodeURIComponent(region)}`);
+}
+
 async function loadStation(station) {
     const region = document.getElementById("regionSelect").value;
     if (!station) return;
@@ -259,18 +288,18 @@ async function loadStation(station) {
 
     try {
         const query = `region=${encodeURIComponent(region)}&station=${encodeURIComponent(station)}`;
-        const [risk, rainfall, history, stations] = await Promise.all([
+        const [risk, rainfall, history, riskMap] = await Promise.all([
             getJson(`${API_BASE}/api/flood-risk?${query}`),
             getJson(`${API_BASE}/api/rainfall?${query}`),
             getJson(`${API_BASE}/api/history?${query}`),
-            getJson(`${API_BASE}/api/stations?region=${encodeURIComponent(region)}`),
+            loadRiskMap(region),
         ]);
 
         updateRiskCard(risk);
         updateFeatures(risk.features);
         updateChart(rainfall.rainfall);
         updateHistory(history.history);
-        updateMap(risk, stations.stations);
+        updateMap(risk, riskMap);
         await updateHealth();
     } catch (error) {
         showMessage(error.message);
@@ -282,7 +311,11 @@ async function loadRegion(region) {
     hideMessage();
 
     try {
-        const stations = await loadStations(region);
+        const [stations, riskMap] = await Promise.all([
+            loadStations(region),
+            loadRiskMap(region),
+        ]);
+
         if (!stations.length) throw new Error(`No stations available for ${region}`);
 
         const stationSelect = document.getElementById("stationSelect");
