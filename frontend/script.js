@@ -24,6 +24,12 @@ function hideMessage() {
 
 async function getJson(url) {
     const response = await fetch(url);
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!contentType.includes("application/json")) {
+        throw new Error(`Expected JSON from ${url}, but received HTML/text (${response.status}).`);
+    }
+
     const data = await response.json();
 
     if (!response.ok || data.success === false) {
@@ -276,8 +282,37 @@ async function loadStations(region) {
     return stations;
 }
 
-async function loadRiskMap(region) {
-    return getJson(`${API_BASE}/api/flood-risk-map?region=${encodeURIComponent(region)}`);
+async function loadRiskMap(region, knownStations = null) {
+    try {
+        return await getJson(`${API_BASE}/api/flood-risk-map?region=${encodeURIComponent(region)}`);
+    } catch (error) {
+        // Compatibility fallback: if the running backend has not loaded the
+        // new map endpoint yet, build the same station-wise map from the
+        // existing flood-risk endpoint instead of breaking the dashboard.
+        const stations = knownStations || (await loadStations(region));
+        const results = await Promise.all(
+            stations.map(async (station) => {
+                const query = `region=${encodeURIComponent(region)}&station=${encodeURIComponent(station.station)}`;
+                const risk = await getJson(`${API_BASE}/api/flood-risk?${query}`);
+                return {
+                    region,
+                    station: risk.station || station.station,
+                    latitude: Number(risk.latitude ?? station.latitude),
+                    longitude: Number(risk.longitude ?? station.longitude),
+                    flood_probability: Number(risk.flood_probability || 0),
+                    risk: risk.risk,
+                    data_timestamp: risk.data_timestamp || "—",
+                };
+            })
+        );
+
+        return {
+            success: true,
+            region,
+            stations: results,
+            count: results.length,
+        };
+    }
 }
 
 async function loadStation(station) {
@@ -288,12 +323,14 @@ async function loadStation(station) {
 
     try {
         const query = `region=${encodeURIComponent(region)}&station=${encodeURIComponent(station)}`;
-        const [risk, rainfall, history, riskMap] = await Promise.all([
+        const [risk, rainfall, history, stations] = await Promise.all([
             getJson(`${API_BASE}/api/flood-risk?${query}`),
             getJson(`${API_BASE}/api/rainfall?${query}`),
             getJson(`${API_BASE}/api/history?${query}`),
-            loadRiskMap(region),
+            getJson(`${API_BASE}/api/stations?region=${encodeURIComponent(region)}`),
         ]);
+
+        const riskMap = await loadRiskMap(region, stations.stations);
 
         updateRiskCard(risk);
         updateFeatures(risk.features);
@@ -311,11 +348,7 @@ async function loadRegion(region) {
     hideMessage();
 
     try {
-        const [stations, riskMap] = await Promise.all([
-            loadStations(region),
-            loadRiskMap(region),
-        ]);
-
+        const stations = await loadStations(region);
         if (!stations.length) throw new Error(`No stations available for ${region}`);
 
         const stationSelect = document.getElementById("stationSelect");
