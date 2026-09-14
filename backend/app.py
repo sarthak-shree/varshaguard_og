@@ -8,6 +8,7 @@ try:
     from .model import load_model
     from .prediction import (
         REGIONS,
+        get_flood_risk_map,
         get_history,
         get_rainfall_series,
         get_stations,
@@ -18,6 +19,7 @@ except ImportError:
     from model import load_model
     from prediction import (
         REGIONS,
+        get_flood_risk_map,
         get_history,
         get_rainfall_series,
         get_stations,
@@ -112,6 +114,28 @@ def flood_risk():
         "latitude": float(record.get("latitude", 0)),
         "longitude": float(record.get("longitude", 0)),
         "features": important_features,
+    })
+
+
+@app.route("/api/flood-risk-map")
+def flood_risk_map():
+    """Return station-wise flood probability and risk for the selected region."""
+    region = request.args.get("region", "Assam").strip()
+    if region not in REGIONS:
+        return error_response("Unsupported region", 400)
+
+    model_info = load_model()
+    results, error = get_flood_risk_map(model_info, region)
+    if error:
+        return error_response(error, 500)
+
+    return jsonify({
+        "success": True,
+        "region": region,
+        "prediction_horizon_hours": model_info["prediction_horizon_hours"],
+        "stations": results,
+        "count": len(results),
+        "generated_at": datetime.now().isoformat(),
     })
 
 
