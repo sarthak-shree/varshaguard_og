@@ -242,3 +242,44 @@ def get_stations(region):
     )
 
     return stations.to_dict(orient="records"), None
+
+
+def get_flood_risk_map(model_info, region):
+    """Return one model probability/risk result for every station in a region."""
+    if not model_info["ok"]:
+        return None, model_info["error"]
+
+    data, error = load_data()
+    if error:
+        return None, error
+
+    data = clean_data(data)
+    region_data, error = filter_by_region(data, region)
+    if error:
+        return None, error
+
+    results = []
+    for station_name, station_rows in region_data.groupby("station", sort=True):
+        record = station_rows.sort_values("timestamp").iloc[-1].to_dict()
+        model_input, feature_error = prepare_features(record, model_info["features"])
+        if feature_error:
+            return None, feature_error
+
+        try:
+            probabilities = model_info["model"].predict_proba(model_input)[0]
+            probability = float(probabilities[1])
+        except Exception as prediction_error:
+            return None, "Prediction failed for station " + str(station_name) + ": " + str(prediction_error)
+
+        risk = get_risk(probability, model_info["decision_threshold"])
+        results.append({
+            "region": region,
+            "station": str(record.get("station", station_name)),
+            "latitude": float(record.get("latitude", 0)),
+            "longitude": float(record.get("longitude", 0)),
+            "flood_probability": round(probability, 4),
+            "risk": risk,
+            "data_timestamp": str(record.get("timestamp", "")),
+        })
+
+    return results, None
