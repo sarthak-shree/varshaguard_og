@@ -7,6 +7,7 @@ EXPECTED_FIELDS = (
     "station",
     "district",
     "water_level_m",
+    "water_level_1h_before_m",
     "warning_level_m",
     "danger_level_m",
     "hfl_m",
