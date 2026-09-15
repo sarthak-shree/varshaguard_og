@@ -1,6 +1,5 @@
 -- VARSHAGUARD Bihar Live v0.3.0
--- Layer 1.3A: historical river observation schema.
--- Applied by the PostgreSQL implementation in Layer 1.3B.
+-- Layer 1.3B: PostgreSQL historical river observation schema.
 
 CREATE TABLE IF NOT EXISTS river_observations (
     id BIGSERIAL PRIMARY KEY,
@@ -29,9 +28,9 @@ CREATE INDEX IF NOT EXISTS idx_river_observations_district_observed_at
 CREATE INDEX IF NOT EXISTS idx_river_observations_observed_at
     ON river_observations (observed_at DESC);
 
--- Prevent duplicate source snapshots for a station at the same observation time.
+-- Prevent duplicate source snapshots for the same river/station/time.
 -- NULL timestamps are intentionally excluded because a missing source timestamp
 -- must not collapse otherwise distinct records.
-CREATE UNIQUE INDEX IF NOT EXISTS uq_river_observations_station_observed_at
-    ON river_observations (station, observed_at)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_river_observations_river_station_observed_at
+    ON river_observations (river, station, observed_at)
     WHERE observed_at IS NOT NULL;
