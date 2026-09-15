@@ -49,6 +49,15 @@ def _normalize_table(table: pd.DataFrame) -> list[dict]:
     station_col = _find_column(columns, ["site", "station", "station name", "gauge site"])
     district_col = _find_column(columns, ["district"])
     level_col = _find_column(columns, ["gauge", "water level", "current water level"])
+    previous_level_col = _find_column(
+        columns,
+        [
+            "observed water level at (1 hr before)",
+            "water level at (1 hr before)",
+            "1 hr before",
+            "one hour before",
+        ],
+    )
     warning_col = _find_column(columns, ["warning"])
     danger_col = _find_column(columns, ["danger"])
     hfl_col = _find_column(columns, ["hfl", "highest flood level"])
@@ -97,6 +106,9 @@ def _normalize_table(table: pd.DataFrame) -> list[dict]:
                 "station": station,
                 "district": district,
                 "water_level_m": water_level,
+                "water_level_1h_before_m": (
+                    _to_float(row[previous_level_col]) if previous_level_col else None
+                ),
                 "warning_level_m": _to_float(row[warning_col]) if warning_col else None,
                 "danger_level_m": _to_float(row[danger_col]) if danger_col else None,
                 "hfl_m": _to_float(row[hfl_col]) if hfl_col else None,
