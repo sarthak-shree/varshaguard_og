@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VARSHAGUARD — Bihar Live</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#8623;</text></svg>">
+    <link rel="stylesheet" href="bihar-live.css">
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1><a href="index.html">VARSHA<span>GUARD &#8623;</span></a></h1>
+            <p>Bihar Live &bull; Real-time flood intelligence prototype</p>
+        </div>
+        <div class="topbar-actions">
+            <div class="prototype-badge">Prototype WIP (0.3.0)</div>
+            <a class="back-button" href="index.html">MAIN PROTOTYPE</a>
+        </div>
+    </header>
+
+    <main class="shell">
+        <section class="hero">
+            <div>
+                <p class="eyebrow">BIHAR LIVE</p>
+                <h2>Real-time flood intelligence for Bihar</h2>
+                <p class="hero-copy">A separate experimental prototype for live hydrological data, location-aware risk, 24-hour forecasting and inundation intelligence.</p>
+            </div>
+            <div class="status-chip"><span></span> Experimental build</div>
+        </section>
+
+        <section class="notice">
+            <strong>Phase 0 — Foundation</strong>
+            <span>This shell is intentionally data-free. Live ingestion and prediction layers will be added one at a time and tested independently.</span>
+        </section>
+
+        <section class="grid">
+            <article class="card"><span class="number">01</span><h3>Live River Data</h3><p>Current river level, warning level, danger level, HFL and trend from Bihar's official monitoring sources.</p><div class="state">NEXT LAYER</div></article>
+            <article class="card"><span class="number">02</span><h3>Rainfall & Weather</h3><p>Live rainfall and weather signals for Bihar and upstream areas.</p><div class="state">PLANNED</div></article>
+            <article class="card"><span class="number">03</span><h3>24h Flood Forecast</h3><p>Location-specific 6h, 12h and 24h flood-risk estimates.</p><div class="state">PLANNED</div></article>
+            <article class="card"><span class="number">04</span><h3>Bihar Grid</h3><p>Spatial risk represented across a Bihar-wide grid before moving toward finer geographic resolution.</p><div class="state">PLANNED</div></article>
+            <article class="card"><span class="number">05</span><h3>Inundation</h3><p>Potential flood-water extent derived from predicted conditions and terrain information.</p><div class="state">PLANNED</div></article>
+            <article class="card"><span class="number">06</span><h3>Live Location</h3><p>Match a user's GPS position to the relevant risk grid and show actionable local information.</p><div class="state">PLANNED</div></article>
+        </section>
+
+        <section class="architecture">
+            <h3>Build sequence</h3>
+            <div class="flow"><span>LIVE DATA</span><b>→</b><span>PROCESSING</span><b>→</b><span>RISK</span><b>→</b><span>FORECAST</span><b>→</b><span>GRID</span><b>→</b><span>INUNDATION</span><b>→</b><span>LOCATION</span></div>
+        </section>
+    </main>
+
+    <footer>VARSHAGUARD Bihar Live v0.3.0 &bull; Experimental prototype</footer>
+</body>
+</html>
