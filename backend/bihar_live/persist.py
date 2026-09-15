@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Iterable
 
 import pandas as pd
 
 from .ingest import fetch_live_river_observations
-from .postgres import PostgreSQLRiverObservationRepository
 from .processing import process_river_records
-from .storage import RiverObservation
+from .storage import RiverObservation, RiverObservationRepository
 
 
 def _parse_timestamp(value) -> datetime | None:
@@ -42,9 +40,7 @@ def _to_observation(record: dict) -> RiverObservation:
     )
 
 
-def persist_live_snapshot(
-    repository: PostgreSQLRiverObservationRepository,
-) -> dict:
+def persist_live_snapshot(repository: RiverObservationRepository) -> dict:
     """Fetch, process, and persist one official FMISC river-data snapshot."""
     fetched = fetch_live_river_observations()
     processed = process_river_records(fetched["records"])
@@ -65,7 +61,9 @@ def persist_live_snapshot(
 
 
 def persist_live_snapshot_from_env() -> dict:
-    """Run one persistence cycle using DATABASE_URL."""
+    """Run one persistence cycle using the configured PostgreSQL repository."""
+    from .postgres import PostgreSQLRiverObservationRepository
+
     repository = PostgreSQLRiverObservationRepository.from_env()
     repository.ensure_schema()
     return persist_live_snapshot(repository)
