@@ -54,7 +54,18 @@ def _normalize_table(table: pd.DataFrame) -> list[dict]:
     hfl_col = _find_column(columns, ["hfl", "highest flood level"])
     trend_col = _find_column(columns, ["trend"])
     status_col = _find_column(columns, ["status", "level status"])
-    observed_col = _find_column(columns, ["date/time", "date time", "observation time", "time"])
+    observed_col = _find_column(
+        columns,
+        [
+            "current observed date",
+            "current observed date/time",
+            "observed date",
+            "date/time",
+            "date time",
+            "observation time",
+            "time",
+        ],
+    )
 
     required = {
         "river": river_col,
