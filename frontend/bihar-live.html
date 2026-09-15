@@ -23,32 +23,84 @@
         <section class="hero">
             <div>
                 <p class="eyebrow">BIHAR LIVE</p>
-                <h2>Real-time flood intelligence for Bihar</h2>
-                <p class="hero-copy">A separate experimental prototype for live hydrological data, location-aware risk, 24-hour forecasting and inundation intelligence.</p>
+                <h2>Live river observations for Bihar</h2>
+                <p class="hero-copy">Layer 1.1 is connected to Bihar FMISC/WRD. The dashboard now reads river observations from the backend instead of using hardcoded river values.</p>
             </div>
-            <div class="status-chip"><span></span> Experimental build</div>
+            <div class="status-chip" id="apiStatus"><span></span><span>Checking API</span></div>
         </section>
 
         <section class="notice">
-            <strong>Phase 0 — Foundation</strong>
-            <span>This shell is intentionally data-free. Live ingestion and prediction layers will be added one at a time and tested independently.</span>
+            <strong>Layer 1.1 — Live River Data</strong>
+            <span>Official source observations are fetched by the Bihar Live backend and displayed below.</span>
         </section>
 
-        <section class="grid">
-            <article class="card"><span class="number">01</span><h3>Live River Data</h3><p>Current river level, warning level, danger level, HFL and trend from Bihar's official monitoring sources.</p><div class="state">NEXT LAYER</div></article>
-            <article class="card"><span class="number">02</span><h3>Rainfall & Weather</h3><p>Live rainfall and weather signals for Bihar and upstream areas.</p><div class="state">PLANNED</div></article>
-            <article class="card"><span class="number">03</span><h3>24h Flood Forecast</h3><p>Location-specific 6h, 12h and 24h flood-risk estimates.</p><div class="state">PLANNED</div></article>
-            <article class="card"><span class="number">04</span><h3>Bihar Grid</h3><p>Spatial risk represented across a Bihar-wide grid before moving toward finer geographic resolution.</p><div class="state">PLANNED</div></article>
-            <article class="card"><span class="number">05</span><h3>Inundation</h3><p>Potential flood-water extent derived from predicted conditions and terrain information.</p><div class="state">PLANNED</div></article>
-            <article class="card"><span class="number">06</span><h3>Live Location</h3><p>Match a user's GPS position to the relevant risk grid and show actionable local information.</p><div class="state">PLANNED</div></article>
+        <section class="controls">
+            <label>
+                District
+                <select id="districtSelect">
+                    <option value="">All Bihar</option>
+                </select>
+            </label>
+            <button id="refreshButton" type="button">REFRESH LIVE DATA</button>
+            <div class="fetch-meta" id="fetchMeta">Waiting for live data...</div>
         </section>
 
-        <section class="architecture">
-            <h3>Build sequence</h3>
-            <div class="flow"><span>LIVE DATA</span><b>→</b><span>PROCESSING</span><b>→</b><span>RISK</span><b>→</b><span>FORECAST</span><b>→</b><span>GRID</span><b>→</b><span>INUNDATION</span><b>→</b><span>LOCATION</span></div>
+        <section class="summary-grid">
+            <article class="metric-card">
+                <span>OBSERVATIONS</span>
+                <strong id="observationCount">—</strong>
+            </article>
+            <article class="metric-card">
+                <span>RISING</span>
+                <strong id="risingCount">—</strong>
+            </article>
+            <article class="metric-card">
+                <span>STEADY</span>
+                <strong id="steadyCount">—</strong>
+            </article>
+            <article class="metric-card">
+                <span>FALLING</span>
+                <strong id="fallingCount">—</strong>
+            </article>
+        </section>
+
+        <section class="table-card">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">LIVE OBSERVATIONS</p>
+                    <h3>Bihar river monitoring stations</h3>
+                </div>
+                <div class="source-label">Source: Bihar FMISC/WRD</div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>River</th>
+                            <th>Station</th>
+                            <th>District</th>
+                            <th>Water Level (m)</th>
+                            <th>Warning (m)</th>
+                            <th>Danger (m)</th>
+                            <th>Trend</th>
+                            <th>Observed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="riverTableBody">
+                        <tr><td colspan="8" class="empty-state">Loading live observations...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="error-card" id="errorCard" hidden>
+            <strong>Live data unavailable</strong>
+            <span id="errorMessage">Unable to fetch Bihar river observations.</span>
         </section>
     </main>
 
-    <footer>VARSHAGUARD Bihar Live v0.3.0 &bull; Experimental prototype</footer>
+    <footer>VARSHAGUARD Bihar Live v0.3.0 &bull; Layer 1.1</footer>
+
+    <script src="bihar-live.js"></script>
 </body>
 </html>
