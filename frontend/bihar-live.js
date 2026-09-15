@@ -48,11 +48,7 @@ function formatNumber(value) {
     return typeof value === "number" ? value.toFixed(2) : "—";
 }
 
-function formatObserved(value) {
-    return value || "—";
-}
-
-function normalizeDistrict(value) {
+function normalizeText(value) {
     return String(value || "").trim().toLowerCase();
 }
 
@@ -68,7 +64,7 @@ function populateDistricts(records) {
         const option = document.createElement("option");
         option.value = district;
         option.textContent = district;
-        option.selected = normalizeDistrict(district) === normalizeDistrict(current);
+        option.selected = normalizeText(district) === normalizeText(current);
         elements.districtSelect.appendChild(option);
     }
 }
@@ -76,7 +72,7 @@ function populateDistricts(records) {
 function updateSummary(records) {
     const counts = { rising: 0, steady: 0, falling: 0 };
     for (const record of records) {
-        const trend = normalizeDistrict(record.trend);
+        const trend = normalizeText(record.trend);
         if (trend === "rising") counts.rising += 1;
         else if (trend === "steady") counts.steady += 1;
         else if (trend === "falling") counts.falling += 1;
@@ -97,7 +93,7 @@ function renderRecords(records) {
 
     const rows = records.map(record => {
         const trend = record.trend || "—";
-        const trendClass = trend.toLowerCase();
+        const trendClass = normalizeText(record.trend);
         return `
             <tr>
                 <td>${escapeHtml(record.river)}</td>
@@ -107,7 +103,7 @@ function renderRecords(records) {
                 <td>${formatNumber(record.warning_level_m)}</td>
                 <td>${formatNumber(record.danger_level_m)}</td>
                 <td><span class="trend ${escapeHtml(trendClass)}">${escapeHtml(trend)}</span></td>
-                <td>${escapeHtml(formatObserved(record.observed_at))}</td>
+                <td>${escapeHtml(record.observed_at || "—")}</td>
             </tr>`;
     }).join("");
 
@@ -117,8 +113,8 @@ function renderRecords(records) {
 
 function visibleRecords() {
     if (!selectedDistrict) return allRecords;
-    const target = normalizeDistrict(selectedDistrict);
-    return allRecords.filter(record => normalizeDistrict(record.district) === target);
+    const target = normalizeText(selectedDistrict);
+    return allRecords.filter(record => normalizeText(record.district) === target);
 }
 
 function renderMeta(payload) {
@@ -136,8 +132,11 @@ async function loadLiveRivers(forceRefresh = false) {
     try {
         const params = new URLSearchParams();
         if (forceRefresh) params.set("refresh", "true");
-        const url = `${API_BASE}/live-rivers${params.toString() ? `?${params}` : ""}`;
-        const response = await fetch(url, { headers: { Accept: "application/json" } });
+
+        const query = params.toString();
+        const response = await fetch(`${API_BASE}/live-rivers${query ? `?${query}` : ""}`, {
+            headers: { Accept: "application/json" },
+        });
         const payload = await response.json();
 
         if (!response.ok || !payload.success) {
