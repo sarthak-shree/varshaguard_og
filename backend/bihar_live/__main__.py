@@ -1,0 +1,7 @@
+"""Allow `python -m backend.bihar_live` to start the Bihar Live API."""
+
+from .app import app
+
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5002, debug=True)
