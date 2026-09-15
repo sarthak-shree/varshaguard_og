@@ -11,8 +11,10 @@ from flask_cors import CORS
 
 try:
     from .ingest import fetch_live_river_observations
+    from .processing import process_river_records
 except ImportError:
     from ingest import fetch_live_river_observations
+    from processing import process_river_records
 
 
 app = Flask(__name__)
@@ -51,6 +53,13 @@ def _get_live_payload(force_refresh: bool = False) -> dict:
     return payload
 
 
+def _filter_district(records: list[dict], district: str) -> list[dict]:
+    if not district:
+        return records
+    target = district.strip().casefold()
+    return [row for row in records if str(row.get("district") or "").strip().casefold() == target]
+
+
 @app.get("/api/bihar/health")
 def health():
     return jsonify(
@@ -58,7 +67,7 @@ def health():
             "success": True,
             "service": "VARSHAGUARD Bihar Live API",
             "version": "0.3.0",
-            "layer": "1.1",
+            "layer": "1.2",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     )
@@ -74,9 +83,7 @@ def live_rivers():
     except Exception as exc:
         return _error_response(f"Live Bihar river data fetch failed: {exc}", 502)
 
-    records = payload["records"]
-    if district:
-        records = [row for row in records if row["district"].lower() == district]
+    records = _filter_district(payload["records"], district)
 
     return jsonify(
         {
@@ -84,6 +91,47 @@ def live_rivers():
             "records": records,
             "count": len(records),
             "district_filter": district or None,
+        }
+    )
+
+
+@app.get("/api/bihar/processed-rivers")
+def processed_rivers():
+    force_refresh = request.args.get("refresh", "false").lower() == "true"
+    district = request.args.get("district", "").strip().lower()
+
+    try:
+        payload = _get_live_payload(force_refresh=force_refresh)
+        records = process_river_records(payload["records"])
+        records = _filter_district(records, district)
+    except Exception as exc:
+        return _error_response(f"Bihar river processing failed: {exc}", 502)
+
+    return jsonify(
+        {
+            "success": True,
+            "source": payload["source"],
+            "source_url": payload["source_url"],
+            "fetched_at": payload["fetched_at"],
+            "cached": payload.get("cached", False),
+            "layer": "1.2",
+            "count": len(records),
+            "district_filter": district or None,
+            "records": records,
+            "derived_fields": [
+                "trend_normalized",
+                "trend_valid",
+                "rise_1h_m",
+                "rise_rate_m_per_hour",
+                "distance_to_warning_m",
+                "distance_to_danger_m",
+                "warning_level_pct",
+                "danger_level_pct",
+                "hfl_level_pct",
+                "level_state",
+                "has_previous_hour",
+                "processing_valid",
+            ],
         }
     )
 
