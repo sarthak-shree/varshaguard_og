@@ -22,11 +22,16 @@ class PostgreSQLRepositoryTests(unittest.TestCase):
             if previous is not None:
                 os.environ["DATABASE_URL"] = previous
 
-    def test_limit_is_clamped(self) -> None:
+    def test_history_limit_bounds_are_defined(self) -> None:
         repository = PostgreSQLRiverObservationRepository("postgresql://example")
         self.assertEqual(repository.database_url, "postgresql://example")
-        self.assertEqual(max(1, min(int(-10), 1000)), 1)
-        self.assertEqual(max(1, min(int(5000), 1000)), 1000)
+
+        def bounded_limit(value: int) -> int:
+            return max(1, min(int(value), 1000))
+
+        self.assertEqual(bounded_limit(-10), 1)
+        self.assertEqual(bounded_limit(500), 500)
+        self.assertEqual(bounded_limit(5000), 1000)
 
 
 if __name__ == "__main__":
