@@ -11,6 +11,15 @@ class PersistenceTests(unittest.TestCase):
         parsed = _parse_timestamp("11-Aug-2026 15:00")
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed.tzinfo, timezone.utc)
+        self.assertEqual(parsed.hour, 9)
+        self.assertEqual(parsed.minute, 30)
+
+    def test_parse_fmisс_hour_timestamp_to_utc(self) -> None:
+        parsed = _parse_timestamp("16-Sep-2026 20 HRS")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.tzinfo, timezone.utc)
+        self.assertEqual(parsed.hour, 14)
+        self.assertEqual(parsed.minute, 30)
 
     def test_invalid_timestamp_becomes_none(self) -> None:
         self.assertIsNone(_parse_timestamp("not-a-date"))
