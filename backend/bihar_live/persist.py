@@ -16,20 +16,13 @@ SOURCE_TIMEZONE = ZoneInfo("Asia/Kolkata")
 
 
 def _parse_timestamp(value) -> datetime | None:
-    """Parse an FMISC source timestamp into a timezone-aware UTC datetime.
-
-    FMISC publishes observation times in Bihar local time, commonly in the
-    form ``16-Sep-2026 20 HRS``. The source does not include a timezone, so
-    source timestamps are interpreted as Asia/Kolkata before converting to
-    UTC for storage.
-    """
+    """Parse an FMISC source timestamp into a timezone-aware UTC datetime."""
     if value is None or str(value).strip() == "":
         return None
 
     text = " ".join(str(value).split())
     text = re.sub(r"\s+HRS?\.?$", "", text, flags=re.IGNORECASE)
 
-    # Explicit FMISC format: DD-Mon-YYYY HH or DD-Mon-YYYY HH:MM.
     for fmt in ("%d-%b-%Y %H:%M", "%d-%b-%Y %H"):
         try:
             local_dt = datetime.strptime(text, fmt).replace(tzinfo=SOURCE_TIMEZONE)
@@ -37,7 +30,6 @@ def _parse_timestamp(value) -> datetime | None:
         except ValueError:
             pass
 
-    # Fallback for other valid source representations.
     parsed = pd.to_datetime(text, errors="coerce")
     if pd.isna(parsed):
         return None
@@ -50,7 +42,6 @@ def _parse_timestamp(value) -> datetime | None:
 
 
 def _to_observation(record: dict) -> RiverObservation:
-    """Convert a processed source record to the canonical storage model."""
     fetched_at = _parse_timestamp(record.get("fetched_at")) or datetime.now(timezone.utc)
     return RiverObservation(
         river=record["river"],
@@ -67,12 +58,21 @@ def _to_observation(record: dict) -> RiverObservation:
     )
 
 
+def persist_records(records: list[dict], repository: RiverObservationRepository) -> int:
+    """Process source records and persist them through the repository."""
+    processed = process_river_records(records)
+    observations = [_to_observation(record) for record in processed]
+    return repository.save_observations(observations)
+
+
 def persist_live_snapshot(repository: RiverObservationRepository) -> dict:
     """Fetch, process, and persist one official FMISC river-data snapshot."""
     fetched = fetch_live_river_observations()
+    if not fetched.get("live") or fetched.get("source_mode") != "fmisc_live":
+        raise RuntimeError("FMISC live source was unavailable; refusing to persist fallback as live data")
+
     processed = process_river_records(fetched["records"])
     observations = [_to_observation(record) for record in processed]
-
     accepted = repository.save_observations(observations)
 
     return {
