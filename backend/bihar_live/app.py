@@ -16,17 +16,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env.local")
 
 try:
-    from .ingest import fetch_live_river_observations
     from .processing import process_river_records
 except ImportError:
-    from ingest import fetch_live_river_observations
     from processing import process_river_records
 
 app = Flask(__name__)
 CORS(app)
 
 CACHE_TTL_SECONDS = 300
-_cache = {"payload": None, "expires_at": 0.0}
+STALE_AFTER_MINUTES = 60
+_cache = {}
 _cache_lock = Lock()
 
 
@@ -43,6 +42,24 @@ def _repository():
     return PostgreSQLRiverObservationRepository.from_env()
 
 
+def _freshness(observed_at: str | None, now: datetime | None = None) -> dict:
+    now = now or datetime.now(timezone.utc)
+    if not observed_at:
+        return {"status": "unknown", "fresh": False, "age_minutes": None}
+    try:
+        dt = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return {"status": "unknown", "fresh": False, "age_minutes": None}
+    age = max((now - dt.astimezone(timezone.utc)).total_seconds() / 60.0, 0.0)
+    return {
+        "status": "fresh" if age <= STALE_AFTER_MINUTES else "stale",
+        "fresh": age <= STALE_AFTER_MINUTES,
+        "age_minutes": round(age, 2),
+    }
+
+
 def _get_latest_neon_payload(district: str | None = None) -> dict:
     repository = _repository()
     records = repository.get_history(district=district or None, limit=1000)
@@ -54,6 +71,9 @@ def _get_latest_neon_payload(district: str | None = None) -> dict:
 
     serialized = []
     for item in latest.values():
+        observed_at = item.observed_at.isoformat() if item.observed_at else None
+        fetched_at = item.fetched_at.isoformat() if item.fetched_at else None
+        fresh = _freshness(observed_at)
         serialized.append({
             "river": item.river,
             "station": item.station,
@@ -64,8 +84,10 @@ def _get_latest_neon_payload(district: str | None = None) -> dict:
             "hfl_m": item.hfl_m,
             "trend": item.trend,
             "water_level_1h_before_m": item.water_level_1h_before_m,
-            "observed_at": item.observed_at.isoformat() if item.observed_at else None,
-            "fetched_at": item.fetched_at.isoformat() if item.fetched_at else None,
+            "observed_at": observed_at,
+            "fetched_at": fetched_at,
+            "freshness": fresh,
+            "quality_status": "good" if fresh["fresh"] else "stale",
         })
 
     newest = max((x.get("fetched_at") for x in serialized if x.get("fetched_at")), default=None)
@@ -79,7 +101,7 @@ def _get_latest_neon_payload(district: str | None = None) -> dict:
         "fields": [
             "river", "station", "district", "water_level_m",
             "warning_level_m", "danger_level_m", "hfl_m",
-            "trend", "status", "observed_at",
+            "trend", "status", "observed_at", "freshness", "quality_status",
         ],
         "live": True,
         "source_mode": "neon_live_snapshot",
@@ -97,7 +119,6 @@ def _get_live_payload(force_refresh: bool = False, district: str | None = None) 
             payload["cached"] = True
             return payload
 
-    # Public FMISC is fetched by the scheduled worker, not on the Vercel request path.
     payload = _get_latest_neon_payload(district)
     with _cache_lock:
         _cache[cache_key] = {
@@ -114,22 +135,6 @@ def _filter_district(records: list[dict], district: str) -> list[dict]:
     return [row for row in records if str(row.get("district") or "").strip().casefold() == target]
 
 
-def _serialize_observation(item) -> dict:
-    return {
-        "river": item.river,
-        "station": item.station,
-        "district": item.district,
-        "observed_at": item.observed_at.isoformat() if item.observed_at else None,
-        "water_level_m": item.water_level_m,
-        "warning_level_m": item.warning_level_m,
-        "danger_level_m": item.danger_level_m,
-        "hfl_m": item.hfl_m,
-        "trend": item.trend,
-        "water_level_1h_before_m": item.water_level_1h_before_m,
-        "fetched_at": item.fetched_at.isoformat() if item.fetched_at else None,
-    }
-
-
 @app.get("/api/bihar/health")
 def health():
     configured = bool(os.getenv("DATABASE_URL"))
@@ -137,9 +142,41 @@ def health():
         "success": True,
         "service": "VARSHAGUARD Bihar Live API",
         "version": "0.3.0",
-        "layer": "1.5",
+        "layer": "1.5+",
         "storage_configured": configured,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+@app.get("/api/bihar/data-health")
+def data_health():
+    try:
+        repository = _repository()
+        records = repository.get_history(limit=1000)
+    except Exception as exc:
+        return _error_response(f"Bihar data-health query failed: {exc}", 503)
+
+    latest = None
+    for item in records:
+        if item.fetched_at and (latest is None or item.fetched_at > latest):
+            latest = item.fetched_at
+
+    latest_iso = latest.isoformat() if latest else None
+    fresh = _freshness(latest_iso)
+    return jsonify({
+        "success": True,
+        "sources": [{
+            "source": "Bihar FMISC/WRD",
+            "source_url": "https://beams.fmiscwrdbihar.gov.in/Alerttotalinfo/realtimetotal.aspx",
+            "status": "healthy" if fresh["fresh"] else "stale",
+            "last_success": latest_iso,
+            "last_observation": latest_iso,
+            "record_count": len(records),
+            "stale": not fresh["fresh"],
+            "quality": fresh["status"],
+            "error": None,
+        }],
+        "checked_at": datetime.now(timezone.utc).isoformat(),
     })
 
 
@@ -153,11 +190,13 @@ def live_rivers():
         return _error_response(f"Live Bihar river data unavailable from Neon: {exc}", 503)
 
     records = _filter_district(payload["records"], district)
+    stale_records = sum(1 for row in records if not row.get("freshness", {}).get("fresh", False))
     return jsonify({
         **payload,
         "records": records,
         "count": len(records),
         "district_filter": district or None,
+        "stale_count": stale_records,
         "warning": "These values are live from the latest successful FMISC sync; the Vercel API does not scrape FMISC directly.",
     })
 
@@ -177,7 +216,7 @@ def processed_rivers():
         "source_url": payload["source_url"],
         "fetched_at": payload["fetched_at"],
         "cached": payload.get("cached", False),
-        "layer": "1.5",
+        "layer": "1.5+",
         "count": len(records),
         "district_filter": district or None,
         "records": records,
@@ -214,10 +253,22 @@ def history():
     return jsonify({
         "success": True,
         "source": "Neon PostgreSQL",
-        "layer": "1.5",
+        "layer": "1.5+",
         "count": len(records),
         "filters": {"station": station, "district": district, "since": since.isoformat() if since else None, "limit": limit},
-        "records": [_serialize_observation(item) for item in records],
+        "records": [{
+            "river": item.river,
+            "station": item.station,
+            "district": item.district,
+            "observed_at": item.observed_at.isoformat() if item.observed_at else None,
+            "water_level_m": item.water_level_m,
+            "warning_level_m": item.warning_level_m,
+            "danger_level_m": item.danger_level_m,
+            "hfl_m": item.hfl_m,
+            "trend": item.trend,
+            "water_level_1h_before_m": item.water_level_1h_before_m,
+            "fetched_at": item.fetched_at.isoformat() if item.fetched_at else None,
+        } for item in records],
     })
 
 
@@ -246,7 +297,7 @@ def stations():
     return jsonify({
         "success": True,
         "source": "Neon PostgreSQL",
-        "layer": "1.5",
+        "layer": "1.5+",
         "count": len(result),
         "district_filter": district,
         "stations": result,
