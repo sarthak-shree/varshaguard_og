@@ -27,18 +27,6 @@ except ImportError:
     )
     from risk import get_risk, get_warning
 
-try:
-    from .bihar_live.app import (
-        health as bihar_health_api,
-        live_rivers as bihar_live_rivers_api,
-        processed_rivers as bihar_processed_rivers_api,
-        history as bihar_history_api,
-        stations as bihar_stations_api,
-    )
-except ImportError:
-    bihar_health_api = bihar_live_rivers_api = bihar_processed_rivers_api = None
-    bihar_history_api = bihar_stations_api = None
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
@@ -56,6 +44,14 @@ def get_region_from_request():
         return None, None, "Unsupported region"
     station = request.args.get("station", "").strip() or None
     return region, station, None
+
+
+def _bihar_api():
+    try:
+        from .bihar_live import app as bihar_module
+    except ImportError:
+        from bihar_live import app as bihar_module
+    return bihar_module
 
 
 @app.route("/api/health")
@@ -142,31 +138,29 @@ def stations():
     return jsonify({"success": True, "region": region, "stations": rows})
 
 
-# Bihar Live v0.3 routes. The implementation remains in backend/bihar_live;
-# these thin adapters expose the same service through the deployed Flask app.
 @app.route("/api/bihar/health")
 def bihar_health():
-    return bihar_health_api()
+    return _bihar_api().health()
 
 
 @app.route("/api/bihar/live-rivers")
 def bihar_live_rivers():
-    return bihar_live_rivers_api()
+    return _bihar_api().live_rivers()
 
 
 @app.route("/api/bihar/processed-rivers")
 def bihar_processed_rivers():
-    return bihar_processed_rivers_api()
+    return _bihar_api().processed_rivers()
 
 
 @app.route("/api/bihar/history")
 def bihar_history():
-    return bihar_history_api()
+    return _bihar_api().history()
 
 
 @app.route("/api/bihar/stations")
 def bihar_stations():
-    return bihar_stations_api()
+    return _bihar_api().stations()
 
 
 @app.route("/")
