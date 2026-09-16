@@ -1,170 +1,23 @@
-const API_BASE = "/api/bihar";
-
-const elements = {
-    apiStatus: document.getElementById("apiStatus"),
-    districtSelect: document.getElementById("districtSelect"),
-    refreshButton: document.getElementById("refreshButton"),
-    fetchMeta: document.getElementById("fetchMeta"),
-    observationCount: document.getElementById("observationCount"),
-    risingCount: document.getElementById("risingCount"),
-    steadyCount: document.getElementById("steadyCount"),
-    fallingCount: document.getElementById("fallingCount"),
-    riverTableBody: document.getElementById("riverTableBody"),
-    errorCard: document.getElementById("errorCard"),
-    errorMessage: document.getElementById("errorMessage"),
+const API_BASE = ((location.hostname === "127.0.0.1" || location.hostname === "localhost") && location.port === "5001") ? "http://127.0.0.1:5002/api/bihar" : "/api/bihar";
+const $ = id => document.getElementById(id);
+const el = {
+  ring: $("apiRing"), status: $("apiStatusText"), meta: $("fetchMeta"), alert: $("alertStrip"), alertTitle: $("alertTitle"), alertMsg: $("alertMessage"), alertTime: $("alertTime"),
+  search: $("stationSearch"), district: $("districtSelect"), level: $("statusSelect"), refresh: $("refreshButton"), count: $("observationCount"), danger: $("dangerCount"), warning: $("warningCount"), rising: $("risingCount"), table: $("riverTableBody"),
+  detailStation: $("detailStation"), detailRiver: $("detailRiver"), detailStatus: $("detailStatus"), detailLevel: $("detailLevel"), detailWarning: $("detailWarning"), detailDanger: $("detailDanger"), detailHfl: $("detailHfl"), detailChange: $("detailChange"), detailTrend: $("detailTrend"), detailObserved: $("detailObserved"), warningMarker: $("warningMarker"), dangerMarker: $("dangerMarker"), levelMarker: $("levelMarker"), network: $("networkState"), error: $("errorCard"), errorText: $("errorMessage")
 };
-
-let allRecords = [];
-let selectedDistrict = "";
-
-function setApiStatus(online, label) {
-    const dot = elements.apiStatus.querySelector("span:first-child");
-    const text = elements.apiStatus.querySelector("span:last-child");
-    if (dot) dot.className = online ? "online" : "offline";
-    if (text) text.textContent = label;
-    elements.apiStatus.classList.toggle("online", online);
-    elements.apiStatus.classList.toggle("offline", !online);
-}
-
-function showError(message) {
-    elements.errorCard.hidden = false;
-    elements.errorMessage.textContent = message;
-}
-
-function hideError() {
-    elements.errorCard.hidden = true;
-}
-
-function escapeHtml(value) {
-    return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
-function formatNumber(value) {
-    return typeof value === "number" ? value.toFixed(2) : "—";
-}
-
-function normalizeText(value) {
-    return String(value || "").trim().toLowerCase();
-}
-
-function populateDistricts(records) {
-    const current = selectedDistrict;
-    const districts = [...new Set(records
-        .map(record => record.district)
-        .filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b));
-
-    elements.districtSelect.innerHTML = '<option value="">All Bihar</option>';
-    for (const district of districts) {
-        const option = document.createElement("option");
-        option.value = district;
-        option.textContent = district;
-        option.selected = normalizeText(district) === normalizeText(current);
-        elements.districtSelect.appendChild(option);
-    }
-}
-
-function updateSummary(records) {
-    const counts = { rising: 0, steady: 0, falling: 0 };
-    for (const record of records) {
-        const trend = normalizeText(record.trend);
-        if (trend === "rising") counts.rising += 1;
-        else if (trend === "steady") counts.steady += 1;
-        else if (trend === "falling") counts.falling += 1;
-    }
-
-    elements.observationCount.textContent = records.length;
-    elements.risingCount.textContent = counts.rising;
-    elements.steadyCount.textContent = counts.steady;
-    elements.fallingCount.textContent = counts.falling;
-}
-
-function renderRecords(records) {
-    if (!records.length) {
-        elements.riverTableBody.innerHTML = '<tr><td colspan="8" class="empty-state">No river observations match this district.</td></tr>';
-        updateSummary(records);
-        return;
-    }
-
-    const rows = records.map(record => {
-        const trend = record.trend || "—";
-        const trendClass = normalizeText(record.trend);
-        return `
-            <tr>
-                <td>${escapeHtml(record.river)}</td>
-                <td>${escapeHtml(record.station)}</td>
-                <td>${escapeHtml(record.district)}</td>
-                <td>${formatNumber(record.water_level_m)}</td>
-                <td>${formatNumber(record.warning_level_m)}</td>
-                <td>${formatNumber(record.danger_level_m)}</td>
-                <td><span class="trend ${escapeHtml(trendClass)}">${escapeHtml(trend)}</span></td>
-                <td>${escapeHtml(record.observed_at || "—")}</td>
-            </tr>`;
-    }).join("");
-
-    elements.riverTableBody.innerHTML = rows;
-    updateSummary(records);
-}
-
-function visibleRecords() {
-    if (!selectedDistrict) return allRecords;
-    const target = normalizeText(selectedDistrict);
-    return allRecords.filter(record => normalizeText(record.district) === target);
-}
-
-function renderMeta(payload) {
-    const mode = payload.cached ? "Cached" : "Fresh";
-    const fetched = payload.fetched_at ? new Date(payload.fetched_at).toLocaleString() : "unknown";
-    elements.fetchMeta.textContent = `${mode} data • fetched ${fetched} • ${payload.count} observations`;
-}
-
-async function loadLiveRivers(forceRefresh = false) {
-    hideError();
-    setApiStatus(false, "Loading API");
-    elements.refreshButton.disabled = true;
-    elements.riverTableBody.innerHTML = '<tr><td colspan="8" class="empty-state">Loading live observations...</td></tr>';
-
-    try {
-        const params = new URLSearchParams();
-        if (forceRefresh) params.set("refresh", "true");
-
-        const query = params.toString();
-        const response = await fetch(`${API_BASE}/live-rivers${query ? `?${query}` : ""}`, {
-            headers: { Accept: "application/json" },
-        });
-        const payload = await response.json();
-
-        if (!response.ok || !payload.success) {
-            throw new Error(payload.error || `API request failed (${response.status})`);
-        }
-
-        allRecords = Array.isArray(payload.records) ? payload.records : [];
-        populateDistricts(allRecords);
-        renderMeta(payload);
-        renderRecords(visibleRecords());
-        setApiStatus(true, "Live API connected");
-    } catch (error) {
-        allRecords = [];
-        updateSummary([]);
-        elements.riverTableBody.innerHTML = '<tr><td colspan="8" class="empty-state">Live observations could not be loaded.</td></tr>';
-        elements.fetchMeta.textContent = "Live data unavailable";
-        showError(error instanceof Error ? error.message : "Unable to fetch live Bihar river data.");
-        setApiStatus(false, "API unavailable");
-    } finally {
-        elements.refreshButton.disabled = false;
-    }
-}
-
-elements.districtSelect.addEventListener("change", event => {
-    selectedDistrict = event.target.value;
-    renderRecords(visibleRecords());
-});
-
-elements.refreshButton.addEventListener("click", () => loadLiveRivers(true));
-
-loadLiveRivers();
+let records = [], selectedDistrict = "", selectedLevel = "", selectedStation = null;
+const norm = v => String(v ?? "").trim().toLowerCase();
+const fmt = v => Number.isFinite(Number(v)) ? Number(v).toFixed(2) : "—";
+const observed = v => { if (!v) return "—"; const d = new Date(v); return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString("en-IN", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false}); };
+const safe = v => String(v ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+function levelStatus(r){ const l=Number(r.water_level_m), w=Number(r.warning_level_m), d=Number(r.danger_level_m); return Number.isFinite(l)&&Number.isFinite(d)&&l>=d?"danger":Number.isFinite(l)&&Number.isFinite(w)&&l>=w?"warning":"normal"; }
+function statusLabel(s){ return s === "danger" ? "DANGER" : s === "warning" ? "WARNING" : "NORMAL"; }
+function apiState(ok,text){ el.ring.classList.toggle("online",ok); el.ring.classList.toggle("offline",!ok); el.status.textContent=text; el.network.textContent=ok?"NETWORK ONLINE":"NETWORK OFFLINE"; }
+function filtered(){ const q=norm(el.search.value); return records.filter(r=>(!selectedDistrict||norm(r.district)===norm(selectedDistrict))&&(!selectedLevel||levelStatus(r)===selectedLevel)&&(!q||[r.station,r.river,r.district].some(v=>norm(v).includes(q)))); }
+function districts(){ const list=[...new Set(records.map(r=>r.district).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); el.district.innerHTML='<option value="">All Bihar</option>'+list.map(d=>`<option value="${safe(d)}">${safe(d)}</option>`).join(""); el.district.value=selectedDistrict; }
+function metrics(list){ el.count.textContent=list.length; el.danger.textContent=list.filter(r=>levelStatus(r)==="danger").length; el.warning.textContent=list.filter(r=>levelStatus(r)==="warning").length; el.rising.textContent=list.filter(r=>norm(r.trend)==="rising").length; }
+function alertState(){ const d=records.filter(r=>levelStatus(r)==="danger"), w=records.filter(r=>levelStatus(r)==="warning"), rising=records.filter(r=>norm(r.trend)==="rising"); el.alert.classList.remove("danger","warning","normal"); if(d.length){el.alert.classList.add("danger");el.alertTitle.textContent=`${d.length} STATION${d.length>1?"S":""} AT / ABOVE DANGER LEVEL`;el.alertMsg.textContent=`${d[0].station} is currently at ${fmt(d[0].water_level_m)} m.`;}else if(w.length){el.alert.classList.add("warning");el.alertTitle.textContent=`${w.length} STATION${w.length>1?"S":""} AT / ABOVE WARNING LEVEL`;el.alertMsg.textContent=`${w[0].station} is currently at ${fmt(w[0].water_level_m)} m.`;}else{el.alert.classList.add("normal");el.alertTitle.textContent="NO STATION ABOVE WARNING LEVEL";el.alertMsg.textContent=rising.length?`${rising.length} station${rising.length>1?"s are":" is"} currently rising.`:"All monitored stations are below warning level.";}el.alertTime.textContent=new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});}
+function render(){ const list=filtered(); metrics(list); if(!list.length){el.table.innerHTML='<tr><td colspan="6" class="empty-state">No stations match the current filters.</td></tr>';return;} el.table.innerHTML=list.map((r,i)=>{const s=levelStatus(r),t=norm(r.trend)||"unknown",sel=selectedStation&&selectedStation.station===r.station&&selectedStation.district===r.district;return `<tr class="station-row ${sel?"selected":""}" data-i="${i}"><td><button class="station-button" type="button"><strong>${safe(r.station)}</strong><span>${safe(r.river)}</span></button></td><td>${safe(r.district)}</td><td><strong class="level-value ${s}">${fmt(r.water_level_m)} m</strong></td><td><span class="threshold-badge ${s}">${statusLabel(s)}</span> <small>${fmt(s==="danger"?r.danger_level_m:r.warning_level_m)} m</small></td><td><span class="trend ${safe(t)}"><i></i>${safe(r.trend||"Unknown")}</span></td><td>${observed(r.observed_at)}</td></tr>`;}).join(""); el.table.querySelectorAll(".station-row").forEach((row,i)=>row.addEventListener("click",()=>select(list[i]))); }
+function select(r){ selectedStation=r; const s=levelStatus(r); el.detailStation.textContent=r.station||"Unknown station";el.detailRiver.textContent=`${r.river||"River"} • ${r.district||"Bihar"}`;el.detailStatus.textContent=statusLabel(s);el.detailStatus.className=`detail-status ${s}`;el.detailLevel.textContent=fmt(r.water_level_m);el.detailWarning.textContent=`${fmt(r.warning_level_m)} m`;el.detailDanger.textContent=`${fmt(r.danger_level_m)} m`;el.detailHfl.textContent=`${fmt(r.hfl_m)} m`;const change=Number(r.water_level_m)-Number(r.water_level_1h_before_m);el.detailChange.textContent=Number.isFinite(change)?`${change>=0?"+":""}${change.toFixed(2)} m`:"—";el.detailTrend.textContent=r.trend||"—";el.detailObserved.textContent=observed(r.observed_at);const w=Number(r.warning_level_m),d=Number(r.danger_level_m),h=Number(r.hfl_m),l=Number(r.water_level_m),max=Number.isFinite(h)&&h>0?h:Math.max(w,d,l,1),pos=v=>`${Math.max(0,Math.min(100,v/max*100))}%`;el.warningMarker.style.left=Number.isFinite(w)?pos(w):"0%";el.dangerMarker.style.left=Number.isFinite(d)?pos(d):"0%";el.levelMarker.style.left=Number.isFinite(l)?pos(l):"0%";el.levelMarker.className=`level-marker ${s}`;render(); }
+async function load(force=false){ el.error.hidden=true;apiState(false,"LOADING");el.refresh.disabled=true;el.table.innerHTML='<tr><td colspan="6" class="empty-state">Loading river intelligence...</td></tr>';try{const q=force?"?refresh=true":"",res=await fetch(`${API_BASE}/live-rivers${q}`,{headers:{Accept:"application/json"}}),p=await res.json();if(!res.ok||!p.success)throw new Error(p.error||`API request failed (${res.status})`);records=Array.isArray(p.records)?p.records:[];districts();const mode=p.cached?"cached":"fresh",when=p.fetched_at?observed(p.fetched_at):"unknown";el.meta.textContent=`${mode} feed • fetched ${when} • ${p.count??records.length} stations`;alertState();render();if(!selectedStation&&records.length)select(records[0]);apiState(true,"API ONLINE");}catch(e){records=[];metrics([]);el.table.innerHTML='<tr><td colspan="6" class="empty-state">Live observations could not be loaded.</td></tr>';el.meta.textContent="Live data unavailable";el.error.hidden=false;el.errorText.textContent=e instanceof Error?e.message:"Unable to fetch live Bihar river data.";apiState(false,"API OFFLINE");}finally{el.refresh.disabled=false;}}
+el.search.addEventListener("input",render);el.district.addEventListener("change",e=>{selectedDistrict=e.target.value;render();});el.level.addEventListener("change",e=>{selectedLevel=e.target.value;render();});el.refresh.addEventListener("click",()=>load(true));load();setInterval(()=>load(false),300000);
