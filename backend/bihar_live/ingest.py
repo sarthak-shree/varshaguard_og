@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from io import StringIO
+import json
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -12,6 +14,7 @@ from .source import EXPECTED_FIELDS, SOURCE_URL
 
 
 REQUEST_TIMEOUT_SECONDS = 20
+FALLBACK_PATH = Path(__file__).resolve().parent / "data" / "fallback_snapshot.json"
 
 
 def _clean_text(value) -> str:
@@ -49,44 +52,31 @@ def _normalize_table(table: pd.DataFrame) -> list[dict]:
     station_col = _find_column(columns, ["site", "station", "station name", "gauge site"])
     district_col = _find_column(columns, ["district"])
     level_col = _find_column(columns, ["gauge", "water level", "current water level"])
-    previous_level_col = _find_column(
-        columns,
-        [
-            "observed water level at (1 hr before)",
-            "water level at (1 hr before)",
-            "1 hr before",
-            "one hour before",
-        ],
-    )
+    previous_level_col = _find_column(columns, [
+        "observed water level at (1 hr before)",
+        "water level at (1 hr before)",
+        "1 hr before",
+        "one hour before",
+    ])
     warning_col = _find_column(columns, ["warning"])
     danger_col = _find_column(columns, ["danger"])
     hfl_col = _find_column(columns, ["hfl", "highest flood level"])
     trend_col = _find_column(columns, ["trend"])
     status_col = _find_column(columns, ["status", "level status"])
-    observed_col = _find_column(
-        columns,
-        [
-            "current observed date",
-            "current observed date/time",
-            "observed date",
-            "date/time",
-            "date time",
-            "observation time",
-            "time",
-        ],
-    )
+    observed_col = _find_column(columns, [
+        "current observed date",
+        "current observed date/time",
+        "observed date",
+        "date/time",
+        "date time",
+        "observation time",
+        "time",
+    ])
 
-    required = {
-        "river": river_col,
-        "station": station_col,
-        "district": district_col,
-        "water_level_m": level_col,
-    }
+    required = {"river": river_col, "station": station_col, "district": district_col, "water_level_m": level_col}
     missing = [name for name, col in required.items() if col is None]
     if missing:
-        raise ValueError(
-            "Could not identify required live-river columns: " + ", ".join(missing)
-        )
+        raise ValueError("Could not identify required live-river columns: " + ", ".join(missing))
 
     rows = []
     now = datetime.now(timezone.utc).isoformat()
@@ -95,55 +85,69 @@ def _normalize_table(table: pd.DataFrame) -> list[dict]:
         station = _clean_text(row[station_col])
         district = _clean_text(row[district_col])
         water_level = _to_float(row[level_col])
-
         if not river or not station or not district or water_level is None:
             continue
-
         observed_at = _clean_text(row[observed_col]) if observed_col else ""
-        rows.append(
-            {
-                "river": river,
-                "station": station,
-                "district": district,
-                "water_level_m": water_level,
-                "water_level_1h_before_m": (
-                    _to_float(row[previous_level_col]) if previous_level_col else None
-                ),
-                "warning_level_m": _to_float(row[warning_col]) if warning_col else None,
-                "danger_level_m": _to_float(row[danger_col]) if danger_col else None,
-                "hfl_m": _to_float(row[hfl_col]) if hfl_col else None,
-                "trend": _clean_text(row[trend_col]) if trend_col else "",
-                "status": _clean_text(row[status_col]) if status_col else "",
-                "observed_at": observed_at,
-                "fetched_at": now,
-            }
-        )
-
+        rows.append({
+            "river": river,
+            "station": station,
+            "district": district,
+            "water_level_m": water_level,
+            "water_level_1h_before_m": _to_float(row[previous_level_col]) if previous_level_col else None,
+            "warning_level_m": _to_float(row[warning_col]) if warning_col else None,
+            "danger_level_m": _to_float(row[danger_col]) if danger_col else None,
+            "hfl_m": _to_float(row[hfl_col]) if hfl_col else None,
+            "trend": _clean_text(row[trend_col]) if trend_col else "",
+            "status": _clean_text(row[status_col]) if status_col else "",
+            "observed_at": observed_at,
+            "fetched_at": now,
+        })
     return rows
 
 
-def fetch_live_river_observations() -> dict:
-    """Fetch the public live-river table and return normalized records."""
-    response = requests.get(
-        SOURCE_URL,
-        timeout=REQUEST_TIMEOUT_SECONDS,
-        headers={"User-Agent": "VARSHAGUARD/0.3 Bihar Live Prototype"},
-    )
-    response.raise_for_status()
-
-    tables = pd.read_html(StringIO(response.text))
-    if not tables:
-        raise ValueError("No table found in the Bihar FMISC/WRD response")
-
-    largest = max(tables, key=lambda frame: frame.shape[0] * max(frame.shape[1], 1))
-    records = _normalize_table(largest)
-
+def _load_fallback_snapshot(reason: str) -> dict:
+    with FALLBACK_PATH.open("r", encoding="utf-8") as handle:
+        snapshot = json.load(handle)
+    records = snapshot.get("records", [])
+    fetched_at = snapshot.get("snapshot_at") or datetime.now(timezone.utc).isoformat()
     return {
         "success": True,
-        "source": "Bihar FMISC/WRD",
-        "source_url": SOURCE_URL,
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "source": snapshot.get("source", "Bihar FMISC/WRD"),
+        "source_url": snapshot.get("source_url", SOURCE_URL),
+        "fetched_at": fetched_at,
         "count": len(records),
         "records": records,
         "fields": list(EXPECTED_FIELDS),
+        "live": False,
+        "source_mode": "fallback_snapshot",
+        "fallback_reason": reason,
     }
+
+
+def fetch_live_river_observations() -> dict:
+    """Fetch the public live-river table; use the verified snapshot if FMISC is unreachable."""
+    try:
+        response = requests.get(
+            SOURCE_URL,
+            timeout=REQUEST_TIMEOUT_SECONDS,
+            headers={"User-Agent": "VARSHAGUARD/0.3 Bihar Live Prototype"},
+        )
+        response.raise_for_status()
+        tables = pd.read_html(StringIO(response.text))
+        if not tables:
+            raise ValueError("No table found in the Bihar FMISC/WRD response")
+        largest = max(tables, key=lambda frame: frame.shape[0] * max(frame.shape[1], 1))
+        records = _normalize_table(largest)
+        return {
+            "success": True,
+            "source": "Bihar FMISC/WRD",
+            "source_url": SOURCE_URL,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "count": len(records),
+            "records": records,
+            "fields": list(EXPECTED_FIELDS),
+            "live": True,
+            "source_mode": "fmisc_live",
+        }
+    except Exception as exc:
+        return _load_fallback_snapshot(str(exc))
