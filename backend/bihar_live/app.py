@@ -60,6 +60,27 @@ def _filter_district(records: list[dict], district: str) -> list[dict]:
     return [row for row in records if str(row.get("district") or "").strip().casefold() == target]
 
 
+def _repository():
+    from .postgres import PostgreSQLRiverObservationRepository
+    return PostgreSQLRiverObservationRepository.from_env()
+
+
+def _serialize_observation(item) -> dict:
+    return {
+        "river": item.river,
+        "station": item.station,
+        "district": item.district,
+        "observed_at": item.observed_at.isoformat() if item.observed_at else None,
+        "water_level_m": item.water_level_m,
+        "warning_level_m": item.warning_level_m,
+        "danger_level_m": item.danger_level_m,
+        "hfl_m": item.hfl_m,
+        "trend": item.trend,
+        "water_level_1h_before_m": item.water_level_1h_before_m,
+        "fetched_at": item.fetched_at.isoformat() if item.fetched_at else None,
+    }
+
+
 @app.get("/api/bihar/health")
 def health():
     return jsonify(
@@ -67,7 +88,7 @@ def health():
             "success": True,
             "service": "VARSHAGUARD Bihar Live API",
             "version": "0.3.0",
-            "layer": "1.2",
+            "layer": "1.4",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     )
@@ -132,6 +153,95 @@ def processed_rivers():
                 "has_previous_hour",
                 "processing_valid",
             ],
+        }
+    )
+
+
+@app.get("/api/bihar/history")
+def history():
+    station = request.args.get("station", "").strip() or None
+    district = request.args.get("district", "").strip() or None
+    since_raw = request.args.get("since", "").strip() or None
+    limit_raw = request.args.get("limit", "500").strip()
+
+    try:
+        limit = max(1, min(int(limit_raw), 1000))
+    except ValueError:
+        return _error_response("limit must be an integer between 1 and 1000", 400)
+
+    since = None
+    if since_raw:
+        try:
+            since = datetime.fromisoformat(since_raw.replace("Z", "+00:00"))
+        except ValueError:
+            return _error_response("since must be an ISO-8601 timestamp", 400)
+        if since.tzinfo is None:
+            since = since.replace(tzinfo=timezone.utc)
+
+    try:
+        repository = _repository()
+        records = repository.get_history(
+            station=station,
+            district=district,
+            since=since,
+            limit=limit,
+        )
+    except Exception as exc:
+        return _error_response(f"Historical Bihar river data query failed: {exc}", 503)
+
+    return jsonify(
+        {
+            "success": True,
+            "source": "Neon PostgreSQL",
+            "layer": "1.4",
+            "count": len(records),
+            "filters": {
+                "station": station,
+                "district": district,
+                "since": since.isoformat() if since else None,
+                "limit": limit,
+            },
+            "records": [_serialize_observation(item) for item in records],
+        }
+    )
+
+
+@app.get("/api/bihar/stations")
+def stations():
+    district = request.args.get("district", "").strip() or None
+
+    try:
+        repository = _repository()
+        records = repository.get_history(district=district, limit=1000)
+    except Exception as exc:
+        return _error_response(f"Bihar station lookup failed: {exc}", 503)
+
+    stations_by_key = {}
+    for item in records:
+        key = (item.river, item.station, item.district)
+        if key not in stations_by_key:
+            stations_by_key[key] = {
+                "river": item.river,
+                "station": item.station,
+                "district": item.district,
+                "latest_observed_at": item.observed_at.isoformat() if item.observed_at else None,
+                "latest_water_level_m": item.water_level_m,
+                "trend": item.trend,
+            }
+
+    result = sorted(
+        stations_by_key.values(),
+        key=lambda item: (item["district"], item["station"]),
+    )
+
+    return jsonify(
+        {
+            "success": True,
+            "source": "Neon PostgreSQL",
+            "layer": "1.4",
+            "count": len(result),
+            "district_filter": district,
+            "stations": result,
         }
     )
 
