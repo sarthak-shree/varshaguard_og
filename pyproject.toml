@@ -12,6 +12,7 @@ dependencies = [
     "requests",
     "python-dotenv",
     "psycopg[binary]",
+    "lxml",
 ]
 
 [tool.vercel]
