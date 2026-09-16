@@ -1,22 +1,32 @@
-"""Scheduled Bihar Live synchronization job.
-
-Fetch FMISC observations outside Vercel's request path, persist them to Neon,
-and maintain a repository snapshot for graceful stale-data fallback.
-"""
+"""Scheduled Bihar Live synchronization job."""
 
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from .ingest import fetch_live_river_observations
-from .persist import persist_records
+from .persist import _to_observation
+from .processing import process_river_records
 
 SNAPSHOT_PATH = Path(__file__).resolve().parent / "data" / "live_snapshot.json"
 
 
-def _write_snapshot(payload: dict) -> None:
+def main() -> int:
+    from .postgres import PostgreSQLRiverObservationRepository
+
+    payload = fetch_live_river_observations()
+    if not payload.get("success") or not payload.get("records"):
+        raise RuntimeError("FMISC sync did not return usable river observations")
+    if not payload.get("live") or payload.get("source_mode") != "fmisc_live":
+        raise RuntimeError("FMISC was not reachable; refusing to persist fallback data as live")
+
+    processed = process_river_records(payload["records"])
+    observations = [_to_observation(record) for record in processed]
+    repository = PostgreSQLRiverObservationRepository.from_env()
+    repository.ensure_schema()
+    persisted_count = repository.save_observations(observations)
+
     snapshot = {
         "source": payload["source"],
         "source_url": payload["source_url"],
@@ -28,32 +38,13 @@ def _write_snapshot(payload: dict) -> None:
         encoding="utf-8",
     )
 
-
-def main() -> int:
-    payload = fetch_live_river_observations()
-    if not payload.get("success") or not payload.get("records"):
-        raise RuntimeError("FMISC sync did not return usable river observations")
-    if not payload.get("live") or payload.get("source_mode") != "fmisc_live":
-        raise RuntimeError(
-            "FMISC was not reachable; scheduled sync refuses to persist fallback data as live."
-        )
-
-    saved = persist_records(payload["records"])
-    _write_snapshot(payload)
-
-    print(
-        json.dumps(
-            {
-                "success": True,
-                "source": payload["source"],
-                "fetched_at": payload["fetched_at"],
-                "fetched_count": len(payload["records"]),
-                "persisted_count": saved,
-                "snapshot": str(SNAPSHOT_PATH),
-            },
-            indent=2,
-        )
-    )
+    print(json.dumps({
+        "success": True,
+        "fetched_count": len(payload["records"]),
+        "processed_count": len(processed),
+        "persisted_count": persisted_count,
+        "snapshot_at": payload["fetched_at"],
+    }, indent=2))
     return 0
 
 
