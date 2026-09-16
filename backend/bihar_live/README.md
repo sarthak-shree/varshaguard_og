@@ -1,48 +1,48 @@
-# VARSHAGUARD Bihar Live Backend — Layer 1.3B
+# VARSHAGUARD Bihar Live Backend — v0.3.0
 
 This backend is separate from the existing VARSHAGUARD v0.2.0 backend.
 
 ## Current scope
 
-Layer 1.3B implements PostgreSQL persistence for historical river observations:
+Bihar Live currently provides:
 
-- Canonical `RiverObservation` records from `storage.py`.
-- PostgreSQL repository in `postgres.py`.
-- Schema creation through `ensure_schema()`.
-- Batch inserts with duplicate protection.
-- Historical queries by station, district and observation time.
-- Configured through the `DATABASE_URL` environment variable.
-- PostgreSQL driver supplied by `psycopg[binary]`.
+- official Bihar FMISC/WRD live-river ingestion
+- normalization and deterministic river-level feature processing
+- Neon PostgreSQL persistence with duplicate protection
+- scheduled GitHub Actions synchronization
+- latest/live river API
+- historical river API
+- station lookup
+- freshness and data-health metadata
+- model/source roadmap documentation
 
-The repository uses lazy database connections: importing the module does not
-attempt to contact PostgreSQL. A real database connection requires a valid
-`DATABASE_URL`.
+The Vercel API reads the latest successful FMISC snapshot persisted in Neon rather than scraping FMISC during a user request.
 
-## Files
+## Current limitation
 
-- `storage.py` — canonical model and repository contract.
-- `schema.sql` — PostgreSQL table and indexes.
-- `postgres.py` — Layer 1.3B PostgreSQL repository.
-- `test_postgres.py` — dependency-light repository configuration tests.
-- `storage_contract.md` — persistence design and query contract.
+This is **not yet a complete heavy-rainfall, flood-probability, or inundation-prediction system**. Those capabilities require additional historical datasets, rainfall/forecast integrations, upstream/basin information, terrain/river geometry, flood-extent reference data, model training and backtesting.
 
-## Example configuration
+## Data truthfulness rules
 
-```text
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
-```
+- Never fabricate unavailable observations.
+- Never label cached/fallback data as live.
+- Observed, forecast, satellite-derived and model-derived values must remain distinguishable.
+- Historical simulation must use only information that would have been available at prediction time.
+- Production claims require historical backtesting and documented limitations.
 
-The repository can then be created with:
+## Planned layers
 
-```python
-from backend.bihar_live.postgres import get_configured_repository
+1. Live hydrology hardening
+2. Rainfall intelligence
+3. River-level forecasting
+4. Bihar flood probability
+5. Upstream/basin and Nepal-side information where legitimately accessible
+6. DEM/river/floodplain inundation engine
+7. Sentinel-1 observed flood mapping and validation
+8. Bihar spatial hierarchy and location-aware risk
+9. Map/dashboard expansion
+10. Alert architecture
+11. Reliability/security/observability
+12. Backtesting and model registry
 
-repository = get_configured_repository()
-repository.ensure_schema()
-```
-
-## Scope boundary
-
-Layer 1.3B implements the database repository only. It does not yet wire the
-live FMISC/WRD ingestion job into PostgreSQL. That integration belongs to the
-next persistence layer so ingestion and storage remain independently testable.
+See [`docs/BIHAR_LIVE_PRODUCTION_ROADMAP.md`](../../docs/BIHAR_LIVE_PRODUCTION_ROADMAP.md) for the full execution and data requirements.
