@@ -3,9 +3,17 @@
     {
       "src": "backend/app.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "api/bihar.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
+    {
+      "src": "/api/bihar/(.*)",
+      "dest": "api/bihar.py"
+    },
     {
       "src": "/(.*)",
       "dest": "backend/app.py"
