@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -10,15 +12,40 @@ from .ingest import fetch_live_river_observations
 from .processing import process_river_records
 from .storage import RiverObservation, RiverObservationRepository
 
+SOURCE_TIMEZONE = ZoneInfo("Asia/Kolkata")
+
 
 def _parse_timestamp(value) -> datetime | None:
-    """Parse a source timestamp into a timezone-aware UTC datetime."""
+    """Parse an FMISC source timestamp into a timezone-aware UTC datetime.
+
+    FMISC publishes observation times in Bihar local time, commonly in the
+    form ``16-Sep-2026 20 HRS``. The source does not include a timezone, so
+    source timestamps are interpreted as Asia/Kolkata before converting to
+    UTC for storage.
+    """
     if value is None or str(value).strip() == "":
         return None
 
-    parsed = pd.to_datetime(value, errors="coerce", utc=True)
+    text = " ".join(str(value).split())
+    text = re.sub(r"\s+HRS?\.?$", "", text, flags=re.IGNORECASE)
+
+    # Explicit FMISC format: DD-Mon-YYYY HH or DD-Mon-YYYY HH:MM.
+    for fmt in ("%d-%b-%Y %H:%M", "%d-%b-%Y %H"):
+        try:
+            local_dt = datetime.strptime(text, fmt).replace(tzinfo=SOURCE_TIMEZONE)
+            return local_dt.astimezone(timezone.utc)
+        except ValueError:
+            pass
+
+    # Fallback for other valid source representations.
+    parsed = pd.to_datetime(text, errors="coerce")
     if pd.isna(parsed):
         return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.tz_localize(SOURCE_TIMEZONE)
+    else:
+        parsed = parsed.tz_convert(SOURCE_TIMEZONE)
     return parsed.to_pydatetime().astimezone(timezone.utc)
 
 
