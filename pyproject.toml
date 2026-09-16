@@ -9,6 +9,9 @@ dependencies = [
     "pandas",
     "scikit-learn",
     "joblib",
+    "requests",
+    "python-dotenv",
+    "psycopg[binary]",
 ]
 
 [tool.vercel]
