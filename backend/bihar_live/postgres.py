@@ -66,8 +66,7 @@ class PostgreSQLRiverObservationRepository(RiverObservationRepository):
             VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
-            ON CONFLICT (river, station, observed_at)
-            DO NOTHING
+            ON CONFLICT DO NOTHING
         """
 
         rows = [
