@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from threading import Lock
 import time
 
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+
+
+# Local development keeps Neon credentials in the ignored .env.local file.
+# Deployed environments should provide DATABASE_URL through their environment.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(PROJECT_ROOT / ".env.local")
 
 try:
     from .ingest import fetch_live_river_observations
@@ -135,7 +143,7 @@ def processed_rivers():
             "source_url": payload["source_url"],
             "fetched_at": payload["fetched_at"],
             "cached": payload.get("cached", False),
-            "layer": "1.2",
+            "layer": "1.4",
             "count": len(records),
             "district_filter": district or None,
             "records": records,
