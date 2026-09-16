@@ -27,6 +27,17 @@ except ImportError:
     )
     from risk import get_risk, get_warning
 
+try:
+    from .bihar_live.app import (
+        health as bihar_health_api,
+        live_rivers as bihar_live_rivers_api,
+        processed_rivers as bihar_processed_rivers_api,
+        history as bihar_history_api,
+        stations as bihar_stations_api,
+    )
+except ImportError:
+    bihar_health_api = bihar_live_rivers_api = bihar_processed_rivers_api = None
+    bihar_history_api = bihar_stations_api = None
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
@@ -36,40 +47,27 @@ CORS(app)
 
 
 def error_response(message, status_code=400):
-    """Return a consistent JSON error response."""
-    return jsonify({
-        "success": False,
-        "error": message,
-        "timestamp": datetime.now().isoformat(),
-    }), status_code
+    return jsonify({"success": False, "error": message, "timestamp": datetime.now().isoformat()}), status_code
 
 
 def get_region_from_request():
-    """Read and validate region/station query parameters."""
     region = request.args.get("region", "Assam").strip()
     if region not in REGIONS:
         return None, None, "Unsupported region"
-
     station = request.args.get("station", "").strip() or None
     return region, station, None
 
 
 @app.route("/api/health")
 def health():
-    """Report whether the model and processed data are usable."""
     model_info = load_model()
     data_path = os.path.join(BASE_DIR, "data", "processed", "flood_warning_ml_ready_v2.csv")
     data_available = os.path.exists(data_path)
-
     ready = model_info["ok"] and data_available
-
     return jsonify({
-        "status": "ok" if ready else "error",
-        "service": "VARSHAGUARD API",
-        "model": "LOADED" if model_info["ok"] else "ERROR",
-        "model_error": model_info["error"],
-        "data": "AVAILABLE" if data_available else "ERROR",
-        "prediction": "READY" if ready else "ERROR",
+        "status": "ok" if ready else "error", "service": "VARSHAGUARD API",
+        "model": "LOADED" if model_info["ok"] else "ERROR", "model_error": model_info["error"],
+        "data": "AVAILABLE" if data_available else "ERROR", "prediction": "READY" if ready else "ERROR",
     })
 
 
@@ -83,60 +81,32 @@ def flood_risk():
     region, station, error = get_region_from_request()
     if error:
         return error_response(error, 400)
-
     model_info = load_model()
     probability, record, error = predict_probability(model_info, region, station)
     if error:
         return error_response(error, 500)
-
     risk = get_risk(probability, model_info["decision_threshold"])
-
-    important_features = {
-        "rainfall_1h": float(record.get("rainfall_1h", 0)),
-        "rainfall_3h": float(record.get("rainfall_3h", 0)),
-        "rainfall_6h": float(record.get("rainfall_6h", 0)),
-        "rainfall_12h": float(record.get("rainfall_12h", 0)),
-        "rainfall_24h": float(record.get("rainfall_24h", 0)),
-        "rainfall_72h": float(record.get("rainfall_72h", 0)),
-        "is_monsoon": int(record.get("is_monsoon", 0)),
-    }
-
+    features = {key: float(record.get(key, 0)) for key in ("rainfall_1h", "rainfall_3h", "rainfall_6h", "rainfall_12h", "rainfall_24h", "rainfall_72h")}
+    features["is_monsoon"] = int(record.get("is_monsoon", 0))
     return jsonify({
-        "success": True,
-        "region": region,
-        "station": record.get("station", "Prototype station"),
-        "prediction_horizon_hours": model_info["prediction_horizon_hours"],
-        "flood_probability": round(probability, 4),
-        "risk": risk,
-        "warning": get_warning(risk),
-        "timestamp": datetime.now().isoformat(),
-        "data_timestamp": str(record.get("timestamp", "")),
-        "latitude": float(record.get("latitude", 0)),
-        "longitude": float(record.get("longitude", 0)),
-        "features": important_features,
+        "success": True, "region": region, "station": record.get("station", "Prototype station"),
+        "prediction_horizon_hours": model_info["prediction_horizon_hours"], "flood_probability": round(probability, 4),
+        "risk": risk, "warning": get_warning(risk), "timestamp": datetime.now().isoformat(),
+        "data_timestamp": str(record.get("timestamp", "")), "latitude": float(record.get("latitude", 0)),
+        "longitude": float(record.get("longitude", 0)), "features": features,
     })
 
 
 @app.route("/api/flood-risk-map")
 def flood_risk_map():
-    """Return station-wise flood probability and risk for the selected region."""
     region = request.args.get("region", "Assam").strip()
     if region not in REGIONS:
         return error_response("Unsupported region", 400)
-
     model_info = load_model()
     results, error = get_flood_risk_map(model_info, region)
     if error:
         return error_response(error, 500)
-
-    return jsonify({
-        "success": True,
-        "region": region,
-        "prediction_horizon_hours": model_info["prediction_horizon_hours"],
-        "stations": results,
-        "count": len(results),
-        "generated_at": datetime.now().isoformat(),
-    })
+    return jsonify({"success": True, "region": region, "prediction_horizon_hours": model_info["prediction_horizon_hours"], "stations": results, "count": len(results), "generated_at": datetime.now().isoformat()})
 
 
 @app.route("/api/rainfall")
@@ -144,17 +114,10 @@ def rainfall():
     region, station, error = get_region_from_request()
     if error:
         return error_response(error, 400)
-
     rows, error = get_rainfall_series(region, station)
     if error:
         return error_response(error, 500)
-
-    return jsonify({
-        "success": True,
-        "region": region,
-        "station": station,
-        "rainfall": rows,
-    })
+    return jsonify({"success": True, "region": region, "station": station, "rainfall": rows})
 
 
 @app.route("/api/history")
@@ -162,17 +125,10 @@ def history():
     region, station, error = get_region_from_request()
     if error:
         return error_response(error, 400)
-
     rows, error = get_history(region, station)
     if error:
         return error_response(error, 500)
-
-    return jsonify({
-        "success": True,
-        "region": region,
-        "station": station,
-        "history": rows,
-    })
+    return jsonify({"success": True, "region": region, "station": station, "history": rows})
 
 
 @app.route("/api/stations")
@@ -180,16 +136,37 @@ def stations():
     region, station, error = get_region_from_request()
     if error:
         return error_response(error, 400)
-
     rows, error = get_stations(region)
     if error:
         return error_response(error, 500)
+    return jsonify({"success": True, "region": region, "stations": rows})
 
-    return jsonify({
-        "success": True,
-        "region": region,
-        "stations": rows,
-    })
+
+# Bihar Live v0.3 routes. The implementation remains in backend/bihar_live;
+# these thin adapters expose the same service through the deployed Flask app.
+@app.route("/api/bihar/health")
+def bihar_health():
+    return bihar_health_api()
+
+
+@app.route("/api/bihar/live-rivers")
+def bihar_live_rivers():
+    return bihar_live_rivers_api()
+
+
+@app.route("/api/bihar/processed-rivers")
+def bihar_processed_rivers():
+    return bihar_processed_rivers_api()
+
+
+@app.route("/api/bihar/history")
+def bihar_history():
+    return bihar_history_api()
+
+
+@app.route("/api/bihar/stations")
+def bihar_stations():
+    return bihar_stations_api()
 
 
 @app.route("/")
