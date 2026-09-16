@@ -1,0 +1,46 @@
+name: Bihar Live FMISC Sync
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Checkout Bihar Live branch
+        uses: actions/checkout@v4
+        with:
+          ref: bihar-live-v0.3.0
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ingestion dependencies
+        run: python -m pip install --upgrade pip && pip install pandas requests lxml python-dotenv psycopg[binary]
+
+      - name: Sync FMISC observations into Neon
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m backend.bihar_live.sync_job
+
+      - name: Commit fresh fallback snapshot when FMISC succeeds
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- backend/bihar_live/data/live_snapshot.json; then
+            echo "No snapshot changes."
+            exit 0
+          fi
+          git add backend/bihar_live/data/live_snapshot.json
+          git commit -m "Update Bihar Live river snapshot"
+          git push origin HEAD:bihar-live-v0.3.0
