@@ -1,111 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#07111f">
-    <title>VARSHAGUARD — Bihar Live Command Center</title>
-    <link rel="stylesheet" href="bihar-live.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#06101c">
+<title>VARSHAGUARD — Bihar Live</title>
+<link rel="stylesheet" href="bihar-live.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 </head>
 <body>
-    <div class="ambient ambient-one"></div>
-    <div class="ambient ambient-two"></div>
-    <header class="topbar">
-        <div class="brand-block">
-            <a class="brand" href="index.html">VARSHA<span>GUARD</span></a>
-            <div class="brand-sub">AI/ML FLOOD EARLY WARNING &amp; INUNDATION SYSTEM</div>
-        </div>
-        <div class="topbar-actions">
-            <div class="live-indicator"><i></i><span>BIHAR LIVE</span></div>
-            <div class="prototype-badge">v0.3.0</div>
-            <a class="back-button" href="index.html">MAIN PROTOTYPE <span>↗</span></a>
-        </div>
-    </header>
-
-    <main class="shell">
-        <section class="hero">
-            <div class="hero-copy-block">
-                <div class="eyebrow">BIHAR / REAL-TIME HYDROLOGICAL INTELLIGENCE</div>
-                <h1>See the rivers.<br><em>Read the risk.</em></h1>
-                <p>Live Bihar river observations feed the VARSHAGUARD risk and inundation pipeline. The command center separates observed conditions from predictive engines so every signal has clear provenance.</p>
-            </div>
-            <div class="hero-status">
-                <div class="api-ring" id="apiRing"><span></span></div>
-                <div>
-                    <strong id="apiStatusText">CONNECTING</strong>
-                    <small id="fetchMeta">Waiting for live data...</small>
-                </div>
-            </div>
-        </section>
-
-        <section class="alert-strip" id="alertStrip">
-            <div class="alert-icon">!</div>
-            <div><strong id="alertTitle">ANALYSING RIVER CONDITIONS</strong><span id="alertMessage">Loading the latest station observations.</span></div>
-            <div class="alert-time" id="alertTime">—</div>
-        </section>
-
-        <section class="control-bar">
-            <div class="control-group search-control"><label for="stationSearch">SEARCH STATION</label><input id="stationSearch" type="search" placeholder="e.g. Dighaghat, Maner..." autocomplete="off"></div>
-            <div class="control-group"><label for="districtSelect">DISTRICT</label><select id="districtSelect"><option value="">All Bihar</option></select></div>
-            <div class="control-group"><label for="statusSelect">LEVEL STATUS</label><select id="statusSelect"><option value="">All levels</option><option value="danger">Above danger</option><option value="warning">Above warning</option><option value="normal">Below warning</option></select></div>
-            <button class="refresh-button" id="refreshButton" type="button"><span>↻</span> REFRESH</button>
-        </section>
-
-        <section class="metrics-grid">
-            <article class="metric-card primary"><div class="metric-top"><span>MONITORED STATIONS</span><b>LIVE</b></div><strong id="observationCount">—</strong><small>stations in current feed</small></article>
-            <article class="metric-card danger-card"><div class="metric-top"><span>DANGER LEVEL</span><b>ALERT</b></div><strong id="dangerCount">—</strong><small>at / above danger threshold</small></article>
-            <article class="metric-card warning-card"><div class="metric-top"><span>WARNING LEVEL</span><b>WATCH</b></div><strong id="warningCount">—</strong><small>at / above warning threshold</small></article>
-            <article class="metric-card"><div class="metric-top"><span>RIVER TREND</span><b>Δ 1H</b></div><strong id="risingCount">—</strong><small><span class="trend-dot rising-dot"></span> rising stations</small></article>
-            <article class="metric-card risk-card"><div class="metric-top"><span>RISK ENGINE</span><b>READY</b></div><strong id="riskEngineMetric">—</strong><small id="riskEngineState">select a station</small></article>
-        </section>
-
-        <section class="dashboard-grid">
-            <article class="panel station-panel">
-                <div class="panel-head"><div><div class="eyebrow">LIVE STATION FEED</div><h2>River observation network</h2></div><span class="source-chip">FMISC / WRD</span></div>
-                <div class="table-wrap">
-                    <table>
-                        <thead><tr><th>STATION</th><th>DISTRICT</th><th>LEVEL</th><th>THRESHOLD</th><th>TREND</th><th>OBSERVED</th></tr></thead>
-                        <tbody id="riverTableBody"><tr><td colspan="6" class="empty-state">Loading river intelligence...</td></tr></tbody>
-                    </table>
-                </div>
-            </article>
-
-            <aside class="panel detail-panel" id="detailPanel">
-                <div class="panel-head compact"><div><div class="eyebrow">STATION DETAIL</div><h2 id="detailStation">Select a station</h2></div><span class="detail-status" id="detailStatus">—</span></div>
-                <div class="detail-river" id="detailRiver">Click any station in the live feed.</div>
-                <div class="level-display"><span>CURRENT WATER LEVEL</span><strong id="detailLevel">—</strong><small> m</small></div>
-                <div class="threshold-track"><div class="track-line"></div><div class="threshold-marker warning-marker" id="warningMarker"><span>WARNING</span></div><div class="threshold-marker danger-marker" id="dangerMarker"><span>DANGER</span></div><div class="level-marker" id="levelMarker"></div></div>
-                <div class="threshold-values"><div><span>WARNING</span><strong id="detailWarning">—</strong></div><div><span>DANGER</span><strong id="detailDanger">—</strong></div><div><span>HFL</span><strong id="detailHfl">—</strong></div></div>
-                <div class="detail-meta"><div><span>1H CHANGE</span><strong id="detailChange">—</strong></div><div><span>TREND</span><strong id="detailTrend">—</strong></div><div><span>OBSERVED</span><strong id="detailObserved">—</strong></div></div>
-                <div class="disclaimer">Observed level status is threshold-based. Predictive risk and inundation panels below are shown only when a supported engine/API response is available.</div>
-            </aside>
-        </section>
-
-        <section class="engine-grid">
-            <article class="panel engine-panel">
-                <div class="panel-head"><div><div class="eyebrow">PREDICTION ENGINE</div><h2>Flood Risk Engine</h2></div><span class="engine-state" id="riskEngineBadge">AWAITING INPUT</span></div>
-                <div class="engine-summary"><div class="engine-score" id="riskEngineScore">—%</div><div class="engine-state" id="riskEngineLabel">NO PREDICTION</div></div>
-                <div class="progress risk"><span id="riskProgress"></span></div>
-                <p class="engine-copy" id="riskEngineCopy">This panel is reserved for the Bihar flood-probability engine. It must use validated predictive inputs rather than treating a threshold breach as a probability.</p>
-                <div class="engine-facts"><div class="engine-fact"><span>WATER LEVEL</span><strong id="riskFactLevel">—</strong></div><div class="engine-fact"><span>1H RISE</span><strong id="riskFactRise">—</strong></div><div class="engine-fact"><span>THRESHOLD STATE</span><strong id="riskFactState">—</strong></div></div>
-                <div class="engine-foot">MODEL STATUS: API-GATED • NO FABRICATED PROBABILITY</div>
-            </article>
-
-            <article class="panel engine-panel">
-                <div class="panel-head"><div><div class="eyebrow">SPATIAL PREDICTION</div><h2>Inundation Engine</h2></div><span class="engine-state" id="inundationBadge">AWAITING DATA</span></div>
-                <div class="engine-summary"><div class="engine-score blue" id="inundationScore">—</div><div class="engine-state" id="inundationLabel">NO EXTENT</div></div>
-                <div class="progress inundation"><span id="inundationProgress"></span></div>
-                <p class="engine-copy" id="inundationCopy">The inundation engine represents predicted flood-water extent or affected area. A real output requires terrain, hydrology and flood-extent inputs; this UI never turns a river threshold into a fake inundation map.</p>
-                <div class="map-preview"><div class="map-grid" id="inundationGrid"></div><div class="map-label" id="inundationMapLabel">NO MODEL OUTPUT</div></div>
-                <div class="engine-facts"><div class="engine-fact"><span>EXTENT</span><strong id="inundationFactExtent">—</strong></div><div class="engine-fact"><span>DEPTH</span><strong id="inundationFactDepth">—</strong></div><div class="engine-fact"><span>CONFIDENCE</span><strong id="inundationFactConfidence">—</strong></div></div>
-                <div class="engine-foot">MODEL STATUS: TERRAIN / FLOOD-EXTENT DATA REQUIRED</div>
-            </article>
-        </section>
-
-        <section class="network-footer"><div><span class="pulse"></span><strong id="networkState">NETWORK ONLINE</strong></div><span>Source: Bihar FMISC/WRD</span><span>Storage: Neon PostgreSQL</span><span>Risk engine: API-gated</span><span>Inundation engine: API-gated</span><span>Auto refresh: 5 min</span></section>
-        <section class="error-card" id="errorCard" hidden><strong>LIVE DATA UNAVAILABLE</strong><span id="errorMessage">Unable to fetch Bihar river observations.</span></section>
-    </main>
-    <footer>VARSHAGUARD / BIHAR LIVE / PROTOTYPE v0.3.0</footer>
-    <script src="bihar-live.js"></script>
-</body>
-</html>
+<div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+<header class="topbar"><div class="brand-block"><a class="brand" href="index.html">VARSHA<span>GUARD</span></a><div class="brand-sub">AI/ML FLOOD EARLY WARNING &amp; INUNDATION SYSTEM</div></div><div class="topbar-actions"><div class="live-indicator"><i></i><span>BIHAR LIVE</span></div><div class="prototype-badge">v0.3.0</div><a class="back-button" href="index.html">MAIN PROTOTYPE <span>↗</span></a></div></header>
+<main class="shell">
+<section class="hero"><div class="hero-copy-block"><div class="eyebrow">BIHAR / REAL-TIME HYDROLOGICAL INTELLIGENCE</div><h1>See the rivers.<br><em>Read the risk.</em></h1><p>Live Bihar river observations from FMISC/WRD, synced through Neon PostgreSQL. Predictive panels clearly distinguish observed conditions from validated model output.</p></div><div class="hero-status"><div class="api-ring" id="apiRing"><span></span></div><div><strong id="apiStatusText">CONNECTING</strong><small id="fetchMeta">Waiting for live data...</small></div></div></section>
+<section class="alert-strip" id="alertStrip"><div class="alert-icon">!</div><div><strong id="alertTitle">ANALYSING RIVER CONDITIONS</strong><span id="alertMessage">Loading the latest station observations.</span></div><div class="alert-time" id="alertTime">—</div></section>
+<section class="control-bar"><div class="control-group search-control"><label for="stationSearch">SEARCH STATION</label><input id="stationSearch" type="search" placeholder="Station, river or district" autocomplete="off"></div><div class="control-group"><label for="districtSelect">DISTRICT</label><select id="districtSelect"><option value="">All Bihar</option></select></div><div class="control-group"><label for="statusSelect">LEVEL STATUS</label><select id="statusSelect"><option value="">All levels</option><option value="danger">Above danger</option><option value="warning">Above warning</option><option value="normal">Below warning</option></select></div><button class="refresh-button" id="refreshButton" type="button"><span>↻</span> REFRESH</button></section>
+<section class="metrics-grid"><article class="metric-card primary"><div class="metric-top"><span>MONITORED STATIONS</span><b>LIVE</b></div><strong id="observationCount">—</strong><small>stations in current feed</small></article><article class="metric-card danger-card"><div class="metric-top"><span>DANGER LEVEL</span><b>ALERT</b></div><strong id="dangerCount">—</strong><small>at / above danger</small></article><article class="metric-card warning-card"><div class="metric-top"><span>WARNING LEVEL</span><b>WATCH</b></div><strong id="warningCount">—</strong><small>at / above warning</small></article><article class="metric-card"><div class="metric-top"><span>RIVER TREND</span><b>Δ 1H</b></div><strong id="risingCount">—</strong><small><span class="trend-dot rising-dot"></span> rising stations</small></article><article class="metric-card risk-card"><div class="metric-top"><span>RISK ENGINE</span><b>24H</b></div><strong id="riskEngineMetric">—</strong><small id="riskEngineState">select a station</small></article></section>
+<section class="dashboard-grid"><article class="panel station-panel"><div class="panel-head"><div><div class="eyebrow">LIVE STATION FEED</div><h2>River observation network</h2></div><span class="source-chip">FMISC / WRD</span></div><div class="table-wrap"><table><thead><tr><th>STATION</th><th>DISTRICT</th><th>LEVEL</th><th>THRESHOLD</th><th>TREND</th><th>OBSERVED</th></tr></thead><tbody id="riverTableBody"><tr><td colspan="6" class="empty-state">Loading river intelligence...</td></tr></tbody></table></div></article><aside class="panel detail-panel"><div class="panel-head compact"><div><div class="eyebrow">STATION DETAIL</div><h2 id="detailStation">Select a station</h2></div><span class="detail-status" id="detailStatus">—</span></div><div class="detail-river" id="detailRiver">Click any station in the live feed or map.</div><div class="level-display"><span>CURRENT WATER LEVEL</span><strong id="detailLevel">—</strong><small> m</small></div><div class="threshold-track"><div class="track-line"></div><div class="threshold-marker warning-marker" id="warningMarker"><span>WARNING</span></div><div class="threshold-marker danger-marker" id="dangerMarker"><span>DANGER</span></div><div class="level-marker" id="levelMarker"></div></div><div class="threshold-values"><div><span>WARNING</span><strong id="detailWarning">—</strong></div><div><span>DANGER</span><strong id="detailDanger">—</strong></div><div><span>HFL</span><strong id="detailHfl">—</strong></div></div><div class="detail-meta"><div><span>1H CHANGE</span><strong id="detailChange">—</strong></div><div><span>TREND</span><strong id="detailTrend">—</strong></div><div><span>OBSERVED</span><strong id="detailObserved">—</strong></div></div></aside></section>
+<section class="panel map-panel"><div class="panel-head"><div><div class="eyebrow">LIVE SPATIAL VIEW</div><h2>Bihar river stations</h2></div><span class="source-chip">LEAFLET / OPENSTREETMAP</span></div><div id="biharMap" aria-label="Bihar live river station map"></div><div class="map-status" id="mapStatus">Loading mapped stations...</div></section>
+<section class="engine-grid"><article class="panel engine-panel"><div class="panel-head"><div><div class="eyebrow">24-HOUR FORECAST</div><h2>Flood Risk Engine</h2></div><span class="engine-state" id="riskEngineBadge">WAITING</span></div><div class="engine-summary"><div class="engine-score" id="riskEngineScore">—%</div><div class="engine-state" id="riskEngineLabel">NO VALIDATED MODEL</div></div><div class="progress risk"><span id="riskProgress"></span></div><p class="engine-copy" id="riskEngineCopy">Live observations are available. A 24-hour ML probability is shown only after a validated Bihar model is connected.</p><div class="engine-facts"><div class="engine-fact"><span>WATER LEVEL</span><strong id="riskFactLevel">—</strong></div><div class="engine-fact"><span>1H RISE</span><strong id="riskFactRise">—</strong></div><div class="engine-fact"><span>THRESHOLD STATE</span><strong id="riskFactState">—</strong></div></div><div class="engine-foot">NO FABRICATED PROBABILITY • LIVE INPUT READY</div></article><article class="panel engine-panel"><div class="panel-head"><div><div class="eyebrow">24-HOUR SPATIAL FORECAST</div><h2>Inundation Engine</h2></div><span class="engine-state" id="inundationBadge">WAITING</span></div><div class="engine-summary"><div class="engine-score blue" id="inundationScore">—</div><div class="engine-state" id="inundationLabel">NO VALIDATED EXTENT</div></div><div class="progress inundation"><span id="inundationProgress"></span></div><p class="engine-copy" id="inundationCopy">A true 24-hour inundation forecast requires terrain, river geometry and historical flood-extent supervision. The dashboard will not invent a flood polygon from a river threshold.</p><div class="map-preview"><div class="map-grid" id="inundationGrid"></div><div class="map-label" id="inundationMapLabel">MODEL INPUTS REQUIRED</div></div><div class="engine-facts"><div class="engine-fact"><span>EXTENT</span><strong id="inundationFactExtent">—</strong></div><div class="engine-fact"><span>DEPTH</span><strong id="inundationFactDepth">—</strong></div><div class="engine-fact"><span>CONFIDENCE</span><strong id="inundationFactConfidence">—</strong></div></div><div class="engine-foot">TERRAIN + HYDROLOGY + FLOOD EXTENT REQUIRED</div></article></section>
+<section class="network-footer"><div><span class="pulse"></span><strong id="networkState">CONNECTING</strong></div><span>Source: Bihar FMISC/WRD</span><span>Storage: Neon PostgreSQL</span><span>Leaflet map: enabled</span><span>Auto refresh: 5 min</span></section><section class="error-card" id="errorCard" hidden><strong>LIVE DATA UNAVAILABLE</strong><span id="errorMessage">Unable to fetch Bihar river observations.</span></section></main><footer>VARSHAGUARD / BIHAR LIVE / PROTOTYPE v0.3.0</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script><script src="bihar-live.js"></script>
+</body></html>
