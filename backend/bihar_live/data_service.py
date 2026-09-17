@@ -84,10 +84,7 @@ def _parse_html_rows(html: str) -> list[dict[str, str]]:
     header_index = None
     for index, row in enumerate(rows):
         joined = " ".join(row).lower()
-        if "station name" in joined and "current" in joined and "water level" in joined:
-            header_index = index
-            break
-        if "station" in joined and "current level" in joined and "danger" in joined:
+        if "station name" in joined and ("current observed" in joined or "current level" in joined):
             header_index = index
             break
 
@@ -116,12 +113,12 @@ def _normalize_beams_row(row: dict[str, str]) -> dict | None:
     station = _find_value(row, "station name")
     river = _find_value(row, "river")
     district = _find_value(row, "district")
-    level = _number(_find_value(row, "current observed water level", "current level"))
-    previous = _number(_find_value(row, "1 hr before", "yesterday level"))
+    level = _number(_find_value(row, "current observed water level"))
+    previous = _number(_find_value(row, "1 hr before"))
     warning = _number(_find_value(row, "warning level"))
     danger = _number(_find_value(row, "danger level"))
     hfl = _number(_find_value(row, "hfl"))
-    observed = _find_value(row, "current observed date", "date & time")
+    observed = _find_value(row, "current observed date")
     trend = _find_value(row, "trend")
 
     if not station or level is None:
@@ -188,7 +185,7 @@ def _fetch_source(url: str) -> list[dict]:
     if not rows:
         raise ValueError("No recognizable Bihar station table found")
 
-    if "station name" in " ".join(rows[0]).lower():
+    if "beams.fmiscwrdbihar.gov.in" in url:
         normalized = [_normalize_beams_row(row) for row in rows]
     else:
         normalized = [_normalize_wrd_row(row) for row in rows]
