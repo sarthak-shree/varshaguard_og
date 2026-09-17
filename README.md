@@ -17,7 +17,7 @@ Prototype / live inputs
         +--> Flask API --> Web dashboard (Leaflet + Chart.js)
 ```
 
-The main rainfall ML prototype currently supports the two study regions present in the processed dataset: **Assam** and **Uttarakhand**. Bihar Live is exposed through a separate API endpoint and is intentionally labelled as a transparent baseline until Bihar-specific historical training data and spatial flood labels are available.
+The main rainfall ML prototype currently supports the two study regions present in the processed dataset: **Assam** and **Uttarakhand**. Bihar Live now uses a backend live-station service rather than the dated rainfall-training CSV. The source observation timestamp is retained in the backend response for audit/debugging but is intentionally not rendered in the public Bihar Live table.
 
 ## Project Structure
 
@@ -29,6 +29,7 @@ backend/
   risk.py
   train_model.py
   bihar_live/
+    data_service.py
     forecast_engine.py
 
 data/
@@ -37,6 +38,7 @@ data/
 
 frontend/
   index.html
+  bihar-live.html
   script.js
   style.css
 
@@ -120,7 +122,11 @@ GET /api/regions
 
 ```http
 GET /api/stations?region=Assam
+GET /api/stations?region=Bihar
+GET /api/bihar-live/stations
 ```
+
+`Bihar` station requests are fetched at request time from the configured CWC/India-WRIS source. API responses are sent with no-store cache headers to avoid Vercel/browser reuse of an old response.
 
 ### Flood risk
 
@@ -163,6 +169,14 @@ The Bihar endpoint returns two clearly separated outputs:
 
 1. `flood_forecast`: transparent hydrological baseline using current river level, warning/danger thresholds, and one-hour rise.
 2. `inundation_forecast`: spatial proxy, **not** a validated DEM/hydraulic inundation map.
+
+## Live Bihar data design
+
+The Bihar Live page calls `/api/bihar-live/stations` on every initial load and manual refresh, with a cache-busting query parameter and `cache: "no-store"`. It automatically refreshes every 15 minutes.
+
+The backend performs the external source request, normalizes station names, river/district, water levels, thresholds and coordinates, and retains the source observation time as an internal field. The frontend deliberately does not show that raw timestamp.
+
+The live-source integration depends on the configured CWC/India-WRIS endpoint returning a compatible JSON station feed. If that upstream service is unavailable or changes its response schema, the API returns an explicit 502 error rather than silently showing the old dated CSV as live data.
 
 ## Data and model caveats
 
