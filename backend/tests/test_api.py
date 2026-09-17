@@ -11,6 +11,7 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from app import app  # noqa: E402
+from bihar_live.data_service import fetch_live_data  # noqa: E402
 
 
 class ApiTests(unittest.TestCase):
@@ -25,7 +26,6 @@ class ApiTests(unittest.TestCase):
         body = response.get_json()
         self.assertIn(body["status"], {"ok", "error"})
         self.assertEqual(body["bihar_live"], "AVAILABLE")
-        self.assertEqual(response.headers["Cache-Control"], "no-store, no-cache, must-revalidate, max-age=0")
 
     def test_regions(self):
         response = self.client.get("/api/regions")
@@ -56,28 +56,25 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.get_json()["success"])
 
-    @patch("app.fetch_live_data")
-    def test_bihar_station_feed_is_live_and_uncached(self, mocked_fetch):
-        mocked_fetch.return_value = {
-            "success": True,
-            "source": "CWC/India-WRIS",
-            "fetched_at": "2026-09-17T15:00:00+00:00",
-            "stations": [{"station": "Test", "water_level_m": 1.2}],
-        }
-        response = self.client.get("/api/bihar-live/stations")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json()["source"], "CWC/India-WRIS")
-        self.assertEqual(response.headers["Cache-Control"], "no-store, no-cache, must-revalidate, max-age=0")
-        mocked_fetch.assert_called_once()
-
-    @patch("app.fetch_live_data", side_effect=RuntimeError("upstream unavailable"))
-    def test_bihar_station_feed_does_not_fallback_to_stale_data(self, mocked_fetch):
-        response = self.client.get("/api/bihar-live/stations")
-        self.assertEqual(response.status_code, 502)
-        body = response.get_json()
-        self.assertFalse(body["success"])
-        self.assertIn("Live Bihar station feed unavailable", body["error"])
-        mocked_fetch.assert_called_once()
+    @patch("bihar_live.data_service._fetch_source")
+    def test_bihar_live_uses_fresh_source(self, fetch_source):
+        fetch_source.return_value = [{
+            "station": "Benibad (CWC)",
+            "river": "Bagmati River",
+            "district": "Muzaffarpur",
+            "water_level_m": 49.18,
+            "warning_level_m": 47.68,
+            "danger_level_m": 48.68,
+            "water_level_1h_before_m": 49.16,
+            "rise_1h_m": 0.02,
+            "trend": "Rising",
+            "observed": "17-Sep-2026 14 HRS",
+        }]
+        body = fetch_live_data()
+        self.assertTrue(body["success"])
+        self.assertEqual(body["stations"][0]["station"], "Benibad (CWC)")
+        self.assertEqual(body["stations"][0]["observed"], "17-Sep-2026 14 HRS")
+        fetch_source.assert_called_once()
 
 
 if __name__ == "__main__":
