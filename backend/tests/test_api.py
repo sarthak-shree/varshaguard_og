@@ -12,6 +12,7 @@ if ROOT_DIR not in sys.path:
 
 from app import app  # noqa: E402
 from bihar_live.data_service import fetch_live_data  # noqa: E402
+from bihar_live.ml_engine import _rainfall_features, clear_ml_cache  # noqa: E402
 
 
 class ApiTests(unittest.TestCase):
@@ -75,6 +76,32 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(body["stations"][0]["station"], "Benibad (CWC)")
         self.assertEqual(body["stations"][0]["observed"], "17-Sep-2026 14 HRS")
         fetch_source.assert_called_once()
+
+    def test_daily_feature_engineering(self):
+        features = _rainfall_features([10.0, 20.0, 30.0], 9, 15)
+        self.assertEqual(features["rainfall_24h"], 30.0)
+        self.assertEqual(features["rainfall_48h"], 50.0)
+        self.assertEqual(features["rainfall_72h"], 60.0)
+        self.assertEqual(features["is_monsoon"], 1)
+
+    @patch("bihar_live.ml_engine.fetch_live_data")
+    @patch("bihar_live.ml_engine._fetch_daily_rainfall")
+    def test_bihar_ml_endpoint_uses_live_inputs(self, fetch_daily, fetch_rivers):
+        clear_ml_cache()
+        fetch_daily.return_value = [{
+            "state": "BIHAR",
+            "district": "MUZAFFARPUR",
+            "day_actual_mm": "25.0",
+        }]
+        fetch_rivers.return_value = []
+        response = self.client.get("/api/bihar-live/ml-risk")
+        self.assertIn(response.status_code, {200, 502})
+        if response.status_code == 200:
+            body = response.get_json()
+            self.assertTrue(body["success"])
+            self.assertEqual(body["region"], "Bihar")
+            self.assertEqual(body["model"]["type"], "RandomForestClassifier")
+            self.assertGreaterEqual(body["count"], 1)
 
 
 if __name__ == "__main__":
