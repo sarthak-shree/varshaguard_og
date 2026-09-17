@@ -7,6 +7,15 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#8623;</text></svg>">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .prototype-switch { position: relative; display: inline-block; }
+        .prototype-badge { cursor: pointer; }
+        .prototype-menu { position: absolute; top: calc(100% + 8px); right: 0; min-width: 220px; padding: 8px; background: #fff; border: 1px solid #dfe5ec; border-radius: 10px; box-shadow: 0 12px 30px rgba(20,30,45,.14); z-index: 1000; }
+        .prototype-menu[hidden] { display: none; }
+        .prototype-menu a { display: block; padding: 11px 12px; color: #17202a; text-decoration: none; border-radius: 7px; font-weight: 700; font-size: 13px; }
+        .prototype-menu a:hover { background: #f3f6f9; color: #ff7a00; }
+        .prototype-menu small { display: block; margin: 0 12px 6px; color: #7a8794; font-size: 11px; font-weight: 600; }
+    </style>
 </head>
 <body>
     <header class="topbar">
@@ -15,7 +24,13 @@
             <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
         </div>
         <div class="topbar-actions">
-            <div class="prototype-badge">Prototype WIP (0.2.0)</div>
+            <div class="prototype-switch">
+                <button id="prototypeMenuButton" class="prototype-badge" type="button" aria-haspopup="true" aria-expanded="false">Prototype WIP (0.2.0) ▾</button>
+                <div id="prototypeMenu" class="prototype-menu" hidden>
+                    <small>SWITCH PROTOTYPE</small>
+                    <a href="https://varshaguard-git-bihar-live-v030-sarthak-shree.vercel.app/bihar-live.html">Bihar Live v0.3.0 →</a>
+                </div>
+            </div>
             <a class="bihar-live-button" href="https://varshaguard-git-bihar-live-v030-sarthak-shree.vercel.app/bihar-live.html">BIHAR LIVE <span>&rarr;</span></a>
         </div>
     </header>
@@ -96,9 +111,25 @@
     </main>
 
     <div id="message" class="message hidden"></div>
-
     <footer></footer>
-
+    <script>
+        (() => {
+            const button = document.getElementById('prototypeMenuButton');
+            const menu = document.getElementById('prototypeMenu');
+            if (!button || !menu) return;
+            button.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const open = menu.hidden;
+                menu.hidden = !open;
+                button.setAttribute('aria-expanded', String(open));
+            });
+            document.addEventListener('click', () => {
+                menu.hidden = true;
+                button.setAttribute('aria-expanded', 'false');
+            });
+            menu.addEventListener('click', (event) => event.stopPropagation());
+        })();
+    </script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
