@@ -7,3 +7,6 @@ venv/
 .neon
 .env.local
 node_modules/
+
+# Local Bihar ML training data (large source CSVs)
+backend/bihar_live/training_data/
