@@ -10,6 +10,7 @@
         .controls { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 10px; margin-bottom: 18px; }
         .controls input, .controls select, .controls button { min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel2); color: var(--text); font: inherit; }
         .controls button { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; cursor: pointer; }
+        .controls button:disabled { opacity: .65; cursor: wait; }
         .live-meta { margin: -8px 0 14px; color: var(--muted); font-size: 12px; }
         .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
         .summary-card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
@@ -82,6 +83,7 @@
 
     <script>
         let stationData = [];
+        let lastFetchAt = null;
 
         const els = {
             body: document.getElementById('stationsBody'),
@@ -123,8 +125,10 @@
         }
 
         function populateDistricts() {
+            const current = els.district.value;
             const districts = [...new Set(stationData.map(item => item.district).filter(Boolean))].sort();
             els.district.innerHTML = '<option value="">All Bihar</option>' + districts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+            if (districts.includes(current)) els.district.value = current;
         }
 
         function render() {
@@ -139,7 +143,7 @@
             els.count.textContent = filtered.length;
             els.danger.textContent = filtered.filter(s => classify(s) === 'danger').length;
             els.warning.textContent = filtered.filter(s => classify(s) === 'warning').length;
-            els.rising.textContent = filtered.filter(s => Number(s.rise_1h_m) > 0).length;
+            els.rising.textContent = filtered.filter(s => Number(s.rise_1h_m ?? (Number(s.water_level_m) - Number(s.water_level_1h_before_m))) > 0).length;
 
             if (!filtered.length) {
                 els.body.innerHTML = '<tr><td colspan="5">No stations match the current filters.</td></tr>';
@@ -150,7 +154,7 @@
                 const levelClass = classify(station);
                 const badgeText = levelClass === 'danger' ? 'DANGER' : levelClass === 'warning' ? 'WARNING' : 'NORMAL';
                 const threshold = levelClass === 'danger' ? station.danger_level_m : station.warning_level_m;
-                const rise = Number(station.rise_1h_m || 0);
+                const rise = Number(station.rise_1h_m ?? (Number(station.water_level_m) - Number(station.water_level_1h_before_m)));
                 return `
                     <tr>
                         <td><strong>${escapeHtml(station.station)}</strong><br><span>${escapeHtml(station.river)}</span></td>
@@ -164,19 +168,26 @@
 
         async function loadStations() {
             els.error.hidden = true;
+            els.refresh.disabled = true;
             els.meta.textContent = 'Fetching latest Bihar station data…';
             try {
-                const response = await fetch('/api/bihar-live/stations?ts=' + Date.now(), { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+                const response = await fetch('/api/bihar-live/stations?ts=' + Date.now(), {
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache, max-age=0', 'Pragma': 'no-cache' }
+                });
                 const data = await response.json();
                 if (!response.ok || data.success === false) throw new Error(data.error || 'Live station feed failed');
                 stationData = Array.isArray(data.stations) ? data.stations : [];
+                lastFetchAt = data.fetched_at || new Date().toISOString();
                 populateDistricts();
                 render();
-                els.meta.textContent = `Live source: ${data.source || 'CWC/India-WRIS'} • Backend fetched just now • refreshes every 15 minutes`;
+                els.meta.textContent = `LIVE • ${data.source || 'CWC/India-WRIS'} • backend fetched: ${new Date(lastFetchAt).toLocaleTimeString()} • auto-refresh: 15 min`;
             } catch (error) {
                 els.error.textContent = error.message;
                 els.error.hidden = false;
                 els.meta.textContent = 'Live feed unavailable.';
+            } finally {
+                els.refresh.disabled = false;
             }
         }
 
