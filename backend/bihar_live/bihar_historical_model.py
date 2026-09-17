@@ -1,9 +1,9 @@
 """Train/evaluate a Bihar-specific district-day flood model.
 
-Source training assets are copied into data/bihar by running the repository
-script locally/CI with the supplied files available. The model uses only
-historical telemetry and historical flood-event labels; it does not fabricate
-labels from river thresholds.
+Uses supplied Bihar river telemetry and historical flood-event inventory.
+The current uploaded assets do not include a separate DEM/geometry file, so
+terrain features are deliberately not fabricated. Geometry/DEM can be added
+later as additional spatial features.
 """
 
 from __future__ import annotations
@@ -14,12 +14,9 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.isotonic import IsotonicRegression
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, average_precision_score, brier_score_loss, f1_score, roc_auc_score
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import make_pipeline
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 TRAINING_PATH = BASE_DIR / "data" / "bihar" / "bihar_district_day_training.csv"
@@ -45,13 +42,20 @@ def _load() -> pd.DataFrame:
 def _models() -> dict[str, Any]:
     return {
         "Random Forest": RandomForestClassifier(
-            n_estimators=400, max_depth=12, min_samples_leaf=2,
-            class_weight="balanced", random_state=42, n_jobs=-1,
+            n_estimators=400,
+            max_depth=12,
+            min_samples_leaf=2,
+            class_weight="balanced",
+            random_state=42,
+            n_jobs=-1,
         ),
-        "Gradient Boosting": GradientBoostingClassifier(
-            n_estimators=250, max_depth=3, learning_rate=0.04, random_state=42,
+        "Gradient Boosting": HistGradientBoostingClassifier(
+            max_iter=300,
+            learning_rate=0.05,
+            max_leaf_nodes=15,
+            l2_regularization=1.0,
+            random_state=42,
         ),
-        "Logistic Regression": make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, class_weight="balanced")),
     }
 
 
@@ -68,7 +72,6 @@ def _metrics(y_true: pd.Series, probability: np.ndarray, threshold: float = 0.5)
 
 def train_and_compare() -> dict:
     df = _load()
-    # Use the final 20% of chronological district-days as the untouched test period.
     unique_dates = np.array(sorted(df["date"].dt.normalize().unique()))
     cut = max(1, int(len(unique_dates) * 0.80))
     train_dates = set(unique_dates[:cut])
@@ -82,16 +85,23 @@ def train_and_compare() -> dict:
     fitted = {}
     for name, model in _models().items():
         model.fit(train[FEATURES], train[TARGET])
-        prob = model.predict_proba(test[FEATURES])[:, 1]
-        comparison[name] = _metrics(test[TARGET], prob)
+        probability = model.predict_proba(test[FEATURES])[:, 1]
+        comparison[name] = _metrics(test[TARGET], probability)
         fitted[name] = model
 
-    best_name = max(comparison, key=lambda name: (comparison[name]["roc_auc"] if comparison[name]["roc_auc"] is not None else -1, comparison[name]["f1"]))
+    best_name = max(
+        comparison,
+        key=lambda name: (
+            comparison[name]["roc_auc"] if comparison[name]["roc_auc"] is not None else -1,
+            comparison[name]["pr_auc"] if comparison[name]["pr_auc"] is not None else -1,
+            comparison[name]["f1"],
+        ),
+    )
     best_model = fitted[best_name]
     test_probability = best_model.predict_proba(test[FEATURES])[:, 1]
 
-    # Probability calibration is fitted only on the chronological test predictions
-    # using a monotonic transform. This is reported separately from the raw model.
+    # Demonstration calibration metric on the holdout. A production version
+    # should reserve a third, independent calibration period.
     calibrator = IsotonicRegression(out_of_bounds="clip")
     calibrator.fit(test_probability, test[TARGET].astype(float))
     calibrated_probability = calibrator.predict(test_probability)
