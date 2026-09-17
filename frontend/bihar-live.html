@@ -22,13 +22,17 @@
         th { background: var(--panel2); color: var(--muted); font: 11px var(--mono); text-transform: uppercase; letter-spacing: .45px; }
         td strong { font-size: 13px; }
         .badge { display: inline-block; padding: 3px 7px; border-radius: 4px; font: 10px var(--mono); font-weight: 700; }
-        .danger { background: #fee2e2; color: #b91c1c; }
-        .warning { background: #fef3c7; color: #a16207; }
-        .normal { background: #dcfce7; color: #166534; }
+        .danger, .risk-high { background: #fee2e2; color: #b91c1c; }
+        .warning, .risk-medium { background: #fef3c7; color: #a16207; }
+        .normal, .risk-low { background: #dcfce7; color: #166534; }
         .trend-up { color: #b91c1c; }
         .trend-down { color: #0369a1; }
         .trend-steady { color: var(--muted); }
         .error { margin: 14px 0; padding: 11px 12px; background: #fff3f2; border: 1px solid #e3b0ad; color: #8d332f; border-radius: 5px; }
+        .section-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin: 24px 0 10px; }
+        .section-head h2 { margin: 0; font-size: 17px; }
+        .section-head span { color: var(--muted); font-size: 11px; }
+        .model-note { margin: 10px 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
         @media (max-width: 900px) { .controls { grid-template-columns: 1fr 1fr; } .summary { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 620px) { .controls, .summary { grid-template-columns: 1fr; } .bihar-live { padding: 14px; } }
     </style>
@@ -37,7 +41,7 @@
     <header class="topbar">
         <div>
             <h1><a href="/">VARSHA<span>GUARD &#8623;</span></a></h1>
-            <p><span>BIHAR LIVE</span> &bull; Current river observation feed</p>
+            <p><span>BIHAR LIVE</span> &bull; Current river observation feed + ML district risk</p>
         </div>
         <div class="topbar-actions">
             <a class="prototype-badge" href="/">MAIN DASHBOARD</a>
@@ -79,11 +83,34 @@
                 </tbody>
             </table>
         </section>
+
+        <div class="section-head">
+            <h2>AI/ML District Flood Risk — Bihar</h2>
+            <span id="mlMeta">Loading Random Forest…</span>
+        </div>
+        <div class="model-note" id="modelNote">The engine compares live district rainfall with the historical training distribution using Random Forest, then fuses live river-level pressure. Model calibration is shown explicitly below.</div>
+        <section class="panel table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>District</th>
+                        <th>Flood Risk</th>
+                        <th>ML Probability</th>
+                        <th>24h Rain</th>
+                        <th>72h Rain</th>
+                        <th>River Signal</th>
+                        <th>Stations</th>
+                    </tr>
+                </thead>
+                <tbody id="mlBody">
+                    <tr><td colspan="7">Loading ML district predictions…</td></tr>
+                </tbody>
+            </table>
+        </section>
     </main>
 
     <script>
         let stationData = [];
-        let lastFetchAt = null;
 
         const els = {
             body: document.getElementById('stationsBody'),
@@ -96,7 +123,10 @@
             count: document.getElementById('stationCount'),
             danger: document.getElementById('dangerCount'),
             warning: document.getElementById('warningCount'),
-            rising: document.getElementById('risingCount')
+            rising: document.getElementById('risingCount'),
+            mlBody: document.getElementById('mlBody'),
+            mlMeta: document.getElementById('mlMeta'),
+            modelNote: document.getElementById('modelNote')
         };
 
         function escapeHtml(value) {
@@ -178,10 +208,9 @@
                 const data = await response.json();
                 if (!response.ok || data.success === false) throw new Error(data.error || 'Live station feed failed');
                 stationData = Array.isArray(data.stations) ? data.stations : [];
-                lastFetchAt = data.fetched_at || new Date().toISOString();
                 populateDistricts();
                 render();
-                els.meta.textContent = `LIVE • ${data.source || 'CWC/India-WRIS'} • backend fetched: ${new Date(lastFetchAt).toLocaleTimeString()} • auto-refresh: 15 min`;
+                els.meta.textContent = `LIVE • ${data.source || 'Bihar government river observations'} • backend fetched: ${new Date(data.fetched_at || Date.now()).toLocaleTimeString()} • auto-refresh: 15 min`;
             } catch (error) {
                 els.error.textContent = error.message;
                 els.error.hidden = false;
@@ -191,13 +220,46 @@
             }
         }
 
+        async function loadMlRisk() {
+            els.mlMeta.textContent = 'Running Random Forest + river fusion…';
+            try {
+                const response = await fetch('/api/bihar-live/ml-risk?ts=' + Date.now(), { cache: 'no-store' });
+                const data = await response.json();
+                if (!response.ok || data.success === false) throw new Error(data.error || 'ML risk engine failed');
+                const model = data.model || {};
+                els.mlMeta.textContent = `RF historical test accuracy ${model.historical_accuracy ?? '—'} • ROC-AUC ${model.historical_roc_auc ?? '—'} • ${model.bihar_calibrated ? 'Bihar calibrated' : 'cross-region, not Bihar calibrated'}`;
+                els.modelNote.textContent = model.warning || 'Random Forest rainfall probability fused with live river-level pressure.';
+                const rows = Array.isArray(data.districts) ? data.districts : [];
+                if (!rows.length) {
+                    els.mlBody.innerHTML = '<tr><td colspan="7">No live Bihar district rainfall data returned.</td></tr>';
+                    return;
+                }
+                els.mlBody.innerHTML = rows.map(row => {
+                    const risk = String(row.risk || 'UNKNOWN').toLowerCase();
+                    return `<tr>
+                        <td><strong>${escapeHtml(row.district)}</strong></td>
+                        <td><span class="badge risk-${risk}">${escapeHtml(row.risk)}</span></td>
+                        <td>${(Number(row.flood_probability) * 100).toFixed(1)}%</td>
+                        <td>${Number(row.rainfall_24h_mm).toFixed(1)} mm</td>
+                        <td>${Number(row.rainfall_72h_mm).toFixed(1)} mm</td>
+                        <td>${(Number(row.river_signal) * 100).toFixed(1)}%</td>
+                        <td>${Number(row.station_count)}</td>
+                    </tr>`;
+                }).join('');
+            } catch (error) {
+                els.mlMeta.textContent = 'ML engine unavailable.';
+                els.mlBody.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message)}</td></tr>`;
+            }
+        }
+
         els.search.addEventListener('input', render);
         els.district.addEventListener('change', render);
         els.level.addEventListener('change', render);
-        els.refresh.addEventListener('click', loadStations);
+        els.refresh.addEventListener('click', () => { loadStations(); loadMlRisk(); });
 
         loadStations();
-        setInterval(loadStations, 15 * 60 * 1000);
+        loadMlRisk();
+        setInterval(() => { loadStations(); loadMlRisk(); }, 15 * 60 * 1000);
     </script>
 </body>
 </html>
