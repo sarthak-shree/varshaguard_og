@@ -1,0 +1,22 @@
+{
+  "model_name": "XGBoost",
+  "target": "heavy_rain_next_24h",
+  "prediction_horizon_hours": 24,
+  "target_definition": "Next calendar day district rainfall maximum >= 64.5 mm, using the IMD heavy-rain threshold.",
+  "calibration": "isotonic",
+  "training_period": ["1991-01-02", "2009-06-08"],
+  "calibration_period": ["2009-06-12", "2015-04-26"],
+  "test_period": ["2015-04-28", "2020-12-17"],
+  "training_rows": 30938,
+  "calibration_rows": 10225,
+  "test_rows": 10479,
+  "test_metrics": {
+    "pr_auc": 0.1735689563,
+    "roc_auc": 0.6946660500,
+    "brier": 0.0669851527
+  },
+  "source": "User-supplied Bihar historical rainfall dataset processed to district-day features",
+  "live_source": "IMD-derived public district rainfall archive used by the live endpoint",
+  "important_limitation": "This is a calibrated heavy-rainfall probability model, not a calibrated flood probability model. The overlapping rainfall+river flood-event records supplied for 2021-2026 contain too few positive events for a defensible joint flood classifier.",
+  "inundation": "The live dashboard reports a hydrology-based spatial proxy only; no DEM, floodplain geometry, hydraulic solver, or validated inundation-depth model is included."
+}
