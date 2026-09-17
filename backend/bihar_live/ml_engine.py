@@ -26,7 +26,9 @@ import requests
 from .data_service import fetch_live_data
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-MODEL_B64_PATH = BASE_DIR / "models" / "bihar_flood_24h_rainfall_model.pkl.b64"
+# Compact artifact is intentionally used for serverless deployment. It is a
+# valid joblib pickle encoded as base64 (not zlib-compressed).
+MODEL_B64_PATH = BASE_DIR / "models" / "bihar_flood_24h_rainfall_model_compact.pkl.b64"
 RAINFALL_API = "https://sayantan-aquacarta.github.io/rainfall-pipeline/api/by-date/{date}.json"
 MODEL_FEATURES = (
     "rainfall_mm", "rainfall_max_mm", "rainfall_min_mm", "rainfall_3d_sum_mm",
@@ -62,7 +64,7 @@ def _payload_rows(payload: Any) -> list[dict]:
 def _load_artifact() -> dict:
     if not MODEL_B64_PATH.exists():
         raise FileNotFoundError("Bihar 24h flood model artifact is not installed.")
-    raw = base64.b64decode(MODEL_B64_PATH.read_text(encoding="utf-8").strip())
+    raw = base64.b64decode(MODEL_B64_PATH.read_text(encoding="utf-8").strip(), validate=True)
     artifact = joblib.load(io.BytesIO(raw))
     required = {"model", "calibrator", "features", "model_name", "target", "horizon_hours"}
     missing = required.difference(artifact)
