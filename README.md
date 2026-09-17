@@ -2,61 +2,114 @@
 
 AI/ML-based integrated heavy-rainfall early-warning and inundation-prediction prototype for SIH26071.
 
-> **Prototype status:** This repository is a demonstration system, not an operational government warning service. Probabilities and inundation values are prototype outputs and must not be used for safety-critical decisions.
+> **Prototype status:** This is a research/demo system, not an operational government warning service. Do not use prototype probabilities or inundation proxies for safety-critical decisions.
 
-## Architecture
-
-```text
-Historical rainfall dataset
-        |
-        +--> Daily feature engineering --> Random Forest --> rainfall flood probability
-                                                           |
-Live Bihar district rainfall ------------------------------+
-                                                           |
-Live Bihar river observations --> threshold/rise signal --+--> district risk fusion
-                                                           |
-                                                           +--> Bihar dashboard
-
-Flask API --> Leaflet/Chart.js dashboard
-```
-
-The original rainfall ML prototype supports the two study regions present in the processed training dataset: **Assam** and **Uttarakhand**. Bihar Live now has a district-level Random Forest inference path that converts the historical rainfall table into daily training examples and compares live Bihar district rainfall against that learned historical pattern. Live Bihar river observations are fused as a separate hydrological signal.
-
-**Important:** the current historical rainfall table is not documented as a Bihar-labeled flood-outcome dataset. Therefore the Bihar Random Forest is explicitly reported as **cross-region and not Bihar-calibrated**. Do not describe its probability as a validated Bihar probability until Bihar historical flood outcomes are added and the model is retrained/evaluated on a Bihar-specific time split.
-
-## Project Structure
+## Bihar Live: current architecture
 
 ```text
-backend/
-  app.py
-  model.py
-  prediction.py
-  risk.py
-  train_model.py
-  bihar_live/
-    data_service.py
-    forecast_engine.py
-    ml_engine.py
+Live Bihar district rainfall (last 14 days)
+                 |
+                 v
+       Same feature schema as training
+                 |
+                 v
+  Calibrated Bihar flood-event ML model
+                 |
+                 +----> P(documented flood-event start in next 24h)
+                 |
+Live Bihar river level + warning/danger + 1h trend
+                 |
+                 v
+        Hydrologic confirmation
+                 |
+                 +----> Integrated LOW / MEDIUM / HIGH alert
+                 |
+                 v
+       Inundation spatial proxy
 
-data/
-  processed/
-    flood_warning_ml_ready_v2.csv
-
-models/
-  flood_warning_random_forest_v2.pkl
-
-frontend/
-  index.html
-  bihar-live.html
-  script.js
-  style.css
-
-requirements.txt
-vercel.json
-README.md
+Flask API --> Leaflet dashboard
 ```
 
-## Install
+The Bihar endpoint now has a real **flood-event target** rather than relabelling a heavy-rain classifier as flood probability. The saved model is trained from the supplied historical Bihar rainfall table and the supplied India flood inventory. The live endpoint fetches current district rainfall and current Bihar river observations at request time.
+
+### Important data limitation
+
+The supplied historical rainfall and river telemetry periods overlap only sparsely at the district/event level. There are not enough overlapping 24-hour flood-event labels to honestly train a joint rainfall+river supervised classifier. Therefore the calibrated ML probability is rainfall/flood-inventory trained, while current river level, warning/danger status and 1-hour trend are kept as independent hydrologic evidence for the integrated alert. The API does **not** pretend that river features were learned when they were not.
+
+The supplied files also do not contain a Bihar DEM, complete floodplain geometry, or hydraulic simulation inputs. Inundation extent/depth shown by the dashboard is consequently a clearly labelled spatial proxy, not a physical flood map.
+
+## Bihar 24-hour ML endpoint
+
+```http
+GET /api/bihar-live/ml-risk
+```
+
+Optional district forecast:
+
+```http
+GET /api/bihar-live/forecast?district=PATNA
+```
+
+or:
+
+```http
+POST /api/bihar-live/forecast
+Content-Type: application/json
+
+{"district":"PATNA"}
+```
+
+The response contains:
+
+- `flood_probability` and `flood_probability_percent`
+- prediction horizon (`24` hours)
+- calibrated model metadata and validation metrics
+- current rainfall features and data timestamp
+- live river level, warning/danger counts and 1-hour rise
+- `river_confirmation` (`NORMAL`, `RISING`, `WARNING`, or `DANGER`)
+- integrated `risk` state
+- explicitly labelled inundation proxy
+- source URLs and live-fetch timestamp
+
+## Model target
+
+The Bihar model target is:
+
+```text
+P(documented Bihar flood event starts in the target district within the next 24 hours)
+```
+
+The historical flood inventory is used only as the event label source. The trainer uses chronological train/calibration/test periods and isotonic calibration; the final test period is not used to fit the calibrator.
+
+## Data and training
+
+The runtime model artifact is stored at:
+
+```text
+models/bihar_flood_24h_rainfall_model.pkl.b64
+```
+
+The artifact is loaded at runtime and the API never retrains the model on a request.
+
+The current model was trained offline from the supplied `bihar_historical_rainfall_ml_ready.csv` and `IndiaFloodInventory.csv` assets. RF/XGBoost comparison was performed during model development; the saved compact artifact contains the selected XGBoost model and isotonic calibrator.
+
+Because the available historical labels are event-inventory records rather than a dense operational flood-observation series, validation metrics should be treated as prototype research diagnostics, not evidence of operational accuracy.
+
+## SIH26071 expansion path
+
+The problem statement calls for integration of satellite, radar, observational weather and numerical weather prediction inputs. The current repository does not contain sufficient live/training assets for all of those channels. The architecture is therefore prepared for additional feature groups without fabricating them.
+
+To move from this prototype to a stronger SIH26071 implementation, add:
+
+1. aligned historical rainfall + river + flood/inundation labels across more Bihar districts and years;
+2. satellite precipitation features;
+3. Doppler-radar precipitation/echo features;
+4. NWP/QPF forecast features for the next 24 hours;
+5. Bihar DEM and floodplain/river geometry;
+6. observed flood-extent labels for spatial inundation validation;
+7. rolling backtests and per-district calibration/skill reporting.
+
+## Run locally
 
 ```bash
 python -m venv .venv
@@ -78,65 +131,7 @@ Then:
 
 ```bash
 pip install -r requirements.txt
-```
-
-## Train the original ML model
-
-Run this from the repository root:
-
-```bash
-python backend/train_model.py
-```
-
-The trainer performs an 80/20 train/test split and reports accuracy and ROC-AUC when the test set contains both classes. The saved model is written to:
-
-```text
-models/flood_warning_random_forest_v2.pkl
-```
-
-## Bihar Live Random Forest engine
-
-The Bihar ML endpoint is:
-
-```http
-GET /api/bihar-live/ml-risk
-```
-
-It performs the following pipeline on the backend:
-
-1. Reads the historical rainfall training table.
-2. Aggregates the hourly records into daily training examples.
-3. Trains a `RandomForestClassifier` using rainfall accumulation/intensity features plus month/monsoon timing.
-4. Fetches the latest three daily Bihar district rainfall snapshots from the open IMD rainfall mirror.
-5. Builds matching 24h/48h/72h rainfall features for each Bihar district.
-6. Fetches live Bihar river observations from the Bihar FMIS / WRD sources.
-7. Calculates a separate river threshold/rise pressure per district.
-8. Fuses rainfall-model probability and river pressure into the displayed district risk.
-
-The response includes the historical holdout accuracy/ROC-AUC, training/test row counts, live rainfall values, river signal, and an explicit `bihar_calibrated` flag.
-
-### Current limitation
-
-The Random Forest can only be called Bihar-calibrated after it has been trained and evaluated using historical **Bihar** flood outcomes. The repository's current processed dataset is documented as Assam/Uttarakhand study data. The current Bihar endpoint therefore provides a **cross-region prototype signal**, not a validated operational Bihar forecast.
-
-## Bihar Live river endpoint
-
-```http
-GET /api/bihar-live/stations
-```
-
-The backend uses Bihar FMIS first and a Bihar WRD CWC-station table as fallback. It does not silently serve the old dated rainfall CSV when the live source fails.
-
-## Run the API and dashboard
-
-```bash
 python backend/app.py
-```
-
-Open:
-
-```text
-http://127.0.0.1:5001/
 ```
 
 The Flask app serves the dashboard and API from the same origin.
