@@ -1,0 +1,28 @@
+{
+  "model_type": "logistic_regression",
+  "model_version": "bihar-river-risk-v0.3.0",
+  "horizon_hours": 24,
+  "target_definition": "district flood event starts within next 24 hours",
+  "feature_names": ["level", "rise_1h", "rise_3h", "rise_6h", "rise_12h", "rise_24h", "mean_6h", "mean_24h", "std_24h", "max_24h", "level_minus_mean24", "level_over_mean24", "hour_sin", "hour_cos", "month_sin", "month_cos"],
+  "scaler_mean": [48.46889229319049, 0.0010801265057482587, 0.003017914069142513, 0.006772041551524363, 0.013621207516017892, 0.024801696083777484, 48.46781216652495, 48.46483620792197, 0.024930184047868724, 48.46889229319049, 0.004056085269541401, 1.000014971048233, -0.000342009395839098, -0.020505899882299068, 0.053371291273145854, -0.024866243580742086],
+  "scaler_scale": [55.05075666387027, 0.00845896892024865, 0.017942789472739963, 0.03023460791695518, 0.06325802142567256, 0.09952946282056004, 55.04938127668434, 55.05198106433552, 0.11540593933514367, 55.05075666387027, 0.13272314677090747, 0.000048092588012, 0.7032419779784965, 0.7106547062452216, 0.7509762376008923, 0.6576989172538058],
+  "coef": [0.16651893773839693, -0.11155708457760083, -0.5962156206238447, -0.48236090715800256, -0.42045000351132045, -0.7395582524691051, 0.16751043315249908, 0.17134407820517641, -0.5001882825455215, 0.16651893773839693, -0.5944772092269653, -0.5912509785743615, 0.011414945756953478, 0.03309950212100526, 10.905208764837933, -5.610366238004063],
+  "intercept": -14.198002953216204,
+  "thresholds": {"high": 0.70, "medium": 0.40},
+  "calibrated": false,
+  "training_period": ["2021-09-08", "2023-12-31"],
+  "training_rows": 3738,
+  "positive_training_rows": 178,
+  "validation_period": ["2023-01-01", "2023-12-31"],
+  "validation_rows": 175334,
+  "validation_positive_rows": 48,
+  "validation_average_precision": 0.0005172672481142411,
+  "validation_roc_auc": 0.7368924928402725,
+  "data_quality": {
+    "historical_river_rows": 821160,
+    "historical_stations": 17,
+    "flood_inventory_bihar_event_records": 6,
+    "flood_inventory_district_associations": 1286
+  },
+  "note": "Research prototype trained from the supplied Bihar river telemetry and Bihar flood inventory. The flood inventory has only six Bihar event records from 2021-2023, so the score is not calibrated as an absolute real-world probability. Add more labeled flood events and rainfall/upstream variables before operational deployment."
+}
