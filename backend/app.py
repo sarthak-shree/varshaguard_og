@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timezone
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, make_response
 from flask_cors import CORS
 
 try:
@@ -19,6 +19,7 @@ try:
         build_24h_flood_forecast,
         build_24h_inundation_forecast,
     )
+    from .bihar_live.data_service import fetch_live_data
 except ImportError:
     from model import load_model
     from prediction import (
@@ -34,6 +35,7 @@ except ImportError:
         build_24h_flood_forecast,
         build_24h_inundation_forecast,
     )
+    from bihar_live.data_service import fetch_live_data
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -49,11 +51,21 @@ def now_iso():
 
 
 def error_response(message, status_code=400):
-    return jsonify({
+    response = jsonify({
         "success": False,
         "error": message,
         "timestamp": now_iso(),
-    }), status_code
+    })
+    response.status_code = status_code
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
+
+
+def no_store_json(payload):
+    response = make_response(jsonify(payload))
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    return response
 
 
 def get_region_from_request():
@@ -71,7 +83,7 @@ def health():
     data_available = os.path.exists(DATA_PATH)
     ready = model_info["ok"] and data_available
 
-    return jsonify({
+    return no_store_json({
         "status": "ok" if ready else "error",
         "service": "VARSHAGUARD API",
         "model": "LOADED" if model_info["ok"] else "ERROR",
@@ -84,7 +96,7 @@ def health():
 
 @app.route("/api/regions")
 def regions():
-    return jsonify({"success": True, "regions": REGIONS})
+    return no_store_json({"success": True, "regions": REGIONS})
 
 
 @app.route("/api/flood-risk")
@@ -109,7 +121,7 @@ def flood_risk():
         "is_monsoon": int(record.get("is_monsoon", 0)),
     }
 
-    return jsonify({
+    return no_store_json({
         "success": True,
         "region": region,
         "station": record.get("station", "Prototype station"),
@@ -136,7 +148,7 @@ def flood_risk_map():
     if error:
         return error_response(error, 500)
 
-    return jsonify({
+    return no_store_json({
         "success": True,
         "region": region,
         "prediction_horizon_hours": model_info["prediction_horizon_hours"],
@@ -156,7 +168,7 @@ def rainfall():
     if error:
         return error_response(error, 500)
 
-    return jsonify({
+    return no_store_json({
         "success": True,
         "region": region,
         "station": station,
@@ -174,7 +186,7 @@ def history():
     if error:
         return error_response(error, 500)
 
-    return jsonify({
+    return no_store_json({
         "success": True,
         "region": region,
         "station": station,
@@ -184,19 +196,36 @@ def history():
 
 @app.route("/api/stations")
 def stations():
-    region, station, error = get_region_from_request()
-    if error:
-        return error_response(error, 400)
+    region = request.args.get("region", "Assam").strip()
+    if region not in REGIONS:
+        return error_response("Unsupported region", 400)
+
+    # Bihar Live is backed by a real-time source; it must never be served from
+    # the dated rainfall-training CSV used by the ML study regions.
+    if region == "Bihar":
+        try:
+            live = fetch_live_data()
+            return no_store_json(live)
+        except Exception as error:
+            return error_response("Live Bihar station feed unavailable: " + str(error), 502)
 
     rows, error = get_stations(region)
     if error:
         return error_response(error, 500)
 
-    return jsonify({
+    return no_store_json({
         "success": True,
         "region": region,
         "stations": rows,
     })
+
+
+@app.route("/api/bihar-live/stations")
+def bihar_live_stations():
+    try:
+        return no_store_json(fetch_live_data())
+    except Exception as error:
+        return error_response("Live Bihar station feed unavailable: " + str(error), 502)
 
 
 @app.route("/api/bihar-live/forecast", methods=["POST"])
@@ -209,7 +238,7 @@ def bihar_live_forecast():
     risk_probability = forecast.get("probability")
     inundation = build_24h_inundation_forecast(payload, risk_probability)
 
-    return jsonify({
+    return no_store_json({
         "success": True,
         "region": "Bihar",
         "generated_at": now_iso(),
