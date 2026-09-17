@@ -1,8 +1,9 @@
 """Transparent 24-hour operational flood-risk calculation for Bihar Live.
 
-This is an observation-derived risk score, not a calibrated probability. It
-projects the latest river level forward using the observed one-hour change and
-combines that projection with warning/danger thresholds.
+The displayed percentage is an operational risk score, not a calibrated
+probability of flooding. It uses the latest observed river level, warning and
+danger thresholds, and the observed one-hour level change to project the
+current level 24 hours forward.
 """
 
 from __future__ import annotations
@@ -30,29 +31,28 @@ def classify_level(water_level_m, warning_level_m, danger_level_m) -> str:
 
 
 def _risk_score(level, warning, danger, rise_1h):
-    """Return a 0-100 operational score using only observed river inputs."""
+    """Return a bounded 0-100 operational score from observed inputs."""
     if level is None:
         return None
 
-    # Absolute threshold position is the strongest signal.
-    if danger is not None and danger > warning if warning is not None else danger is not None:
+    if danger is not None and warning is not None and danger > warning:
         if level >= danger:
             base = 90.0
-        elif warning is not None and warning < danger:
-            base = 45.0 + 45.0 * max(0.0, (level - warning) / (danger - warning))
+        elif level >= warning:
+            base = 45.0 + 45.0 * ((level - warning) / (danger - warning))
         else:
-            base = 45.0
-    elif warning is not None and level >= warning:
-        base = 60.0
-    elif warning is not None and warning > 0:
-        base = 45.0 * max(0.0, level / warning)
+            base = 45.0 * max(0.0, level / warning) if warning > 0 else 20.0
+    elif danger is not None:
+        base = 90.0 if level >= danger else 45.0 * max(0.0, level / danger)
+    elif warning is not None:
+        base = 60.0 if level >= warning else (45.0 * max(0.0, level / warning) if warning > 0 else 20.0)
     else:
         base = 20.0
 
-    # Rising water increases short-horizon operational risk; falling water
-    # reduces it slightly. The adjustment is deliberately bounded.
+    # Recent rise/fall is a short-horizon signal. Keep its influence bounded.
     if rise_1h is not None:
         base += max(-10.0, min(15.0, rise_1h * 20.0))
+
     return round(max(0.0, min(100.0, base)), 1)
 
 
@@ -63,9 +63,8 @@ def build_risk_context(record: dict) -> dict:
     previous = _number(record.get("water_level_1h_before_m"))
     rise_1h = level - previous if level is not None and previous is not None else None
 
-    # A simple 24-hour projection: repeat the latest observed hourly change.
-    # This is intentionally labelled as a projection, not a forecast model.
-    projected_24h = level + (rise_1h * 24.0) if level is not None and rise_1h is not None else None
+    # Linear 24-hour projection from the latest observed hourly change.
+    projected_24h = level + rise_1h * 24.0 if level is not None and rise_1h is not None else None
     score = _risk_score(level, warning, danger, rise_1h)
 
     if score is None:
@@ -84,8 +83,11 @@ def build_risk_context(record: dict) -> dict:
         "horizon_hours": 24,
         "risk_level": risk,
         "risk_score_percent": score,
+        # Kept for the existing frontend contract. It is explicitly NOT a
+        # statistical probability; probability_available remains false.
         "probability": None,
         "probability_available": False,
+        "available": score is not None,
         "calibrated": False,
         "water_level_m": level,
         "warning_level_m": warning,
