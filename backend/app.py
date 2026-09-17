@@ -20,6 +20,7 @@ try:
         build_24h_inundation_forecast,
     )
     from .bihar_live.data_service import fetch_live_data
+    from .bihar_live.ml_engine import build_bihar_district_risk
 except ImportError:
     from model import load_model
     from prediction import (
@@ -36,6 +37,7 @@ except ImportError:
         build_24h_inundation_forecast,
     )
     from bihar_live.data_service import fetch_live_data
+    from bihar_live.ml_engine import build_bihar_district_risk
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -200,15 +202,6 @@ def stations():
     if region not in REGIONS:
         return error_response("Unsupported region", 400)
 
-    # Bihar Live is backed by a real-time source; it must never be served from
-    # the dated rainfall-training CSV used by the ML study regions.
-    if region == "Bihar":
-        try:
-            live = fetch_live_data()
-            return no_store_json(live)
-        except Exception as error:
-            return error_response("Live Bihar station feed unavailable: " + str(error), 502)
-
     rows, error = get_stations(region)
     if error:
         return error_response(error, 500)
@@ -226,6 +219,17 @@ def bihar_live_stations():
         return no_store_json(fetch_live_data())
     except Exception as error:
         return error_response("Live Bihar station feed unavailable: " + str(error), 502)
+
+
+@app.route("/api/bihar-live/ml-risk")
+def bihar_live_ml_risk():
+    try:
+        result = build_bihar_district_risk()
+        if result.get("success") is False:
+            return error_response(result.get("error", "Bihar ML risk engine unavailable"), 502)
+        return no_store_json(result)
+    except Exception as error:
+        return error_response("Bihar ML risk engine unavailable: " + str(error), 502)
 
 
 @app.route("/api/bihar-live/forecast", methods=["POST"])
