@@ -9,6 +9,7 @@ dependencies = [
     "pandas",
     "scikit-learn",
     "joblib",
+    "requests>=2.32,<3",
 ]
 
 [tool.vercel]
