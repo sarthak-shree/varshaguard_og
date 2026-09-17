@@ -4,262 +4,290 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VARSHAGUARD — Bihar Live</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#8623;</text></svg>">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="style.css">
     <style>
-        .bihar-live { max-width: 1320px; margin: 0 auto; padding: 22px; }
-        .controls { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 10px; margin-bottom: 18px; }
-        .controls input, .controls select, .controls button { min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel2); color: var(--text); font: inherit; }
-        .controls button { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; cursor: pointer; }
-        .controls button:disabled { opacity: .65; cursor: wait; }
-        .live-meta { margin: -8px 0 14px; color: var(--muted); font-size: 12px; }
-        .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
-        .summary-card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
-        .summary-card .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .55px; }
-        .summary-card .value { margin-top: 4px; font: 700 28px var(--mono); }
-        .table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; }
-        th { background: var(--panel2); color: var(--muted); font: 11px var(--mono); text-transform: uppercase; letter-spacing: .45px; }
-        td strong { font-size: 13px; }
-        .badge { display: inline-block; padding: 3px 7px; border-radius: 4px; font: 10px var(--mono); font-weight: 700; }
-        .danger, .risk-high { background: #fee2e2; color: #b91c1c; }
-        .warning, .risk-medium { background: #fef3c7; color: #a16207; }
-        .normal, .risk-low { background: #dcfce7; color: #166534; }
-        .trend-up { color: #b91c1c; }
-        .trend-down { color: #0369a1; }
-        .trend-steady { color: var(--muted); }
-        .error { margin: 14px 0; padding: 11px 12px; background: #fff3f2; border: 1px solid #e3b0ad; color: #8d332f; border-radius: 5px; }
-        .section-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin: 24px 0 10px; }
-        .section-head h2 { margin: 0; font-size: 17px; }
-        .section-head span { color: var(--muted); font-size: 11px; }
-        .model-note { margin: 10px 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
-        @media (max-width: 900px) { .controls { grid-template-columns: 1fr 1fr; } .summary { grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 620px) { .controls, .summary { grid-template-columns: 1fr; } .bihar-live { padding: 14px; } }
+        .bihar-page { max-width: 1320px; margin: 0 auto; padding: 22px; }
+        .bihar-layout { display:grid; grid-template-columns:300px 1fr; gap:18px; }
+        .sidebar,.main-area { display:flex; flex-direction:column; gap:18px; }
+        .panel,.risk-card { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:17px 18px; }
+        .panel h3 { margin:0 0 13px; font-size:15px; font-weight:600; }
+        .selector-label { display:block; margin-bottom:7px; color:var(--muted); font-size:13px; }
+        .station-label { margin-top:16px; }
+        .selector { width:100%; padding:10px 11px; background:var(--panel2); border:1px solid var(--line); border-radius:5px; color:var(--text); font-size:14px; }
+        .bihar-risk-card { color:#fff; }
+        .bihar-risk-low { background:var(--low); }
+        .bihar-risk-medium { background:var(--medium); }
+        .bihar-risk-high { background:var(--high); }
+        .bihar-risk-unknown { background:#667280; }
+        .bihar-risk-card h2 { margin:7px 0 3px; font-size:34px; }
+        .probability-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:5px; font-size:11px; text-transform:uppercase; letter-spacing:.45px; opacity:.9; }
+        .probability-head strong { font-family:var(--mono); font-size:24px; line-height:1; }
+        .probability-bar { height:12px; margin-top:9px; background:rgba(255,255,255,.26); border-radius:999px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.2); }
+        .probability-fill { width:0; height:100%; background:#fff; border-radius:999px; transition:width .35s ease; }
+        .probability-scale { display:flex; justify-content:space-between; margin-top:5px; color:rgba(255,255,255,.78); font:9px var(--mono); }
+        .risk-message { margin:9px 0 0; font-size:13px; }
+        .meta-divider { margin-top:15px; padding-top:11px; border-top:1px solid rgba(255,255,255,.35); font-size:12px; }
+        .selected-district { margin-top:8px; font-size:12px; }
+        .status-row { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; }
+        .status-row span { color:var(--muted); }
+        .status-row:last-child { border:0; }
+        .status-row strong { color:var(--cyan); font-size:12px; font-family:var(--mono); }
+        .map-section { height:320px; overflow:hidden; border:1px solid var(--line); border-radius:6px; background:var(--panel); position:relative; }
+        .map-section #biharMap,.map-section .leaflet-container { height:100%!important; min-height:0; display:block; }
+        #biharMap { width:100%; }
+        .bihar-grid { display:grid; grid-template-columns:1.2fr 1fr; gap:18px; }
+        .chart-container { position:relative; height:290px; width:100%; }
+        .plain-text { color:var(--muted); line-height:1.6; font-size:13px; }
+        .feature-list { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:13px; }
+        .feature { padding:10px; background:var(--panel2); border-radius:5px; border:1px solid var(--line); }
+        .feature span { display:block; color:var(--muted); font-size:11px; font-family:var(--mono); }
+        .feature strong { display:block; margin-top:4px; font-family:var(--mono); font-size:14px; color:var(--cyan); }
+        .metric-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
+        .metric { padding:10px 11px; background:var(--panel2); border:1px solid var(--line); border-radius:5px; }
+        .metric span { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.5px; }
+        .metric strong { display:block; margin-top:3px; font:700 16px var(--mono); color:var(--text); }
+        .district-table-wrap { overflow:auto; }
+        .district-table { min-width:760px; }
+        .district-table th,.district-table td { padding:10px 11px; border-bottom:1px solid var(--line); text-align:left; font-size:11px; white-space:nowrap; }
+        .district-table th { background:var(--panel2); color:var(--muted); font:10px var(--mono); text-transform:uppercase; letter-spacing:.45px; }
+        .district-table td strong { font-size:12px; }
+        .badge { display:inline-block; padding:3px 7px; border-radius:4px; font:700 10px var(--mono); }
+        .badge.danger,.badge.high { background:#fee2e2; color:#b91c1c; }
+        .badge.warning,.badge.medium { background:#fef3c7; color:#a16207; }
+        .badge.normal,.badge.low { background:#dcfce7; color:#166534; }
+        .badge.unknown { background:#e5e7eb; color:#4b5563; }
+        .section-head { display:flex; justify-content:space-between; gap:12px; align-items:baseline; margin:24px 0 10px; }
+        .section-head h2 { margin:0; font-size:17px; }
+        .section-head span { color:var(--muted); font-size:11px; }
+        .inline-tools { display:flex; gap:10px; align-items:center; margin-bottom:10px; }
+        .inline-tools .selector { max-width:220px; }
+        .error { margin:14px 0; padding:11px 12px; background:#fff3f2; border:1px solid #e3b0ad; color:#8d332f; border-radius:5px; }
+        .subtle { color:var(--muted); font-size:11px; }
+        .source-line { margin-top:12px; color:var(--muted); font-size:10px; line-height:1.5; }
+        .no-data { padding:18px 0; color:var(--muted); text-align:center; font-size:12px; }
+        .map-risk-legend { position:absolute; left:12px; bottom:12px; z-index:1000; padding:9px 11px; background:rgba(255,255,255,.96); border:1px solid var(--line); border-radius:6px; box-shadow:0 2px 8px rgba(23,33,43,.18); min-width:142px; font-size:11px; color:var(--text); }
+        .map-risk-legend-title { margin-bottom:6px; font-weight:700; text-transform:uppercase; letter-spacing:.55px; }
+        .map-risk-legend-item { display:flex; align-items:center; gap:7px; margin-top:5px; white-space:nowrap; }
+        .map-risk-dot { width:10px; height:10px; border-radius:50%; display:inline-block; border:1px solid rgba(23,33,43,.2); flex:0 0 10px; }
+        .map-risk-low { background:#34D399; }
+        .map-risk-medium { background:#FBBF24; }
+        .map-risk-high { background:#F87171; }
+        @media(max-width:980px){ .bihar-layout,.bihar-grid{grid-template-columns:1fr}.metric-grid{grid-template-columns:1fr 1fr}.map-section{height:340px} }
+        @media(max-width:640px){ .bihar-page{padding:14px}.metric-grid{grid-template-columns:1fr}.feature-list{grid-template-columns:1fr}.map-section{height:320px} }
     </style>
 </head>
 <body>
     <header class="topbar">
         <div>
             <h1><a href="/">VARSHA<span>GUARD &#8623;</span></a></h1>
-            <p><span>BIHAR LIVE</span> &bull; Current river observation feed + ML district risk</p>
+            <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
         </div>
         <div class="topbar-actions">
             <a class="prototype-badge" href="/">MAIN DASHBOARD</a>
         </div>
     </header>
 
-    <main class="bihar-live">
-        <section class="panel">
-            <div class="controls">
-                <input id="stationSearch" type="search" placeholder="Station, river or district">
-                <select id="districtSelect"><option value="">All Bihar</option></select>
-                <select id="levelSelect"><option value="">All levels</option><option value="danger">Danger</option><option value="warning">Warning</option><option value="normal">Normal</option></select>
-                <button id="refreshButton" type="button">↻ REFRESH</button>
-            </div>
-            <div class="live-meta" id="liveMeta">Fetching latest Bihar station data…</div>
-            <div id="errorBox" class="error" hidden></div>
-        </section>
+    <main class="bihar-page">
+        <div class="bihar-layout">
+            <aside class="sidebar">
+                <section class="panel hoverbx">
+                    <label class="selector-label" for="districtSelect">Select District</label>
+                    <select id="districtSelect" class="selector"><option value="">Loading districts...</option></select>
+                    <label class="selector-label station-label" for="stationSelect">Select Station</label>
+                    <select id="stationSelect" class="selector"><option value="">All Bihar stations</option></select>
+                </section>
 
-        <section class="summary">
-            <div class="summary-card"><div class="label">Monitored Stations</div><div class="value" id="stationCount">—</div></div>
-            <div class="summary-card"><div class="label">Danger Level</div><div class="value" id="dangerCount">—</div></div>
-            <div class="summary-card"><div class="label">Warning Level</div><div class="value" id="warningCount">—</div></div>
-            <div class="summary-card"><div class="label">Rising Trend 1h</div><div class="value" id="risingCount">—</div></div>
-        </section>
+                <section id="riskCard" class="risk-card bihar-risk-card bihar-risk-unknown hoverbx">
+                    <p class="small-title">Flood Risk</p>
+                    <h2 id="riskLevel">Loading...</h2>
+                    <div class="probability-head"><span>Flood probability</span><strong id="probabilityValue">--%</strong></div>
+                    <div class="probability-bar"><div id="probabilityFill" class="probability-fill"></div></div>
+                    <div class="probability-scale"><span>0%</span><span>50%</span><span>100%</span></div>
+                    <p id="riskMessage" class="risk-message">Checking latest Bihar conditions.</p>
+                    <div class="meta-divider">Prediction horizon: <span id="horizonValue">72</span> hours</div>
+                    <div class="selected-district">District: <strong id="selectedDistrictName">All Bihar</strong></div>
+                    <div class="selected-district">Stations: <strong id="selectedStationName">—</strong></div>
+                </section>
 
-        <section class="panel table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Station</th>
-                        <th>District</th>
-                        <th>Level</th>
-                        <th>Threshold</th>
-                        <th>Trend</th>
-                    </tr>
-                </thead>
-                <tbody id="stationsBody">
-                    <tr><td colspan="5">Loading live observations…</td></tr>
-                </tbody>
-            </table>
-        </section>
+                <section class="panel hoverbx">
+                    <h3>System Status</h3>
+                    <div class="status-row"><span>Backend API</span><strong id="apiStatus">CHECKING</strong></div>
+                    <div class="status-row"><span>Live River Feed</span><strong id="riverStatus">CHECKING</strong></div>
+                    <div class="status-row"><span>ML Model</span><strong id="modelStatus">CHECKING</strong></div>
+                    <div class="status-row"><span>Risk API</span><strong id="riskStatus">CHECKING</strong></div>
+                    <div class="source-line" id="sourceLine">Live government river observations + live district rainfall feed.</div>
+                </section>
+            </aside>
 
-        <div class="section-head">
-            <h2>AI/ML District Flood Risk — Bihar</h2>
-            <span id="mlMeta">Loading Random Forest…</span>
+            <section class="main-area">
+                <section class="map-section hoverbx">
+                    <div id="biharMap"></div>
+                    <div class="map-risk-legend">
+                        <div class="map-risk-legend-title">District risk</div>
+                        <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-low"></span>LOW</div>
+                        <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-medium"></span>MEDIUM</div>
+                        <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-high"></span>HIGH</div>
+                    </div>
+                </section>
+
+                <section class="bihar-grid">
+                    <div class="panel hoverbx">
+                        <h3>Recent Rainfall Trend</h3>
+                        <div class="chart-container"><canvas id="rainfallChart"></canvas></div>
+                    </div>
+                    <div class="panel hoverbx">
+                        <h3>Why This Warning?</h3>
+                        <p id="modelNote" class="plain-text">The Bihar Live engine combines live district rainfall with observed river-level pressure. The probability is a prototype risk signal and should not be treated as a guaranteed flood forecast.</p>
+                        <div id="featureList" class="feature-list"></div>
+                    </div>
+                </section>
+
+                <section class="panel hoverbx">
+                    <div class="section-head">
+                        <h2>AI/ML District Flood Risk — Bihar</h2>
+                        <span id="mlMeta">Loading risk model…</span>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric"><span>Districts</span><strong id="districtCount">—</strong></div>
+                        <div class="metric"><span>High Risk</span><strong id="highCount">—</strong></div>
+                        <div class="metric"><span>Medium Risk</span><strong id="mediumCount">—</strong></div>
+                        <div class="metric"><span>Updated</span><strong id="updatedAt">—</strong></div>
+                    </div>
+                </section>
+
+                <section class="panel district-table-wrap hoverbx">
+                    <table class="district-table">
+                        <thead>
+                            <tr>
+                                <th>District</th>
+                                <th>Flood Risk</th>
+                                <th>Probability</th>
+                                <th>24h Rain</th>
+                                <th>72h Rain</th>
+                                <th>River Signal</th>
+                                <th>Stations</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mlBody"><tr><td colspan="7" class="no-data">Loading live Bihar district predictions…</td></tr></tbody>
+                    </table>
+                </section>
+
+                <section class="panel hoverbx">
+                    <h3>Live River Observations</h3>
+                    <div class="district-table-wrap">
+                        <table class="district-table">
+                            <thead>
+                                <tr>
+                                    <th>Station</th>
+                                    <th>District</th>
+                                    <th>River</th>
+                                    <th>Water Level</th>
+                                    <th>Threshold</th>
+                                    <th>Status</th>
+                                    <th>Trend</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stationsBody"><tr><td colspan="7" class="no-data">Loading live station observations…</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div id="liveMeta" class="subtle" style="margin-top:10px;">Fetching latest Bihar station data…</div>
+                </section>
+
+                <div id="errorBox" class="error" hidden></div>
+            </section>
         </div>
-        <div class="model-note" id="modelNote">The engine compares live district rainfall with the historical training distribution using Random Forest, then fuses live river-level pressure. Model calibration is shown explicitly below.</div>
-        <section class="panel table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>District</th>
-                        <th>Flood Risk</th>
-                        <th>ML Probability</th>
-                        <th>24h Rain</th>
-                        <th>72h Rain</th>
-                        <th>River Signal</th>
-                        <th>Stations</th>
-                    </tr>
-                </thead>
-                <tbody id="mlBody">
-                    <tr><td colspan="7">Loading ML district predictions…</td></tr>
-                </tbody>
-            </table>
-        </section>
     </main>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        let stationData = [];
+        const state = { stations: [], districts: [], riskRows: [], selectedDistrict: '', selectedStation: '' };
+        let map; let chart; let markerLayer;
+        const BIHAR_CENTER = [25.9644, 85.2722];
+        const els = {};
 
-        const els = {
-            body: document.getElementById('stationsBody'),
-            search: document.getElementById('stationSearch'),
-            district: document.getElementById('districtSelect'),
-            level: document.getElementById('levelSelect'),
-            refresh: document.getElementById('refreshButton'),
-            meta: document.getElementById('liveMeta'),
-            error: document.getElementById('errorBox'),
-            count: document.getElementById('stationCount'),
-            danger: document.getElementById('dangerCount'),
-            warning: document.getElementById('warningCount'),
-            rising: document.getElementById('risingCount'),
-            mlBody: document.getElementById('mlBody'),
-            mlMeta: document.getElementById('mlMeta'),
-            modelNote: document.getElementById('modelNote')
-        };
+        function cacheEls(){ ['districtSelect','stationSelect','riskCard','riskLevel','probabilityValue','probabilityFill','riskMessage','horizonValue','selectedDistrictName','selectedStationName','apiStatus','riverStatus','modelStatus','riskStatus','sourceLine','modelNote','featureList','mlMeta','districtCount','highCount','mediumCount','updatedAt','mlBody','stationsBody','liveMeta','errorBox'].forEach(id => els[id] = document.getElementById(id)); }
+        function esc(v){ return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        function pct(v){ const n = Number(v); return Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : '—'; }
+        function riskClass(risk){ const r = String(risk || '').toUpperCase(); return r === 'HIGH' ? 'high' : r === 'MEDIUM' ? 'medium' : r === 'LOW' ? 'low' : 'unknown'; }
+        function stationClass(s){ const level=Number(s.water_level_m), danger=Number(s.danger_level_m), warning=Number(s.warning_level_m); if(Number.isFinite(danger)&&level>=danger)return'danger'; if(Number.isFinite(warning)&&level>=warning)return'warning'; return'normal'; }
+        function stationStatus(s){ const c=stationClass(s); return c==='danger'?'DANGER':c==='warning'?'WARNING':'NORMAL'; }
+        function stationTrend(s){ const d=Number(s.rise_1h_m ?? (Number(s.water_level_m)-Number(s.water_level_1h_before_m))); if(!Number.isFinite(d)||Math.abs(d)<0.0005)return['→ steady','trend-steady']; return d>0?[`↑ +${d.toFixed(2)} m`,`trend-up`]:[`↓ ${Math.abs(d).toFixed(2)} m`,`trend-down`]; }
+        function showError(msg){ els.errorBox.textContent=msg; els.errorBox.hidden=!msg; }
 
-        function escapeHtml(value) {
-            return String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+        async function getJson(url){ const res=await fetch(url,{cache:'no-store',headers:{'Cache-Control':'no-cache'}}); const data=await res.json(); if(!res.ok||data.success===false)throw new Error(data.error||`Request failed (${res.status})`); return data; }
+
+        function setupMap(){
+            map=L.map('biharMap').setView(BIHAR_CENTER,6.8);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+            markerLayer=L.layerGroup().addTo(map);
         }
-
-        function classify(station) {
-            const level = Number(station.water_level_m);
-            const danger = Number(station.danger_level_m);
-            const warning = Number(station.warning_level_m);
-            if (Number.isFinite(danger) && level >= danger) return 'danger';
-            if (Number.isFinite(warning) && level >= warning) return 'warning';
-            return 'normal';
-        }
-
-        function trendClass(value) {
-            if (value > 0) return 'trend-up';
-            if (value < 0) return 'trend-down';
-            return 'trend-steady';
-        }
-
-        function trendLabel(value) {
-            if (value > 0) return '↑ rising';
-            if (value < 0) return '↓ falling';
-            return '→ steady';
-        }
-
-        function populateDistricts() {
-            const current = els.district.value;
-            const districts = [...new Set(stationData.map(item => item.district).filter(Boolean))].sort();
-            els.district.innerHTML = '<option value="">All Bihar</option>' + districts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
-            if (districts.includes(current)) els.district.value = current;
-        }
-
-        function render() {
-            const query = els.search.value.trim().toLowerCase();
-            const district = els.district.value;
-            const level = els.level.value;
-            const filtered = stationData.filter(station => {
-                const haystack = `${station.station} ${station.river} ${station.district}`.toLowerCase();
-                return (!query || haystack.includes(query)) && (!district || station.district === district) && (!level || classify(station) === level);
+        function markerColor(r){ const c=riskClass(r); return c==='high'?'#F87171':c==='medium'?'#FBBF24':'#34D399'; }
+        function renderMap(){
+            markerLayer.clearLayers();
+            state.riskRows.forEach(row=>{
+                const station = state.stations.find(s=>String(s.district||'').toUpperCase()===String(row.district||'').toUpperCase());
+                if(!station || !Number.isFinite(Number(station.latitude)) || !Number.isFinite(Number(station.longitude))) return;
+                const selected = state.selectedDistrict && String(row.district).toUpperCase()===String(state.selectedDistrict).toUpperCase();
+                const marker=L.circleMarker([Number(station.latitude),Number(station.longitude)],{radius:selected?11:7,color:'#fff',weight:selected?3:2,fillColor:markerColor(row.risk),fillOpacity:.92}).bindPopup(`<strong>${esc(row.district)}</strong><br>Risk: <strong>${esc(row.risk)}</strong><br>Probability: <strong>${pct(row.flood_probability)}</strong><br>24h rain: ${Number(row.rainfall_24h_mm||0).toFixed(1)} mm`);
+                marker.addTo(markerLayer);
             });
-
-            els.count.textContent = filtered.length;
-            els.danger.textContent = filtered.filter(s => classify(s) === 'danger').length;
-            els.warning.textContent = filtered.filter(s => classify(s) === 'warning').length;
-            els.rising.textContent = filtered.filter(s => Number(s.rise_1h_m ?? (Number(s.water_level_m) - Number(s.water_level_1h_before_m))) > 0).length;
-
-            if (!filtered.length) {
-                els.body.innerHTML = '<tr><td colspan="5">No stations match the current filters.</td></tr>';
-                return;
-            }
-
-            els.body.innerHTML = filtered.map(station => {
-                const levelClass = classify(station);
-                const badgeText = levelClass === 'danger' ? 'DANGER' : levelClass === 'warning' ? 'WARNING' : 'NORMAL';
-                const threshold = levelClass === 'danger' ? station.danger_level_m : station.warning_level_m;
-                const rise = Number(station.rise_1h_m ?? (Number(station.water_level_m) - Number(station.water_level_1h_before_m)));
-                return `
-                    <tr>
-                        <td><strong>${escapeHtml(station.station)}</strong><br><span>${escapeHtml(station.river)}</span></td>
-                        <td>${escapeHtml(station.district)}</td>
-                        <td>${Number(station.water_level_m).toFixed(2)} m</td>
-                        <td><span class="badge ${levelClass}">${badgeText}</span> ${Number.isFinite(Number(threshold)) ? Number(threshold).toFixed(2) + ' m' : '—'}</td>
-                        <td class="${trendClass(rise)}">${trendLabel(rise)}</td>
-                    </tr>`;
-            }).join('');
+            if(state.selectedDistrict){ const row=state.riskRows.find(r=>String(r.district).toUpperCase()===state.selectedDistrict.toUpperCase()); const st=state.stations.find(s=>String(s.district||'').toUpperCase()===state.selectedDistrict.toUpperCase()); if(row&&st&&Number.isFinite(Number(st.latitude))) map.setView([Number(st.latitude),Number(st.longitude)],8.2); }
         }
-
-        async function loadStations() {
-            els.error.hidden = true;
-            els.refresh.disabled = true;
-            els.meta.textContent = 'Fetching latest Bihar station data…';
-            try {
-                const response = await fetch('/api/bihar-live/stations?ts=' + Date.now(), {
-                    cache: 'no-store',
-                    headers: { 'Cache-Control': 'no-cache, max-age=0', 'Pragma': 'no-cache' }
-                });
-                const data = await response.json();
-                if (!response.ok || data.success === false) throw new Error(data.error || 'Live station feed failed');
-                stationData = Array.isArray(data.stations) ? data.stations : [];
-                populateDistricts();
-                render();
-                els.meta.textContent = `LIVE • ${data.source || 'Bihar government river observations'} • backend fetched: ${new Date(data.fetched_at || Date.now()).toLocaleTimeString()} • auto-refresh: 15 min`;
-            } catch (error) {
-                els.error.textContent = error.message;
-                els.error.hidden = false;
-                els.meta.textContent = 'Live feed unavailable.';
-            } finally {
-                els.refresh.disabled = false;
-            }
+        function setupChart(){
+            chart=new Chart(document.getElementById('rainfallChart'),{type:'bar',data:{labels:[],datasets:[{label:'24h rainfall (mm)',data:[],backgroundColor:'rgba(245,158,11,.75)',borderColor:'#a87514',borderWidth:1,borderRadius:4},{type:'line',label:'72h rainfall (mm)',data:[],borderColor:'#197f89',backgroundColor:'rgba(25,127,137,.12)',borderWidth:2,tension:.28,fill:false,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#667280'}}},scales:{x:{ticks:{color:'#667280'},grid:{color:'rgba(23,33,43,.06)'}},y:{beginAtZero:true,ticks:{color:'#667280'},grid:{color:'rgba(23,33,43,.06)'},title:{display:true,text:'Rainfall (mm)',color:'#667280'}}}}});
         }
-
-        async function loadMlRisk() {
-            els.mlMeta.textContent = 'Running Random Forest + river fusion…';
-            try {
-                const response = await fetch('/api/bihar-live/ml-risk?ts=' + Date.now(), { cache: 'no-store' });
-                const data = await response.json();
-                if (!response.ok || data.success === false) throw new Error(data.error || 'ML risk engine failed');
-                const model = data.model || {};
-                els.mlMeta.textContent = `RF historical test accuracy ${model.historical_accuracy ?? '—'} • ROC-AUC ${model.historical_roc_auc ?? '—'} • ${model.bihar_calibrated ? 'Bihar calibrated' : 'cross-region, not Bihar calibrated'}`;
-                els.modelNote.textContent = model.warning || 'Random Forest rainfall probability fused with live river-level pressure.';
-                const rows = Array.isArray(data.districts) ? data.districts : [];
-                if (!rows.length) {
-                    els.mlBody.innerHTML = '<tr><td colspan="7">No live Bihar district rainfall data returned.</td></tr>';
-                    return;
-                }
-                els.mlBody.innerHTML = rows.map(row => {
-                    const risk = String(row.risk || 'UNKNOWN').toLowerCase();
-                    return `<tr>
-                        <td><strong>${escapeHtml(row.district)}</strong></td>
-                        <td><span class="badge risk-${risk}">${escapeHtml(row.risk)}</span></td>
-                        <td>${(Number(row.flood_probability) * 100).toFixed(1)}%</td>
-                        <td>${Number(row.rainfall_24h_mm).toFixed(1)} mm</td>
-                        <td>${Number(row.rainfall_72h_mm).toFixed(1)} mm</td>
-                        <td>${(Number(row.river_signal) * 100).toFixed(1)}%</td>
-                        <td>${Number(row.station_count)}</td>
-                    </tr>`;
-                }).join('');
-            } catch (error) {
-                els.mlMeta.textContent = 'ML engine unavailable.';
-                els.mlBody.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message)}</td></tr>`;
-            }
+        function renderChart(){
+            const row=state.riskRows.find(r=>String(r.district).toUpperCase()===state.selectedDistrict.toUpperCase()) || state.riskRows[0];
+            if(!row){chart.data.labels=[];chart.data.datasets[0].data=[];chart.data.datasets[1].data=[];chart.update();return;}
+            const labels=['24h','72h']; chart.data.labels=labels; chart.data.datasets[0].data=[Number(row.rainfall_24h_mm||0),0]; chart.data.datasets[1].data=[0,Number(row.rainfall_72h_mm||0)]; chart.update();
         }
+        function renderDistrictSelect(){
+            const names=[...new Set(state.riskRows.map(r=>r.district).filter(Boolean))].sort();
+            els.districtSelect.innerHTML='<option value="">All Bihar</option>'+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+            els.districtSelect.value=state.selectedDistrict;
+            const stations=state.stations.filter(s=>!state.selectedDistrict||String(s.district).toUpperCase()===state.selectedDistrict.toUpperCase());
+            els.stationSelect.innerHTML='<option value="">All stations</option>'+stations.map(s=>`<option value="${esc(s.station)}">${esc(s.station)}</option>`).join('');
+            if(stations.some(s=>s.station===state.selectedStation))els.stationSelect.value=state.selectedStation; else state.selectedStation='';
+        }
+        function renderRiskCard(){
+            const row=state.riskRows.find(r=>String(r.district||'').toUpperCase()===String(state.selectedDistrict||'').toUpperCase());
+            const fallback=state.riskRows.slice().sort((a,b)=>Number(b.flood_probability||0)-Number(a.flood_probability||0))[0];
+            const current=row||fallback;
+            const risk=String(current?.risk||'UNKNOWN').toUpperCase(); const cls=riskClass(risk); const probability=Math.max(0,Math.min(1,Number(current?.flood_probability||0)));
+            els.riskCard.className=`risk-card bihar-risk-card bihar-risk-${cls} hoverbx`; els.riskLevel.textContent=risk; els.probabilityValue.textContent=`${Math.round(probability*100)}%`; els.probabilityFill.style.width=`${probability*100}%`;
+            els.riskMessage.textContent=current?.warning || (risk==='HIGH'?'Elevated flood risk conditions detected.':risk==='MEDIUM'?'Moderate risk conditions detected.':'Current prototype signal is low. Continue monitoring.');
+            els.horizonValue.textContent=current?.prediction_horizon_hours||72; els.selectedDistrictName.textContent=state.selectedDistrict||'All Bihar';
+            const selectedStations=state.stations.filter(s=>!state.selectedDistrict||String(s.district).toUpperCase()===state.selectedDistrict.toUpperCase()); els.selectedStationName.textContent=selectedStations.length?`${selectedStations.length} monitored`:'—';
+            const feats=current?{rainfall_24h:Number(current.rainfall_24h_mm||0).toFixed(1)+' mm',rainfall_72h:Number(current.rainfall_72h_mm||0).toFixed(1)+' mm',river_signal:pct(current.river_signal),station_count:Number(current.station_count||0)}:{};
+            els.featureList.innerHTML=Object.entries(feats).map(([k,v])=>`<div class="feature"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('');
+        }
+        function renderRiskTable(){
+            const rows=state.riskRows.filter(r=>!state.selectedDistrict||String(r.district).toUpperCase()===state.selectedDistrict.toUpperCase());
+            els.districtCount.textContent=state.riskRows.length; els.highCount.textContent=state.riskRows.filter(r=>String(r.risk).toUpperCase()==='HIGH').length; els.mediumCount.textContent=state.riskRows.filter(r=>String(r.risk).toUpperCase()==='MEDIUM').length; els.updatedAt.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+            els.mlBody.innerHTML=rows.length?rows.map(r=>`<tr><td><strong>${esc(r.district)}</strong></td><td><span class="badge ${riskClass(r.risk)}">${esc(r.risk)}</span></td><td>${pct(r.flood_probability)}</td><td>${Number(r.rainfall_24h_mm||0).toFixed(1)} mm</td><td>${Number(r.rainfall_72h_mm||0).toFixed(1)} mm</td><td>${pct(r.river_signal)}</td><td>${Number(r.station_count||0)}</td></tr>`).join(''):'<tr><td colspan="7" class="no-data">No district prediction matches the current selection.</td></tr>';
+        }
+        function renderStations(){
+            const filtered=state.stations.filter(s=>(!state.selectedDistrict||String(s.district).toUpperCase()===state.selectedDistrict.toUpperCase())&&(!state.selectedStation||s.station===state.selectedStation));
+            els.stationsBody.innerHTML=filtered.length?filtered.map(s=>{const c=stationClass(s),trend=stationTrend(s);const threshold=c==='danger'?s.danger_level_m:s.warning_level_m;return `<tr><td><strong>${esc(s.station)}</strong></td><td>${esc(s.district)}</td><td>${esc(s.river)}</td><td>${Number(s.water_level_m||0).toFixed(2)} m</td><td>${Number.isFinite(Number(threshold))?Number(threshold).toFixed(2)+' m':'—'}</td><td><span class="badge ${c}">${stationStatus(s)}</span></td><td class="${trend[1]}">${trend[0]}</td></tr>`;}).join(''):'<tr><td colspan="7" class="no-data">No live station observations match the current selection.</td></tr>';
+        }
+        function applySelection(){ renderDistrictSelect(); renderRiskCard(); renderRiskTable(); renderStations(); renderChart(); renderMap(); }
 
-        els.search.addEventListener('input', render);
-        els.district.addEventListener('change', render);
-        els.level.addEventListener('change', render);
-        els.refresh.addEventListener('click', () => { loadStations(); loadMlRisk(); });
+        async function loadHealth(){ try{const h=await getJson('/api/health');els.apiStatus.textContent=h.status==='ok'?'ONLINE':'DEGRADED';els.modelStatus.textContent=h.model||'—';}catch(e){els.apiStatus.textContent='OFFLINE';els.modelStatus.textContent='ERROR';} }
+        async function loadStations(){ try{const d=await getJson('/api/bihar-live/stations?ts='+Date.now());state.stations=Array.isArray(d.stations)?d.stations:[];els.riverStatus.textContent=state.stations.length?'LIVE':'EMPTY';els.liveMeta.textContent=`LIVE • ${d.source||'Bihar government river observations'} • fetched ${new Date(d.fetched_at||Date.now()).toLocaleTimeString()} • auto-refresh 15 min`;els.sourceLine.textContent=`Source: ${d.source||'Bihar government river observations'}`; }catch(e){state.stations=[];els.riverStatus.textContent='ERROR';throw e;} }
+        async function loadRisk(){ try{const d=await getJson('/api/bihar-live/ml-risk?ts='+Date.now());state.riskRows=Array.isArray(d.districts)?d.districts:[];const m=d.model||{};els.riskStatus.textContent='READY';els.mlMeta.textContent=`RF accuracy ${m.historical_accuracy??'—'} • ROC-AUC ${m.historical_roc_auc??'—'} • ${m.bihar_calibrated?'Bihar calibrated':'prototype / cross-region model'}`;els.modelNote.textContent=m.warning||'Live district rainfall probability is fused with observed river-level pressure.';if(m.bihar_calibrated===false)els.modelStatus.textContent='LOADED';}catch(e){state.riskRows=[];els.riskStatus.textContent='ERROR';throw e;} }
+        async function refreshAll(){ showError(''); try{ await Promise.all([loadHealth(),loadStations(),loadRisk()]); applySelection(); }catch(e){showError(e.message);applySelection();} }
 
-        loadStations();
-        loadMlRisk();
-        setInterval(() => { loadStations(); loadMlRisk(); }, 15 * 60 * 1000);
+        els={};
+        document.addEventListener('DOMContentLoaded',async()=>{
+            cacheEls(); setupMap(); setupChart();
+            els.districtSelect.addEventListener('change',()=>{state.selectedDistrict=els.districtSelect.value;state.selectedStation='';applySelection();});
+            els.stationSelect.addEventListener('change',()=>{state.selectedStation=els.stationSelect.value;renderStations();});
+            await refreshAll();
+            setInterval(refreshAll,15*60*1000);
+        });
     </script>
 </body>
 </html>
