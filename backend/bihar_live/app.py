@@ -37,11 +37,7 @@ _cache_lock = Lock()
 
 
 def _error_response(message: str, status_code: int = 500):
-    return jsonify({
-        "success": False,
-        "error": message,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }), status_code
+    return jsonify({"success": False, "error": message, "timestamp": datetime.now(timezone.utc).isoformat()}), status_code
 
 
 def _repository():
@@ -60,11 +56,7 @@ def _freshness(observed_at: str | None, now: datetime | None = None) -> dict:
     except ValueError:
         return {"status": "unknown", "fresh": False, "age_minutes": None}
     age = max((now - dt.astimezone(timezone.utc)).total_seconds() / 60.0, 0.0)
-    return {
-        "status": "fresh" if age <= STALE_AFTER_MINUTES else "stale",
-        "fresh": age <= STALE_AFTER_MINUTES,
-        "age_minutes": round(age, 2),
-    }
+    return {"status": "fresh" if age <= STALE_AFTER_MINUTES else "stale", "fresh": age <= STALE_AFTER_MINUTES, "age_minutes": round(age, 2)}
 
 
 def _get_latest_neon_payload(district: str | None = None) -> dict:
@@ -75,45 +67,14 @@ def _get_latest_neon_payload(district: str | None = None) -> dict:
         key = (item.river, item.station, item.district)
         if key not in latest:
             latest[key] = item
-
     serialized = []
     for item in latest.values():
         observed_at = item.observed_at.isoformat() if item.observed_at else None
         fetched_at = item.fetched_at.isoformat() if item.fetched_at else None
         fresh = _freshness(observed_at)
-        serialized.append({
-            "river": item.river,
-            "station": item.station,
-            "district": item.district,
-            "water_level_m": item.water_level_m,
-            "warning_level_m": item.warning_level_m,
-            "danger_level_m": item.danger_level_m,
-            "hfl_m": item.hfl_m,
-            "trend": item.trend,
-            "water_level_1h_before_m": item.water_level_1h_before_m,
-            "observed_at": observed_at,
-            "fetched_at": fetched_at,
-            "freshness": fresh,
-            "quality_status": "good" if fresh["fresh"] else "stale",
-        })
-
+        serialized.append({"river": item.river, "station": item.station, "district": item.district, "water_level_m": item.water_level_m, "warning_level_m": item.warning_level_m, "danger_level_m": item.danger_level_m, "hfl_m": item.hfl_m, "trend": item.trend, "water_level_1h_before_m": item.water_level_1h_before_m, "observed_at": observed_at, "fetched_at": fetched_at, "freshness": fresh, "quality_status": "good" if fresh["fresh"] else "stale"})
     newest = max((x.get("fetched_at") for x in serialized if x.get("fetched_at")), default=None)
-    return {
-        "success": True,
-        "source": "Bihar FMISC/WRD via Neon PostgreSQL",
-        "source_url": "https://beams.fmiscwrdbihar.gov.in/Alerttotalinfo/realtimetotal.aspx",
-        "fetched_at": newest or datetime.now(timezone.utc).isoformat(),
-        "count": len(serialized),
-        "records": serialized,
-        "fields": [
-            "river", "station", "district", "water_level_m",
-            "warning_level_m", "danger_level_m", "hfl_m",
-            "trend", "status", "observed_at", "freshness", "quality_status",
-        ],
-        "live": True,
-        "source_mode": "neon_live_snapshot",
-        "cached": False,
-    }
+    return {"success": True, "source": "Bihar FMISC/WRD via Neon PostgreSQL", "source_url": "https://beams.fmiscwrdbihar.gov.in/Alerttotalinfo/realtimetotal.aspx", "fetched_at": newest or datetime.now(timezone.utc).isoformat(), "count": len(serialized), "records": serialized, "fields": ["river", "station", "district", "water_level_m", "warning_level_m", "danger_level_m", "hfl_m", "trend", "status", "observed_at", "freshness", "quality_status"], "live": True, "source_mode": "neon_live_snapshot", "cached": False}
 
 
 def _get_live_payload(force_refresh: bool = False, district: str | None = None) -> dict:
@@ -125,13 +86,9 @@ def _get_live_payload(force_refresh: bool = False, district: str | None = None) 
             payload = dict(cached["payload"])
             payload["cached"] = True
             return payload
-
     payload = _get_latest_neon_payload(district)
     with _cache_lock:
-        _cache[cache_key] = {
-            "payload": payload,
-            "expires_at": time.monotonic() + CACHE_TTL_SECONDS,
-        }
+        _cache[cache_key] = {"payload": payload, "expires_at": time.monotonic() + CACHE_TTL_SECONDS}
     return payload
 
 
@@ -158,124 +115,71 @@ def _find_station_record(station: str, district: str | None = None, river: str |
     return None
 
 
+def _serialize_observation(item):
+    return {"river": item.river, "station": item.station, "district": item.district, "observed_at": item.observed_at.isoformat() if item.observed_at else None, "water_level_m": item.water_level_m, "warning_level_m": item.warning_level_m, "danger_level_m": item.danger_level_m, "hfl_m": item.hfl_m, "trend": item.trend, "water_level_1h_before_m": item.water_level_1h_before_m, "fetched_at": item.fetched_at.isoformat() if item.fetched_at else None}
+
+
 @app.get("/api/bihar/health")
 def health():
-    configured = bool(os.getenv("DATABASE_URL"))
-    return jsonify({
-        "success": True,
-        "service": "VARSHAGUARD Bihar Live API",
-        "version": "0.3.0",
-        "layer": "1.5+",
-        "storage_configured": configured,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    return jsonify({"success": True, "service": "VARSHAGUARD Bihar Live API", "version": "0.3.0", "layer": "1.5+", "storage_configured": bool(os.getenv("DATABASE_URL")), "timestamp": datetime.now(timezone.utc).isoformat()})
 
 
 @app.get("/api/bihar/data-health")
 def data_health():
     try:
-        repository = _repository()
-        records = repository.get_history(limit=1000)
+        repository = _repository(); records = repository.get_history(limit=1000)
     except Exception as exc:
         return _error_response(f"Bihar data-health query failed: {exc}", 503)
-
-    latest = None
-    for item in records:
-        if item.fetched_at and (latest is None or item.fetched_at > latest):
-            latest = item.fetched_at
-
+    latest = max((item.fetched_at for item in records if item.fetched_at), default=None)
     latest_iso = latest.isoformat() if latest else None
     fresh = _freshness(latest_iso)
-    return jsonify({
-        "success": True,
-        "sources": [{
-            "source": "Bihar FMISC/WRD",
-            "source_url": "https://beams.fmiscwrdbihar.gov.in/Alerttotalinfo/realtimetotal.aspx",
-            "status": "healthy" if fresh["fresh"] else "stale",
-            "last_success": latest_iso,
-            "last_observation": latest_iso,
-            "record_count": len(records),
-            "stale": not fresh["fresh"],
-            "quality": fresh["status"],
-            "error": None,
-        }],
-        "checked_at": datetime.now(timezone.utc).isoformat(),
-    })
+    return jsonify({"success": True, "sources": [{"source": "Bihar FMISC/WRD", "source_url": "https://beams.fmiscwrdbihar.gov.in/Alerttotalinfo/realtimetotal.aspx", "status": "healthy" if fresh["fresh"] else "stale", "last_success": latest_iso, "last_observation": latest_iso, "record_count": len(records), "stale": not fresh["fresh"], "quality": fresh["status"], "error": None}], "checked_at": datetime.now(timezone.utc).isoformat()})
 
 
 @app.get("/api/bihar/live-rivers")
 def live_rivers():
-    force_refresh = request.args.get("refresh", "false").lower() == "true"
-    district = request.args.get("district", "").strip().lower()
+    force_refresh = request.args.get("refresh", "false").lower() == "true"; district = request.args.get("district", "").strip().lower()
     try:
         payload = _get_live_payload(force_refresh=force_refresh, district=district)
     except Exception as exc:
         return _error_response(f"Live Bihar river data unavailable from Neon: {exc}", 503)
-
     records = _filter_district(payload["records"], district)
     stale_records = sum(1 for row in records if not row.get("freshness", {}).get("fresh", False))
-    return jsonify({
-        **payload,
-        "records": records,
-        "count": len(records),
-        "district_filter": district or None,
-        "stale_count": stale_records,
-        "warning": "These values are live from the latest successful FMISC sync; the Vercel API does not scrape FMISC directly.",
-    })
+    return jsonify({**payload, "records": records, "count": len(records), "district_filter": district or None, "stale_count": stale_records, "warning": "These values are live from the latest successful FMISC sync; the Vercel API does not scrape FMISC directly."})
 
 
 @app.get("/api/bihar/processed-rivers")
 def processed_rivers():
-    force_refresh = request.args.get("refresh", "false").lower() == "true"
-    district = request.args.get("district", "").strip().lower()
+    force_refresh = request.args.get("refresh", "false").lower() == "true"; district = request.args.get("district", "").strip().lower()
     try:
-        payload = _get_live_payload(force_refresh=force_refresh, district=district)
-        records = process_river_records(payload["records"])
+        payload = _get_live_payload(force_refresh=force_refresh, district=district); records = process_river_records(payload["records"])
     except Exception as exc:
         return _error_response(f"Bihar river processing failed: {exc}", 503)
-    return jsonify({
-        "success": True,
-        "source": payload["source"],
-        "source_url": payload["source_url"],
-        "fetched_at": payload["fetched_at"],
-        "cached": payload.get("cached", False),
-        "layer": "1.5+",
-        "count": len(records),
-        "district_filter": district or None,
-        "records": records,
-    })
+    return jsonify({"success": True, "source": payload["source"], "source_url": payload["source_url"], "fetched_at": payload["fetched_at"], "cached": payload.get("cached", False), "layer": "1.5+", "count": len(records), "district_filter": district or None, "records": records})
 
 
 @app.get("/api/bihar/risk")
 @app.get("/api/bihar/flood-risk")
 def risk():
-    station = request.args.get("station", "").strip()
-    district = request.args.get("district", "").strip() or None
-    river = request.args.get("river", "").strip() or None
+    station = request.args.get("station", "").strip(); district = request.args.get("district", "").strip() or None; river = request.args.get("river", "").strip() or None
     if not station:
         return _error_response("station is required", 400)
     try:
         record = _find_station_record(station, district, river)
         if not record:
             return _error_response("station not found in latest Bihar live snapshot", 404)
-        context = build_risk_context(record)
-        return jsonify({
-            "success": True,
-            **context,
-            "station": record.get("station"),
-            "district": record.get("district"),
-            "river": record.get("river"),
-            "observed_at": record.get("observed_at"),
-        })
+        # The ML model needs a continuous hourly history, not just the latest observation.
+        history_items = _repository().get_history(station=record["station"], district=record["district"], limit=1000)
+        history = [_serialize_observation(item) for item in history_items]
+        context = build_risk_context(record, history)
+        return jsonify({"success": True, **context, "station": record.get("station"), "district": record.get("district"), "river": record.get("river"), "observed_at": record.get("observed_at"), "history_points": len(history)})
     except Exception as exc:
         return _error_response(f"Bihar risk engine failed: {exc}", 503)
 
 
 @app.get("/api/bihar/inundation")
 def inundation():
-    station = request.args.get("station", "").strip()
-    district = request.args.get("district", "").strip() or None
-    river = request.args.get("river", "").strip() or None
+    station = request.args.get("station", "").strip(); district = request.args.get("district", "").strip() or None; river = request.args.get("river", "").strip() or None
     if not station:
         return _error_response("station is required", 400)
     try:
@@ -283,97 +187,41 @@ def inundation():
         if not record:
             return _error_response("station not found in latest Bihar live snapshot", 404)
         context = build_inundation_context(record)
-        return jsonify({
-            "success": True,
-            **context,
-            "station": record.get("station"),
-            "district": record.get("district"),
-            "river": record.get("river"),
-            "observed_at": record.get("observed_at"),
-        })
+        return jsonify({"success": True, **context, "station": record.get("station"), "district": record.get("district"), "river": record.get("river"), "observed_at": record.get("observed_at")})
     except Exception as exc:
         return _error_response(f"Bihar inundation engine failed: {exc}", 503)
 
 
 @app.get("/api/bihar/history")
 def history():
-    station = request.args.get("station", "").strip() or None
-    district = request.args.get("district", "").strip() or None
-    since_raw = request.args.get("since", "").strip() or None
-    limit_raw = request.args.get("limit", "500").strip()
+    station = request.args.get("station", "").strip() or None; district = request.args.get("district", "").strip() or None; since_raw = request.args.get("since", "").strip() or None; limit_raw = request.args.get("limit", "500").strip()
     try:
         limit = max(1, min(int(limit_raw), 1000))
     except ValueError:
         return _error_response("limit must be an integer between 1 and 1000", 400)
-
     since = None
     if since_raw:
-        try:
-            since = datetime.fromisoformat(since_raw.replace("Z", "+00:00"))
-        except ValueError:
-            return _error_response("since must be an ISO-8601 timestamp", 400)
-        if since.tzinfo is None:
-            since = since.replace(tzinfo=timezone.utc)
-
+        try: since = datetime.fromisoformat(since_raw.replace("Z", "+00:00"))
+        except ValueError: return _error_response("since must be an ISO-8601 timestamp", 400)
+        if since.tzinfo is None: since = since.replace(tzinfo=timezone.utc)
     try:
-        records = _repository().get_history(
-            station=station, district=district, since=since, limit=limit
-        )
+        records = _repository().get_history(station=station, district=district, since=since, limit=limit)
     except Exception as exc:
         return _error_response(f"Historical Bihar river data query failed: {exc}", 503)
-
-    return jsonify({
-        "success": True,
-        "source": "Neon PostgreSQL",
-        "layer": "1.5+",
-        "count": len(records),
-        "filters": {"station": station, "district": district, "since": since.isoformat() if since else None, "limit": limit},
-        "records": [{
-            "river": item.river,
-            "station": item.station,
-            "district": item.district,
-            "observed_at": item.observed_at.isoformat() if item.observed_at else None,
-            "water_level_m": item.water_level_m,
-            "warning_level_m": item.warning_level_m,
-            "danger_level_m": item.danger_level_m,
-            "hfl_m": item.hfl_m,
-            "trend": item.trend,
-            "water_level_1h_before_m": item.water_level_1h_before_m,
-            "fetched_at": item.fetched_at.isoformat() if item.fetched_at else None,
-        } for item in records],
-    })
+    return jsonify({"success": True, "source": "Neon PostgreSQL", "layer": "1.5+", "count": len(records), "filters": {"station": station, "district": district, "since": since.isoformat() if since else None, "limit": limit}, "records": [_serialize_observation(item) for item in records]})
 
 
 @app.get("/api/bihar/stations")
 def stations():
     district = request.args.get("district", "").strip() or None
-    try:
-        records = _repository().get_history(district=district, limit=1000)
-    except Exception as exc:
-        return _error_response(f"Bihar station lookup failed: {exc}", 503)
-
+    try: records = _repository().get_history(district=district, limit=1000)
+    except Exception as exc: return _error_response(f"Bihar station lookup failed: {exc}", 503)
     stations_by_key = {}
     for item in records:
         key = (item.river, item.station, item.district)
-        if key not in stations_by_key:
-            stations_by_key[key] = {
-                "river": item.river,
-                "station": item.station,
-                "district": item.district,
-                "latest_observed_at": item.observed_at.isoformat() if item.observed_at else None,
-                "latest_water_level_m": item.water_level_m,
-                "trend": item.trend,
-            }
-
+        if key not in stations_by_key: stations_by_key[key] = {"river": item.river, "station": item.station, "district": item.district, "latest_observed_at": item.observed_at.isoformat() if item.observed_at else None, "latest_water_level_m": item.water_level_m, "trend": item.trend}
     result = sorted(stations_by_key.values(), key=lambda item: (item["district"], item["station"]))
-    return jsonify({
-        "success": True,
-        "source": "Neon PostgreSQL",
-        "layer": "1.5+",
-        "count": len(result),
-        "district_filter": district,
-        "stations": result,
-    })
+    return jsonify({"success": True, "source": "Neon PostgreSQL", "layer": "1.5+", "count": len(result), "district_filter": district, "stations": result})
 
 
 if __name__ == "__main__":
