@@ -20,6 +20,13 @@ try:
 except ImportError:
     from processing import process_river_records
 
+try:
+    from .risk_engine import build_risk_context
+    from .inundation_engine import build_inundation_context
+except ImportError:
+    from risk_engine import build_risk_context
+    from inundation_engine import build_inundation_context
+
 app = Flask(__name__)
 CORS(app)
 
@@ -135,6 +142,22 @@ def _filter_district(records: list[dict], district: str) -> list[dict]:
     return [row for row in records if str(row.get("district") or "").strip().casefold() == target]
 
 
+def _find_station_record(station: str, district: str | None = None, river: str | None = None) -> dict | None:
+    payload = _get_live_payload(district=district)
+    target_station = station.strip().casefold()
+    target_district = district.strip().casefold() if district else None
+    target_river = river.strip().casefold() if river else None
+    for row in payload.get("records", []):
+        if str(row.get("station") or "").strip().casefold() != target_station:
+            continue
+        if target_district and str(row.get("district") or "").strip().casefold() != target_district:
+            continue
+        if target_river and str(row.get("river") or "").strip().casefold() != target_river:
+            continue
+        return row
+    return None
+
+
 @app.get("/api/bihar/health")
 def health():
     configured = bool(os.getenv("DATABASE_URL"))
@@ -221,6 +244,55 @@ def processed_rivers():
         "district_filter": district or None,
         "records": records,
     })
+
+
+@app.get("/api/bihar/risk")
+@app.get("/api/bihar/flood-risk")
+def risk():
+    station = request.args.get("station", "").strip()
+    district = request.args.get("district", "").strip() or None
+    river = request.args.get("river", "").strip() or None
+    if not station:
+        return _error_response("station is required", 400)
+    try:
+        record = _find_station_record(station, district, river)
+        if not record:
+            return _error_response("station not found in latest Bihar live snapshot", 404)
+        context = build_risk_context(record)
+        return jsonify({
+            "success": True,
+            **context,
+            "station": record.get("station"),
+            "district": record.get("district"),
+            "river": record.get("river"),
+            "observed_at": record.get("observed_at"),
+        })
+    except Exception as exc:
+        return _error_response(f"Bihar risk engine failed: {exc}", 503)
+
+
+@app.get("/api/bihar/inundation")
+def inundation():
+    station = request.args.get("station", "").strip()
+    district = request.args.get("district", "").strip() or None
+    river = request.args.get("river", "").strip() or None
+    if not station:
+        return _error_response("station is required", 400)
+    try:
+        record = _find_station_record(station, district, river)
+        if not record:
+            return _error_response("station not found in latest Bihar live snapshot", 404)
+        context = build_inundation_context(record)
+        return jsonify({
+            "success": True,
+            **context,
+            "station": record.get("station"),
+            "district": record.get("district"),
+            "river": record.get("river"),
+            "observed_at": record.get("observed_at"),
+        })
+    except Exception as exc:
+        return _error_response(f"Bihar inundation engine failed: {exc}", 503)
 
 
 @app.get("/api/bihar/history")
