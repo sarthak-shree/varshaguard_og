@@ -32,6 +32,7 @@ CORS(app)
 
 CACHE_TTL_SECONDS = 300
 STALE_AFTER_MINUTES = 60
+RISK_HISTORY_LIMIT = 1000
 _cache = {}
 _cache_lock = Lock()
 
@@ -168,8 +169,9 @@ def risk():
         record = _find_station_record(station, district, river)
         if not record:
             return _error_response("station not found in latest Bihar live snapshot", 404)
-        # The ML model needs a continuous hourly history, not just the latest observation.
-        history_items = _repository().get_history(station=record["station"], district=record["district"], limit=1000)
+        # Use the station's continuous history for ML inference. The history endpoint
+        # is ordered newest-first; risk_engine sorts by observed_at before feature extraction.
+        history_items = _repository().get_history(station=record["station"], district=record["district"], limit=RISK_HISTORY_LIMIT)
         history = [_serialize_observation(item) for item in history_items]
         context = build_risk_context(record, history)
         return jsonify({"success": True, **context, "station": record.get("station"), "district": record.get("district"), "river": record.get("river"), "observed_at": record.get("observed_at"), "history_points": len(history)})
