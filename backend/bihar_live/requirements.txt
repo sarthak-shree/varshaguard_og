@@ -4,3 +4,5 @@ pandas
 requests
 lxml
 psycopg[binary]
+scikit-learn
+joblib
