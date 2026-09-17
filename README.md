@@ -1,34 +1,23 @@
 # VARSHAGUARD
 
-VARSHAGUARD is a beginner-friendly Smart India Hackathon prototype for:
+AI/ML-based integrated heavy-rainfall early-warning and inundation-prediction prototype for SIH26071.
 
-AI/ML-Based Integrated Heavy Rainfall Early Warning & Inundation Prediction System.
+> **Prototype status:** This repository is a demonstration system, not an operational government warning service. Probabilities and inundation values are prototype outputs and must not be used for safety-critical decisions.
 
-This is a prototype only. It is not an operational government-grade flood warning system.
+## Architecture
 
-## What It Does
+```text
+Prototype / live inputs
+        |
+        +--> Rainfall dataset --> Random Forest --> Flood probability --> Risk
+        |
+        +--> Bihar river observations --> 24h transparent baseline
+                                      --> Inundation spatial proxy
+        |
+        +--> Flask API --> Web dashboard (Leaflet + Chart.js)
+```
 
-The demo flow is:
-
-Historical/prototype rainfall data -> data processing -> Random Forest model -> flood probability -> risk level -> Flask API -> web dashboard.
-
-The main question is:
-
-Based on recent rainfall conditions, is flooding likely to occur soon in this study region?
-
-## Tech Stack
-
-- Python
-- Flask
-- Flask-CORS
-- Pandas
-- scikit-learn
-- joblib
-- HTML
-- CSS
-- JavaScript
-- Leaflet.js
-- Chart.js
+The main rainfall ML prototype currently supports the two study regions present in the processed dataset: **Assam** and **Uttarakhand**. Bihar Live is exposed through a separate API endpoint and is intentionally labelled as a transparent baseline until Bihar-specific historical training data and spatial flood labels are available.
 
 ## Project Structure
 
@@ -39,107 +28,157 @@ backend/
   prediction.py
   risk.py
   train_model.py
+  bihar_live/
+    forecast_engine.py
+
 data/
   processed/
     flood_warning_ml_ready_v2.csv
+
 frontend/
   index.html
   script.js
   style.css
+
 models/
+  flood_warning_random_forest_v2.pkl
+
 requirements.txt
+vercel.json
 README.md
 ```
 
-## Important Data Note
-
-This workspace did not contain the original supplied SIH datasets when this beginner version was created.
-
-So this repo includes a tiny clearly labeled prototype CSV so the app can run locally. Replace `data/processed/flood_warning_ml_ready_v2.csv` with your real processed dataset when you have it.
-
 ## Install
+
+```bash
+python -m venv .venv
+```
+
+Windows:
+
+```bash
+.venv\Scripts\activate
+```
+
+macOS/Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Then:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Train The Demo Model
+## Train the ML model
+
+Run this from the repository root:
 
 ```bash
 python backend/train_model.py
 ```
 
-This creates:
+The trainer now performs an 80/20 train/test split and reports accuracy and ROC-AUC when the test set contains both classes. The saved model also stores its evaluation metadata.
+
+Output:
 
 ```text
 models/flood_warning_random_forest_v2.pkl
 ```
 
-## Run Backend
+## Run the API and dashboard
 
 ```bash
 python backend/app.py
 ```
 
-Backend URL:
+Open:
 
 ```text
-http://127.0.0.1:5001
+http://127.0.0.1:5001/
 ```
 
-## Run Frontend
+The Flask app serves the dashboard and API from the same origin, so no second frontend server is required.
 
-Open a second terminal:
+## API
 
-```bash
-python -m http.server 5500 --directory frontend
+### Health
+
+```http
+GET /api/health
 ```
 
-Frontend URL:
+### Supported study regions
 
-```text
-http://127.0.0.1:5500
+```http
+GET /api/regions
 ```
 
-## API Endpoints
+### Station list
 
-- `GET /api/health`
-- `GET /api/regions`
-- `GET /api/flood-risk?region=Assam`
-- `GET /api/rainfall?region=Assam`
-- `GET /api/history?region=Assam`
-- `GET /api/stations?region=Assam`
+```http
+GET /api/stations?region=Assam
+```
 
-Supported regions:
+### Flood risk
 
-- Assam
-- Uttarakhand
+```http
+GET /api/flood-risk?region=Assam&station=...
+```
 
-## Example API Response
+### Station risk map
+
+```http
+GET /api/flood-risk-map?region=Assam
+```
+
+### Rainfall history/trend
+
+```http
+GET /api/rainfall?region=Assam&station=...
+GET /api/history?region=Assam&station=...
+```
+
+### Bihar Live 24-hour baseline
+
+```http
+POST /api/bihar-live/forecast
+Content-Type: application/json
+```
+
+Example body:
 
 ```json
 {
-  "success": true,
-  "region": "Assam",
-  "prediction_horizon_hours": 24,
-  "flood_probability": 0.84,
-  "risk": "HIGH",
-  "warning": "Flood likely soon. Take precautionary measures and follow local authority guidance."
+  "water_level_m": 52.4,
+  "warning_level_m": 52.0,
+  "danger_level_m": 53.0,
+  "water_level_1h_before_m": 52.2
 }
 ```
 
-## Prototype Limitations
+The Bihar endpoint returns two clearly separated outputs:
 
-- Uses historical/prototype data
-- Only two study regions
-- Uses a baseline Random Forest model
-- Does not use live radar
-- Does not use satellite ingestion
-- Does not use numerical weather prediction
-- Does not perform hydraulic simulation
-- Does not calculate DEM-based inundation depth
-- Does not send operational alerts
+1. `flood_forecast`: transparent hydrological baseline using current river level, warning/danger thresholds, and one-hour rise.
+2. `inundation_forecast`: spatial proxy, **not** a validated DEM/hydraulic inundation map.
 
-## Future Production Upgrade Path
+## Data and model caveats
 
-Future versions could use satellite data, radar, ground gauges, weather forecasts, data quality control, spatio-temporal fusion, advanced AI/ML, rainfall nowcasting, terrain-aware inundation modelling, PostGIS, GIS dashboards, and alert/evacuation support.
+The repository contains a processed prototype rainfall dataset and a saved Random Forest model. The current ML pipeline is a study-region prototype; it does **not** yet ingest live satellite imagery, Doppler radar, NWP forecasts, or validated Bihar flood labels.
+
+The Bihar Live forecasting code explicitly reports that its probability is not calibrated and that its inundation output is a proxy rather than physical hydraulic/DEM modelling. Do not describe those outputs as operational or physically validated forecasts.
+
+## What remains for a stronger SIH implementation
+
+- Live satellite/radar ingestion and data-quality checks
+- Real NWP forecast features
+- Bihar-specific historical rainfall + river + flood labels
+- Proper temporal/spatial train-validation-test design
+- Calibrated probabilistic ML evaluation
+- DEM + river network + historical flood-extent data
+- A real spatial inundation model
+- Alert delivery and audit logging
+- Automated API/model tests
+- Production deployment monitoring
