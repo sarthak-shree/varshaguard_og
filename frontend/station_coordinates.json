@@ -1,0 +1,15 @@
+{
+  "source": "Central Water Commission hydrological network metadata",
+  "stations": {
+    "ahirwalia": [26.415, 85.066],
+    "araria": [26.125, 87.493],
+    "bagaha": [27.1295, 84.048],
+    "baltara": [25.54, 86.725],
+    "basua": [26.108, 86.528],
+    "benibad": [26.1453, 85.6922],
+    "birpur": [26.5264, 86.9267],
+    "dighaghat": [25.658056, 85.103889],
+    "jhanjharpur": [26.233333, 86.259444],
+    "khagaria": [25.483333, 86.483333]
+  }
+}
