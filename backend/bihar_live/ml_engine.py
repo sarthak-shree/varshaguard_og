@@ -159,7 +159,7 @@ def _live_bihar_rainfall() -> dict[str, list[float]]:
         rows = _fetch_daily_rainfall(date_text)
         for row in rows:
             state = _normalise_name(row.get("state", row.get("State")))
-            if state not in {_normalise_name(value) for value in BIHAR_STATE_NAMES}:
+            if state != "BIHAR":
                 continue
             district = _normalise_name(row.get("district", row.get("District")))
             if not district:
@@ -170,7 +170,7 @@ def _live_bihar_rainfall() -> dict[str, list[float]]:
 
 
 def _rainfall_features(values: list[float], month: int, hour: int) -> dict[str, float]:
-    values = (values + [0.0, 0.0, 0.0])[-3:]
+    values = ([0.0, 0.0, 0.0] + list(values))[-3:]
     day_1, day_2, day_3 = values[-1], values[-2], values[-3]
     return {
         "rainfall_1h": day_1 / 24.0,
