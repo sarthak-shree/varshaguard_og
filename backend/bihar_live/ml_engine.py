@@ -1,9 +1,9 @@
 """Bihar live flood-risk ML engine.
 
 The engine converts the existing hourly rainfall training table into a daily
-training set, trains a Random Forest classifier, and applies it to live Bihar
-district rainfall. Live river observations are then used as a separate
-hydrological signal in the final district risk fusion.
+training set, evaluates a Random Forest with chronological validation, and
+applies it to live Bihar district rainfall. Live river observations are then
+used as a separate hydrological signal in the final conservative fusion.
 
 Important: the repository's current historical rainfall table documents Assam
 and Uttarakhand as its study regions. Therefore the Random Forest is a
@@ -43,8 +43,6 @@ DAILY_FEATURES = [
     "is_monsoon",
 ]
 
-BIHAR_STATE_NAMES = {"BIHAR", "Bihar"}
-
 
 def _number(value: Any, default: float = 0.0) -> float:
     try:
@@ -75,6 +73,7 @@ def _historical_daily_frame() -> pd.DataFrame:
     data["timestamp"] = pd.to_datetime(data[timestamp_column], errors="coerce")
     data = data.dropna(subset=["timestamp", "flood_soon"]).copy()
     data["flood_soon"] = pd.to_numeric(data["flood_soon"], errors="coerce").fillna(0).astype(int)
+
     for column in DAILY_FEATURES:
         if column in ("month", "hour_of_day", "is_monsoon"):
             continue
@@ -88,10 +87,30 @@ def _historical_daily_frame() -> pd.DataFrame:
     data["is_monsoon"] = data["month"].isin([6, 7, 8, 9]).astype(int)
 
     group_columns = ["region", "station", "date"] if "region" in data.columns and "station" in data.columns else ["date"]
-    aggregations = {column: "max" for column in DAILY_FEATURES if column not in ("month", "hour_of_day", "is_monsoon")}
-    aggregations.update({"month": "first", "hour_of_day": "first", "is_monsoon": "first", "flood_soon": "max"})
+    aggregations = {
+        column: "max"
+        for column in DAILY_FEATURES
+        if column not in ("month", "hour_of_day", "is_monsoon")
+    }
+    aggregations.update({
+        "month": "first",
+        "hour_of_day": "first",
+        "is_monsoon": "first",
+        "flood_soon": "max",
+    })
     daily = data.groupby(group_columns, as_index=False).agg(aggregations)
     return daily.sort_values("date").reset_index(drop=True)
+
+
+def _model() -> RandomForestClassifier:
+    return RandomForestClassifier(
+        n_estimators=300,
+        max_depth=12,
+        min_samples_leaf=2,
+        class_weight="balanced",
+        random_state=42,
+        n_jobs=-1,
+    )
 
 
 @lru_cache(maxsize=1)
@@ -107,33 +126,46 @@ def _train_model() -> dict:
     if daily.empty or daily["flood_soon"].nunique() < 2:
         return {"ok": False, "error": "Historical dataset does not contain both flood and non-flood classes."}
 
-    split_index = max(1, int(len(daily) * 0.80))
-    train = daily.iloc[:split_index]
-    test = daily.iloc[split_index:]
-    if test.empty:
-        return {"ok": False, "error": "Not enough historical rows for a time-based evaluation split."}
+    unique_dates = pd.Series(sorted(daily["date"].unique()))
+    if len(unique_dates) < 8:
+        return {"ok": False, "error": "Not enough distinct historical dates for chronological validation."}
 
-    model = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=12,
-        min_samples_leaf=2,
-        class_weight="balanced",
-        random_state=42,
-        n_jobs=-1,
-    )
-    model.fit(train[DAILY_FEATURES], train["flood_soon"].astype(int))
-    predictions = model.predict(test[DAILY_FEATURES])
-    probabilities = model.predict_proba(test[DAILY_FEATURES])[:, 1]
-    accuracy = accuracy_score(test["flood_soon"], predictions)
-    auc = roc_auc_score(test["flood_soon"], probabilities) if test["flood_soon"].nunique() == 2 else None
+    split_count = min(5, len(unique_dates) - 1)
+    fold_accuracies: list[float] = []
+    fold_aucs: list[float] = []
+
+    # Chronological validation by date. No future date is used to predict an
+    # earlier validation period, avoiding random train/test leakage in a time series.
+    for fold in range(1, split_count):
+        boundary = int(len(unique_dates) * fold / split_count)
+        if boundary <= 0 or boundary >= len(unique_dates):
+            continue
+        train_dates = set(unique_dates.iloc[:boundary])
+        test_dates = set(unique_dates.iloc[boundary:boundary + max(1, len(unique_dates) // split_count)])
+        train = daily[daily["date"].isin(train_dates)]
+        test = daily[daily["date"].isin(test_dates)]
+        if train.empty or test.empty or train["flood_soon"].nunique() < 2 or test["flood_soon"].nunique() < 2:
+            continue
+
+        candidate = _model()
+        candidate.fit(train[DAILY_FEATURES], train["flood_soon"])
+        predictions = candidate.predict(test[DAILY_FEATURES])
+        probabilities = candidate.predict_proba(test[DAILY_FEATURES])[:, 1]
+        fold_accuracies.append(float(accuracy_score(test["flood_soon"], predictions)))
+        fold_aucs.append(float(roc_auc_score(test["flood_soon"], probabilities)))
+
+    # Final inference model is trained only after validation, using all historical rows.
+    final_model = _model()
+    final_model.fit(daily[DAILY_FEATURES], daily["flood_soon"])
 
     return {
         "ok": True,
-        "model": model,
-        "training_rows": int(len(train)),
-        "test_rows": int(len(test)),
-        "accuracy": round(float(accuracy), 4),
-        "roc_auc": round(float(auc), 4) if auc is not None else None,
+        "model": final_model,
+        "training_rows": int(len(daily)),
+        "test_rows": int(sum(len(daily[daily["date"].isin(set(unique_dates.iloc[max(0, int(len(unique_dates) * fold / split_count)):max(0, int(len(unique_dates) * fold / split_count)) + max(1, len(unique_dates) // split_count)]))]) for fold in range(1, split_count))),
+        "accuracy": round(sum(fold_accuracies) / len(fold_accuracies), 4) if fold_accuracies else None,
+        "roc_auc": round(sum(fold_aucs) / len(fold_aucs), 4) if fold_aucs else None,
+        "validation_folds": len(fold_accuracies),
         "scope": "cross_region_daily_rainfall",
         "bihar_calibrated": False,
     }
@@ -158,8 +190,7 @@ def _live_bihar_rainfall() -> dict[str, list[float]]:
         date_text = (now - timedelta(days=days_back)).date().isoformat()
         rows = _fetch_daily_rainfall(date_text)
         for row in rows:
-            state = _normalise_name(row.get("state", row.get("State")))
-            if state != "BIHAR":
+            if _normalise_name(row.get("state", row.get("State"))) != "BIHAR":
                 continue
             district = _normalise_name(row.get("district", row.get("District")))
             if not district:
@@ -237,9 +268,13 @@ def build_bihar_district_risk() -> dict:
     rows = []
     for district, values in sorted(rainfall.items()):
         features = _rainfall_features(values, now.month, now.hour)
-        rainfall_probability = float(model_info["model"].predict_proba(pd.DataFrame([features], columns=DAILY_FEATURES))[0, 1])
+        rainfall_probability = float(
+            model_info["model"].predict_proba(pd.DataFrame([features], columns=DAILY_FEATURES))[0, 1]
+        )
         river_probability, river_meta = _river_signal(stations_by_district.get(district, []))
-        fused_probability = max(0.0, min(1.0, 0.75 * rainfall_probability + 0.25 * river_probability))
+        # Conservative fusion: an observed warning/danger river signal must not
+        # be hidden by a rainfall-only model that lacks Bihar-specific calibration.
+        fused_probability = max(rainfall_probability, river_probability)
         if fused_probability >= 0.70:
             risk = "HIGH"
         elif fused_probability >= 0.40:
@@ -269,6 +304,7 @@ def build_bihar_district_risk() -> dict:
             "bihar_calibrated": model_info["bihar_calibrated"],
             "historical_training_rows": model_info["training_rows"],
             "historical_test_rows": model_info["test_rows"],
+            "validation_folds": model_info["validation_folds"],
             "historical_accuracy": model_info["accuracy"],
             "historical_roc_auc": model_info["roc_auc"],
             "warning": "This is not a Bihar-calibrated probability. Add Bihar historical flood outcomes and retrain before treating it as an operational probability.",
