@@ -15,10 +15,6 @@ try:
         predict_probability,
     )
     from .risk import get_risk, get_warning
-    from .bihar_live.forecast_engine import (
-        build_24h_flood_forecast,
-        build_24h_inundation_forecast,
-    )
     from .bihar_live.data_service import fetch_live_data
     from .bihar_live.ml_engine import build_bihar_district_risk
 except ImportError:
@@ -32,10 +28,6 @@ except ImportError:
         predict_probability,
     )
     from risk import get_risk, get_warning
-    from bihar_live.forecast_engine import (
-        build_24h_flood_forecast,
-        build_24h_inundation_forecast,
-    )
     from bihar_live.data_service import fetch_live_data
     from bihar_live.ml_engine import build_bihar_district_risk
 
@@ -191,7 +183,7 @@ def bihar_live_stations():
 
 @app.route("/api/bihar-live/ml-risk")
 def bihar_live_ml_risk():
-    """Return calibrated 24h Bihar flood probabilities from live observations."""
+    """Return live Bihar rainfall-trained 24h flood-event probabilities plus river evidence."""
     try:
         result = build_bihar_district_risk()
         if result.get("success") is False:
@@ -201,21 +193,39 @@ def bihar_live_ml_risk():
         return error_response("Bihar ML risk engine unavailable: " + str(error), 502)
 
 
-@app.route("/api/bihar-live/forecast", methods=["POST"])
+@app.route("/api/bihar-live/forecast", methods=["GET", "POST"])
 def bihar_live_forecast():
-    payload = request.get_json(silent=True)
-    if not isinstance(payload, dict):
-        return error_response("JSON object required", 400)
-    forecast = build_24h_flood_forecast(payload)
-    risk_probability = forecast.get("probability")
-    inundation = build_24h_inundation_forecast(payload, risk_probability)
-    return no_store_json({
-        "success": True,
-        "region": "Bihar",
-        "generated_at": now_iso(),
-        "flood_forecast": forecast,
-        "inundation_forecast": inundation,
-    })
+    """Return the same live ML forecast through a convenient forecast endpoint.
+
+    Optional JSON/query field: district. Without it, the complete Bihar result
+    is returned. This route no longer calls the old heuristic-only forecast.
+    """
+    try:
+        if request.method == "POST":
+            payload = request.get_json(silent=True) or {}
+            district = str(payload.get("district", "")).strip()
+        else:
+            district = request.args.get("district", "").strip()
+        result = build_bihar_district_risk()
+        if district:
+            wanted = " ".join(district.upper().replace("_", " ").split())
+            match = next((row for row in result["districts"] if row["district"].upper() == wanted), None)
+            if match is None:
+                return error_response("District not present in the current Bihar live feed", 404)
+            return no_store_json({
+                "success": True,
+                "region": "Bihar",
+                "generated_at": result["generated_at"],
+                "prediction_horizon_hours": 24,
+                "district": match,
+                "model": result["model"],
+                "rainfall_source": result["rainfall_source"],
+                "river_source": result["river_source"],
+                "river_fetched_at": result["river_fetched_at"],
+            })
+        return no_store_json(result)
+    except Exception as error:
+        return error_response("Bihar 24h forecast unavailable: " + str(error), 502)
 
 
 @app.route("/")
