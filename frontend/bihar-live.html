@@ -1,15 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#06101c">
-<title>VARSHAGUARD — Bihar Live</title>
-<link rel="stylesheet" href="bihar-live.css">
-<link rel="stylesheet" href="bihar-live-map.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-</head>
-<body>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#06101c"><title>VARSHAGUARD — Bihar Live</title>
+<link rel="stylesheet" href="bihar-live.css"><link rel="stylesheet" href="bihar-live-map.css"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+</head><body>
 <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
 <header class="topbar"><div class="brand-block"><a class="brand" href="index.html">VARSHA<span>GUARD</span></a><div class="brand-sub">AI/ML FLOOD EARLY WARNING &amp; INUNDATION SYSTEM</div></div><div class="topbar-actions"><div class="live-indicator"><i></i><span>BIHAR LIVE</span></div><div class="prototype-badge">v0.3.0</div><a class="back-button" href="index.html">MAIN PROTOTYPE <span>↗</span></a></div></header>
 <main class="shell">
@@ -21,5 +15,5 @@
 <section class="panel map-panel"><div class="panel-head"><div><div class="eyebrow">LIVE SPATIAL VIEW</div><h2>Bihar river stations</h2></div><span class="source-chip">LEAFLET / OPENSTREETMAP</span></div><div id="biharMap" aria-label="Bihar live river station map"></div><div class="map-status" id="mapStatus">Loading mapped stations...</div></section>
 <section class="engine-grid"><article class="panel engine-panel"><div class="panel-head"><div><div class="eyebrow">24-HOUR FORECAST</div><h2>Flood Risk Engine</h2></div><span class="engine-state" id="riskEngineBadge">WAITING</span></div><div class="engine-summary"><div class="engine-score" id="riskEngineScore">—%</div><div class="engine-state" id="riskEngineLabel">NO VALIDATED MODEL</div></div><div class="progress risk"><span id="riskProgress"></span></div><p class="engine-copy" id="riskEngineCopy">Live observations are available. A 24-hour ML probability is shown only after a validated Bihar model is connected.</p><div class="engine-facts"><div class="engine-fact"><span>WATER LEVEL</span><strong id="riskFactLevel">—</strong></div><div class="engine-fact"><span>1H RISE</span><strong id="riskFactRise">—</strong></div><div class="engine-fact"><span>THRESHOLD STATE</span><strong id="riskFactState">—</strong></div></div><div class="engine-foot">NO FABRICATED PROBABILITY • LIVE INPUT READY</div></article><article class="panel engine-panel"><div class="panel-head"><div><div class="eyebrow">24-HOUR SPATIAL FORECAST</div><h2>Inundation Engine</h2></div><span class="engine-state" id="inundationBadge">WAITING</span></div><div class="engine-summary"><div class="engine-score blue" id="inundationScore">—</div><div class="engine-state" id="inundationLabel">NO VALIDATED EXTENT</div></div><div class="progress inundation"><span id="inundationProgress"></span></div><p class="engine-copy" id="inundationCopy">A true 24-hour inundation forecast requires terrain, river geometry and historical flood-extent supervision. The dashboard will not invent a flood polygon from a river threshold.</p><div class="map-preview"><div class="map-grid" id="inundationGrid"></div><div class="map-label" id="inundationMapLabel">MODEL INPUTS REQUIRED</div></div><div class="engine-facts"><div class="engine-fact"><span>EXTENT</span><strong id="inundationFactExtent">—</strong></div><div class="engine-fact"><span>DEPTH</span><strong id="inundationFactDepth">—</strong></div><div class="engine-fact"><span>CONFIDENCE</span><strong id="inundationFactConfidence">—</strong></div></div><div class="engine-foot">TERRAIN + HYDROLOGY + FLOOD EXTENT REQUIRED</div></article></section>
 <section class="network-footer"><div><span class="pulse"></span><strong id="networkState">CONNECTING</strong></div><span>Source: Bihar FMISC/WRD</span><span>Storage: Neon PostgreSQL</span><span>Leaflet map: enabled</span><span>Auto refresh: 5 min</span></section><section class="error-card" id="errorCard" hidden><strong>LIVE DATA UNAVAILABLE</strong><span id="errorMessage">Unable to fetch Bihar river observations.</span></section></main><footer>VARSHAGUARD / BIHAR LIVE / PROTOTYPE v0.3.0</footer>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script><script src="bihar-live.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script><script src="bihar-live.js"></script><script src="bihar-live-map-init.js"></script>
 </body></html>
