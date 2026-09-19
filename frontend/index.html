@@ -1,136 +1,111 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VARSHAGUARD</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#8623;</text></svg>">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="style.css">
-    <style>
-        .prototype-switch { position: relative; display: inline-block; }
-        .prototype-badge { cursor: pointer; }
-        .prototype-menu { position: absolute; top: calc(100% + 8px); right: 0; min-width: 220px; padding: 8px; background: #fff; border: 1px solid #dfe5ec; border-radius: 10px; box-shadow: 0 12px 30px rgba(20,30,45,.14); z-index: 1000; }
-        .prototype-menu[hidden] { display: none; }
-        .prototype-menu a { display: block; padding: 11px 12px; color: #17202a; text-decoration: none; border-radius: 7px; font-weight: 700; font-size: 13px; }
-        .prototype-menu a:hover { background: #f3f6f9; color: #ff7a00; }
-        .prototype-menu small { display: block; margin: 0 12px 6px; color: #7a8794; font-size: 11px; font-weight: 600; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VARSHAGUARD — Bihar Flood Early Warning</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>↙</text></svg>">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header class="topbar">
-        <div>
-            <h1><a href="#">VARSHA<span>GUARD &#8623;</span></a></h1>
-            <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
-        </div>
-        <div class="topbar-actions">
-            <div class="prototype-switch">
-                <button id="prototypeMenuButton" class="prototype-badge" type="button" aria-haspopup="true" aria-expanded="false">Prototype WIP (0.2.0) ▾</button>
-                <div id="prototypeMenu" class="prototype-menu" hidden>
-                    <small>SWITCH PROTOTYPE</small>
-                    <a href="/bihar-live.html">Bihar Live v0.3.0 →</a>
-                </div>
-            </div>
-        </div>
-    </header>
+<header class="topbar">
+  <div class="brand"><a href="/">VARSHA<span>GUARD ↙</span></a><p><b>SIH26071</b> • AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p></div>
+  <div class="header-right">
+    <span class="live-pill"><i></i> LIVE</span>
+    <span class="version">v0.2.0</span>
+    <span id="clock" class="clock">--:--:-- IST</span>
+    <a class="header-link" href="/bihar-live.html">Bihar Live ↗</a>
+  </div>
+</header>
 
-    <main class="layout">
-        <aside class="sidebar">
-            <section class="panel hoverbx">
-                <label for="regionSelect">Select Region</label>
-                <select id="regionSelect">
-                    <option value="Assam">Assam</option>
-                    <option value="Uttarakhand">Uttarakhand</option>
-                </select>
-                <label for="stationSelect" class="station-label">Select Station</label>
-                <select id="stationSelect" disabled>
-                    <option value="">Loading stations...</option>
-                </select>
-            </section>
+<main class="shell">
+  <section class="controlbar panel">
+    <div><div class="eyebrow">OPERATIONAL CONSOLE</div><h1>Bihar Flood Intelligence</h1></div>
+    <div class="controls">
+      <label>District<select id="districtSelect"><option value="">All Bihar</option></select></label>
+      <button id="refreshBtn" class="primary">↻ Refresh</button>
+      <span id="lastSync" class="sync">SYNC —</span>
+    </div>
+  </section>
 
-            <section id="riskCard" class="risk-card risk-low hoverbx">
-                <p class="small-title">Flood Risk</p>
-                <h2 id="riskLevel">Loading...</h2>
-                <div class="risk-card-probability">
-                    <div class="risk-card-probability-header">
-                        <span>Flood probability</span>
-                        <strong id="probabilityValue">--%</strong>
-                    </div>
-                    <div class="risk-card-bar" aria-label="Flood probability">
-                        <div id="riskCardBarFill" class="risk-card-bar-fill" style="width: 0%"></div>
-                    </div>
-                    <div class="risk-card-bar-scale">
-                        <span>0%</span>
-                        <span>50%</span>
-                        <span>100%</span>
-                    </div>
-                </div>
-                <p id="warning">Checking latest prototype data.</p>
-                <div class="horizon">Prediction horizon: <span id="horizon">24</span> hours</div>
-                <div class="selected-station">Station: <strong id="selectedStationName">&mdash;</strong></div>
-            </section>
+  <section class="hero-grid">
+    <aside class="stack">
+      <article id="riskCard" class="risk-card low">
+        <div class="card-kicker">FLOOD EVENT PROBABILITY — NEXT 24H</div>
+        <div class="risk-head"><div id="riskLevel">LOADING</div><div id="probability">--%</div></div>
+        <div class="progress"><span id="probabilityFill"></span></div>
+        <p id="riskNote">Loading live Bihar conditions…</p>
+        <div class="risk-meta"><span>District <b id="selectedDistrict">All Bihar</b></span><span>Updated <b id="updated">—</b></span></div>
+      </article>
 
-            <section class="panel hoverbx">
-                <h3>System Status</h3>
-                <div class="status-row"><span>Backend API</span><strong id="apiStatus">CHECKING</strong></div>
-                <div class="status-row"><span>ML Model</span><strong id="modelStatus">CHECKING</strong></div>
-                <div class="status-row"><span>Data</span><strong id="dataStatus">CHECKING</strong></div>
-                <div class="status-row"><span>Prediction</span><strong id="predictionStatus">CHECKING</strong></div>
-            </section>
-        </aside>
+      <article class="panel">
+        <div class="section-title">NODE HEALTH</div>
+        <div class="health"><span>Rainfall feed</span><b id="rainStatus">CHECKING</b></div>
+        <div class="health"><span>River telemetry</span><b id="riverStatus">CHECKING</b></div>
+        <div class="health"><span>ML inference</span><b id="modelStatus">CHECKING</b></div>
+        <div class="health"><span>Inundation layer</span><b id="inundationStatus">PROXY</b></div>
+      </article>
 
-        <section class="main-area">
-            <section class="map-section hoverbx">
-                <div id="map"></div>
-            </section>
+      <article class="panel">
+        <div class="section-title">INFERENCE MODEL</div>
+        <div class="model-name" id="modelName">—</div>
+        <p class="muted" id="modelScope">Calibrated 24-hour Bihar flood-event probability.</p>
+        <div class="mini-grid"><div><span>HORIZON</span><b id="horizon">24h</b></div><div><span>CALIBRATION</span><b id="calibration">—</b></div></div>
+      </article>
+    </aside>
 
-            <section class="grid">
-                <div class="panel hoverbx">
-                    <h3>Recent Rainfall Trend</h3>
-                    <div class="chart-container">
-                        <canvas id="rainfallChart"></canvas>
-                    </div>
-                </div>
+    <section class="map-wrap panel">
+      <div class="map-head"><div><div class="section-title">GEOSPATIAL FLOOD MONITOR</div><span class="muted">Live river stations • district risk overlay</span></div><div class="legend"><span><i class="dot high"></i> HIGH</span><span><i class="dot medium"></i> MEDIUM</span><span><i class="dot low"></i> LOW</span></div></div>
+      <div id="map"></div>
+      <div class="map-foot"><span>© OpenStreetMap</span><span id="stationCount">0 stations</span></div>
+    </section>
+  </section>
 
-                <div class="panel hoverbx">
-                    <h3>Why This Warning?</h3>
-                    <p class="plain-text">
-                        The Random Forest model uses recent rainfall patterns and time features to estimate flood likelihood.
-                        This is a probabilistic prototype, not a guaranteed prediction.
-                    </p>
-                    <div id="featureList" class="feature-list"></div>
-                </div>
-            </section>
+  <section class="metrics">
+    <article class="metric"><span>DISTRICTS</span><b id="districtCount">—</b><small>current model coverage</small></article>
+    <article class="metric"><span>HIGH ALERT</span><b id="highCount">—</b><small>integrated alert state</small></article>
+    <article class="metric"><span>MEDIUM ALERT</span><b id="mediumCount">—</b><small>integrated alert state</small></article>
+    <article class="metric"><span>RIVER STATIONS</span><b id="stationMetric">—</b><small>live observations</small></article>
+  </section>
 
-            <section class="panel hoverbx">
-                <h3>Prediction Information</h3>
-                <div id="historyList" class="history-list">Loading records...</div>
-            </section>
-        </section>
-    </main>
+  <section class="analytics-grid">
+    <article class="panel">
+      <div class="panel-head"><div><div class="section-title">DISTRICT RISK MATRIX</div><h2>Flood early-warning state</h2></div><span class="tag">24H FORECAST</span></div>
+      <div class="table-scroll"><table><thead><tr><th>District</th><th>Alert</th><th>Flood P(24h)</th><th>River</th><th>24h Rain</th><th>72h Rain</th><th>River Max</th><th>1h Rise</th><th>Inundation</th></tr></thead><tbody id="riskBody"><tr><td colspan="9">Loading live data…</td></tr></tbody></table></div>
+    </article>
+    <article class="panel">
+      <div class="panel-head"><div><div class="section-title">RAINFALL ANALYTICS</div><h2>Current accumulation</h2></div></div>
+      <div class="rain-bars" id="rainBars"><div class="empty">Waiting for live district rainfall data…</div></div>
+      <div class="chart-axis"><span>24H</span><span>72H</span><span>7D</span><span>14D</span></div>
+    </article>
+  </section>
 
-    <div id="message" class="message hidden"></div>
-    <footer></footer>
-    <script>
-        (() => {
-            const button = document.getElementById('prototypeMenuButton');
-            const menu = document.getElementById('prototypeMenu');
-            if (!button || !menu) return;
-            button.addEventListener('click', (event) => {
-                event.stopPropagation();
-                const open = menu.hidden;
-                menu.hidden = !open;
-                button.setAttribute('aria-expanded', String(open));
-            });
-            document.addEventListener('click', () => {
-                menu.hidden = true;
-                button.setAttribute('aria-expanded', 'false');
-            });
-            menu.addEventListener('click', (event) => event.stopPropagation());
-        })();
-    </script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js"></script>
+  <section class="panel">
+    <div class="panel-head"><div><div class="section-title">LIVE HYDROLOGY</div><h2>River station telemetry</h2></div><span class="tag">LIVE FEED</span></div>
+    <div class="table-scroll"><table><thead><tr><th>Station</th><th>District</th><th>River</th><th>Level</th><th>Warning</th><th>Danger</th><th>Status</th><th>Trend</th></tr></thead><tbody id="riverBody"><tr><td colspan="8">Loading live stations…</td></tr></tbody></table></div>
+  </section>
+
+  <section class="explain-grid">
+    <article class="panel">
+      <div class="section-title">MODEL EXPLAINABILITY</div>
+      <h2>Why this warning?</h2>
+      <p class="muted">The displayed probability is the calibrated ML estimate for a documented Bihar flood event beginning in the target district within the next 24 hours. River thresholds are independent hydrologic confirmation, not silently claimed ML features.</p>
+      <div id="features" class="feature-grid"></div>
+    </article>
+    <article class="panel note-panel">
+      <div class="section-title">INUNDATION SEMANTICS</div>
+      <h2>Spatial proxy, not hydraulic simulation</h2>
+      <p class="muted">The current inundation layer is a hydrology-based proxy. It does not use a DEM, floodplain geometry, or hydraulic simulation. Treat it as decision-support context rather than a mapped flood depth guarantee.</p>
+      <div class="source-row"><span>RAINFALL SOURCE</span><b id="rainSource">—</b></div>
+      <div class="source-row"><span>RIVER SOURCE</span><b id="riverSource">—</b></div>
+    </article>
+  </section>
+</main>
+
+<footer>VARSHAGUARD • SIH26071 • Prototype v0.2.0 • Data shown is operational prototype output and should be independently verified before emergency action.</footer>
+<div id="message" class="toast hidden"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
