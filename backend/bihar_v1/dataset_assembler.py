@@ -88,12 +88,23 @@ def _audit_observations(frame: pd.DataFrame) -> dict:
     if frame.empty:
         return {"rows": 0, "districts": [], "stations": [], "start": None, "end": None}
     ts = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+    valid = ts.dropna().sort_values()
+    if valid.empty:
+        return {"rows": int(len(frame)), "districts": [], "stations": [], "start": None, "end": None}
+    gaps = valid.diff().dropna().dt.total_seconds().div(3600)
+    gap_values = gaps[gaps > 1.0]
+    duplicate_timestamps = int(ts.duplicated().sum())
     return {
         "rows": int(len(frame)),
         "districts": sorted(frame["district"].dropna().unique().tolist()),
         "stations": sorted(frame["station_id"].dropna().astype(str).unique().tolist()),
-        "start": ts.min().isoformat() if not ts.isna().all() else None,
-        "end": ts.max().isoformat() if not ts.isna().all() else None,
+        "start": valid.min().isoformat(),
+        "end": valid.max().isoformat(),
+        "median_interval_hours": float(gaps.median()) if not gaps.empty else None,
+        "max_interval_hours": float(gaps.max()) if not gaps.empty else None,
+        "gaps_over_1h": int(len(gap_values)),
+        "duplicate_timestamps": duplicate_timestamps,
+        "coverage_hours": float((valid.max() - valid.min()).total_seconds() / 3600),
     }
 
 
@@ -189,6 +200,7 @@ def assemble(
             "Daily rainfall is retained as processed evidence but is not upsampled into hourly training rows.",
             "Only stations explicitly listed in station_registry.py are included.",
             "A supervised training table requires a flood-event inventory; no labels are fabricated when the inventory is unavailable.",
+            "Training status is based on the presence of both classes only; model readiness still requires event-level and temporal validation.",
         ],
     }
 
