@@ -327,6 +327,7 @@ def train_patna_flood_model(
             "target": TARGET_COLUMN,
             "horizon_hours": 24,
             "feature_columns": features,
+            "dataset_period": dataset_period,
             "training_samples": positives + negatives,
             "training_positive_events": int(readiness["splits"]["train"]["positive_events"]),
             "validation_positive_events": int(readiness["splits"]["validation"]["positive_events"]),
