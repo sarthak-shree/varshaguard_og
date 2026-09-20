@@ -23,6 +23,8 @@ def threshold_analysis(
         raise ValueError(f"Frame has no {TARGET_COLUMN} target")
 
     y_true = frame[TARGET_COLUMN].to_numpy(dtype=int)
+    if len(np.unique(y_true)) < 2:
+        raise ValueError("Threshold analysis requires both positive and negative validation samples")
     probabilities = np.asarray(probability, dtype=float)
     if len(y_true) != len(probabilities):
         raise ValueError("Probability length must match frame length")
