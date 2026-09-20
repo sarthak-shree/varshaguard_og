@@ -9,6 +9,8 @@ def prepare_hourly_frame(frame: pd.DataFrame, *, timestamp_col: str = "timestamp
     if timestamp_col not in out.columns:
         raise ValueError(f"Missing required column: {timestamp_col}")
     out[timestamp_col] = pd.to_datetime(out[timestamp_col], utc=True, errors="raise")
+    if out[timestamp_col].duplicated().any():
+        raise ValueError("Feature engineering requires unique timestamps")
     return out.sort_values(timestamp_col).reset_index(drop=True)
 
 def add_rainfall_features(frame: pd.DataFrame, *, rain_col: str = "rain_mm") -> pd.DataFrame:
