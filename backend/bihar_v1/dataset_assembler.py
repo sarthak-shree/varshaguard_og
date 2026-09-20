@@ -1,9 +1,4 @@
-"""Assemble source CSVs into auditable Bihar v1 training datasets.
-
-Raw source files stay outside GitHub. This module filters only stations explicitly
-supported by station_registry.py and never manufactures hourly observations from
-daily rainfall.
-"""
+"""Assemble source CSVs into auditable Bihar v1 training datasets."""
 from __future__ import annotations
 
 import argparse
@@ -16,6 +11,7 @@ import pandas as pd
 from .data_pipeline import ensure_data_dirs, observations_to_frame
 from .ingestion.normalizers import normalize_rainfall_csv, normalize_river_csv
 from .labeling import build_24h_event_labels, load_district_events
+from .splitting import chronological_split, split_summary, validate_split_readiness
 from .station_registry import stations_for_district
 from .training_table import build_training_table, summarize_target
 
@@ -93,7 +89,6 @@ def _audit_observations(frame: pd.DataFrame) -> dict:
         return {"rows": int(len(frame)), "districts": [], "stations": [], "start": None, "end": None}
     gaps = valid.diff().dropna().dt.total_seconds().div(3600)
     gap_values = gaps[gaps > 1.0]
-    duplicate_timestamps = int(ts.duplicated().sum())
     return {
         "rows": int(len(frame)),
         "districts": sorted(frame["district"].dropna().unique().tolist()),
@@ -103,7 +98,7 @@ def _audit_observations(frame: pd.DataFrame) -> dict:
         "median_interval_hours": float(gaps.median()) if not gaps.empty else None,
         "max_interval_hours": float(gaps.max()) if not gaps.empty else None,
         "gaps_over_1h": int(len(gap_values)),
-        "duplicate_timestamps": duplicate_timestamps,
+        "duplicate_timestamps": int(ts.duplicated().sum()),
         "coverage_hours": float((valid.max() - valid.min()).total_seconds() / 3600),
     }
 
@@ -112,7 +107,9 @@ def _empty_training_summary(reason: str) -> dict:
     return {
         "status": "not_trainable",
         "reason": reason,
-        "training": {"rows": 0, "positive": 0, "negative": 0, "positive_rate": 0.0},
+        "training": {"rows": 0, "positive": 0, "negative": 0, "positive_rate": 0.0, "positive_events": 0},
+        "split_summary": {},
+        "readiness": {"ready_for_model_evaluation": False, "splits": {}},
     }
 
 
@@ -146,12 +143,22 @@ def _assemble_district(
     table_path = output_dir / f"{district}_flood_training.csv"
     table.to_csv(table_path, index=False)
 
+    splits = chronological_split(table)
+    split_info = split_summary(splits)
+    readiness = validate_split_readiness(splits)
+
+    status = "trainable" if target["positive"] > 0 and target["negative"] > 0 else "not_trainable"
+    if not readiness["ready_for_model_evaluation"]:
+        status = "not_evaluation_ready"
+
     return {
-        "status": "trainable" if target["positive"] > 0 and target["negative"] > 0 else "not_trainable",
+        "status": status,
         "training": target,
         "observation_coverage": _audit_observations(observations),
         "label_positive_timestamps": int(labels["flood_event_start_next_24h"].sum()),
         "ongoing_timestamps_excluded": int(labels["flood_event_ongoing"].sum()),
+        "split_summary": split_info,
+        "readiness": readiness,
         "training_table": str(table_path),
     }
 
@@ -200,7 +207,7 @@ def assemble(
             "Daily rainfall is retained as processed evidence but is not upsampled into hourly training rows.",
             "Only stations explicitly listed in station_registry.py are included.",
             "A supervised training table requires a flood-event inventory; no labels are fabricated when the inventory is unavailable.",
-            "Training status is based on the presence of both classes only; model readiness still requires event-level and temporal validation.",
+            "Evaluation readiness requires independent flood events in each chronological split.",
         ],
     }
 
