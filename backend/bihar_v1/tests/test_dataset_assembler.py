@@ -69,6 +69,9 @@ class DatasetAssemblerTests(unittest.TestCase):
             self.assertIn("event_isolation_removed", report["districts"]["patna"])
             self.assertIn("muzaffarpur", report["districts"])
             self.assertEqual(report["districts"]["muzaffarpur"]["status"], "not_trainable")
+            self.assertEqual(report["districts"]["muzaffarpur"]["readiness_blockers"]["heavy_rainfall"]["status"], "blocked")
+            self.assertEqual(report["districts"]["muzaffarpur"]["readiness_blockers"]["river_flood"]["status"], "blocked")
+            self.assertEqual(report["districts"]["muzaffarpur"]["readiness_blockers"]["inundation"]["status"], "blocked")
 
     def test_muzaffarpur_without_supported_river_is_not_synthesized(self):
         with tempfile.TemporaryDirectory() as tmp:
