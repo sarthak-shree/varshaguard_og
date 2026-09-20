@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -287,6 +288,7 @@ def train_patna_flood_model(
         report_path = destination / f"{district}_flood_training_report.json"
         manifest_path = destination / f"{district}_flood_model_manifest.json"
         joblib.dump(model, model_path)
+        model_sha256 = hashlib.sha256(model_path.read_bytes()).hexdigest()
         report["model_path"] = str(model_path)
         report["report_path"] = str(report_path)
         report["manifest_path"] = str(manifest_path)
@@ -305,6 +307,7 @@ def train_patna_flood_model(
             "validation_brier": metrics["validation"]["brier_score"],
             "operational_threshold": None,
             "operational_threshold_status": "not_calibrated",
+            "model_sha256": model_sha256,
         }
         report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
