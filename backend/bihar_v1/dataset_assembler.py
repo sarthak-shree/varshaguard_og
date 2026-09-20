@@ -11,6 +11,7 @@ import pandas as pd
 from .data_pipeline import ensure_data_dirs, observations_to_frame
 from .ingestion.normalizers import normalize_rainfall_csv, normalize_river_csv
 from .labeling import build_24h_event_labels, load_district_events
+from .event_readiness import summarize_event_coverage
 from .readiness import summarize_hourly_coverage, summarize_training_window_coverage
 from .synchronized_readiness import summarize_synchronized_hourly_coverage
 from .splitting import (
@@ -327,6 +328,10 @@ def assemble(
         "districts": sorted(event_frame["district"].dropna().unique().tolist()),
         "start": event_frame["start"].min().isoformat() if not event_frame.empty else None,
         "end": event_frame["end"].max().isoformat() if not event_frame.empty else None,
+        "district_coverage": {
+            district: summarize_event_coverage(event_frame, district=district)
+            for district in DISTRICTS
+        },
     }
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report
