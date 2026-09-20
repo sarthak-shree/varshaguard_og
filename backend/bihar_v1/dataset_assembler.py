@@ -159,34 +159,22 @@ def _empty_training_summary(
     }
 
 
-def _readiness_blockers(district: str, sources: dict[str, pd.DataFrame], event_frame: pd.DataFrame, district_result: dict) -> dict:
-    """Return explicit blockers without implying that missing data can be synthesized."""
-    hourly = sources.get("rainfall_hourly", pd.DataFrame())
-    river = sources.get("river", pd.DataFrame())
-    district_hourly = hourly[hourly["district"] == district] if not hourly.empty else hourly
-    district_river = river[river["district"] == district] if not river.empty else river
-    district_events = event_frame[event_frame["district"] == district] if not event_frame.empty else event_frame
-
-    blockers = {
-        "heavy_rainfall": [],
-        "river_flood": [],
-        "inundation": [
-            "No Sentinel-1 inundation masks are included in the current assembler inputs.",
-            "No static terrain/DEM feature set is included in the current assembler inputs.",
-        ],
+def _readiness_blockers(
+    district: str,
+    sources: dict[str, pd.DataFrame],
+    event_frame: pd.DataFrame,
+    district_result: dict,
+) -> dict:
+    """Expose the consolidated model gate as the single blocker contract."""
+    readiness = district_result.get("model_readiness", {})
+    models = readiness.get("models", {})
+    return {
+        model: {
+            "status": details.get("status", "blocked"),
+            "reasons": list(details.get("reasons", [])),
+        }
+        for model, details in models.items()
     }
-    if district_hourly.empty:
-        blockers["heavy_rainfall"].append("No supported hourly rainfall observations are available for this district.")
-    if district_river.empty:
-        blockers["river_flood"].append("No supported river-level observations are available for this district.")
-    if district_events.empty:
-        blockers["river_flood"].append("No flood-event inventory records are available for this district.")
-    if district_result.get("readiness", {}).get("ready_for_model_evaluation") is not True:
-        reason = district_result.get("readiness", {}).get("reason")
-        if reason:
-            blockers["river_flood"].append(str(reason))
-
-    return {model: {"status": "blocked" if reasons else "not_blocked", "reasons": reasons} for model, reasons in blockers.items()}
 
 
 def _assemble_district(
