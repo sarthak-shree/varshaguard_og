@@ -107,6 +107,21 @@ def _calibration_bins(y_true: np.ndarray, probability: np.ndarray, bins: int = 1
     return rows
 
 
+def _calibration_error(y_true: np.ndarray, probability: np.ndarray, bins: int = 10) -> float | None:
+    """Return weighted mean absolute calibration error across populated bins."""
+    if len(np.unique(y_true)) < 2:
+        return None
+    rows = _calibration_bins(y_true, probability, bins=bins)
+    if not rows:
+        return None
+    total = len(y_true)
+    return float(sum(
+        (row["count"] / total)
+        * abs(row["mean_predicted_probability"] - row["observed_positive_rate"])
+        for row in rows
+    ))
+
+
 def _safe_metric(metric, y_true, values) -> float | None:
     try:
         if len(np.unique(y_true)) < 2:
@@ -147,6 +162,7 @@ def evaluate_predictions(
             "true_positive": int(tp),
         },
         "calibration_bins": _calibration_bins(y_true, probability),
+        "calibration_error": _calibration_error(y_true, probability),
     }
 
 
