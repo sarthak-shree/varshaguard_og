@@ -59,7 +59,7 @@ class DatasetAssemblerTests(unittest.TestCase):
 
             self.assertEqual(report["sources"]["rainfall_daily"]["rows"], 1)
             self.assertEqual(report["sources"]["river"]["rows"], 220)
-            self.assertEqual(report["districts"]["patna"]["status"], "trainable")
+            self.assertEqual(report["districts"]["patna"]["status"], "not_evaluation_ready")
             self.assertTrue((root / "out" / "processed" / "dataset_audit.json").exists())
             self.assertTrue((root / "out" / "training" / "patna_flood_training.csv").exists())
             self.assertIn("muzaffarpur", report["districts"])
