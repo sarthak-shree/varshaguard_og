@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import f1_score, precision_score, recall_score
 
-from .model_training import TARGET_COLUMN
+TARGET_COLUMN = "flood_event_start_next_24h"
 
 
 def threshold_analysis(
