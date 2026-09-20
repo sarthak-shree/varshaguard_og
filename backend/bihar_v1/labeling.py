@@ -8,22 +8,40 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+import re
 
 import pandas as pd
 
 
 def _parse_inventory_datetime(value: object) -> pd.Timestamp:
-    """Parse dd/mm/yy inventory dates without pandas' two-digit-year pivot."""
+    """Parse common Bihar inventory date formats with an explicit year policy."""
     text = str(value).strip()
-    if not text:
+    if not text or text.lower() in {"nan", "nat", "none"}:
         return pd.NaT
+
+    parts = text.split(maxsplit=1)
+    date_part = parts[0].replace("-", "/")
+    time_part = parts[1] if len(parts) == 2 else "00:00"
+
+    fields = [x for x in re.split(r"/", date_part) if x]
+    if len(fields) != 3:
+        return pd.NaT
+
     try:
-        date_part, time_part = text.split(maxsplit=1)
+        day, month, year = (int(x) for x in fields)
+        hour_minute = [int(x) for x in re.split(r":", time_part)[:2]]
+        hour = hour_minute[0] if hour_minute else 0
+        minute = hour_minute[1] if len(hour_minute) > 1 else 0
+    except (TypeError, ValueError):
+        return pd.NaT
+
+    if year < 100:
+        year = 1900 + year if year >= 67 else 2000 + year
+
+    try:
+        return pd.Timestamp(datetime(year, month, day, hour, minute))
     except ValueError:
-        date_part, time_part = text, "00:00"
-    day, month, year = [int(x) for x in date_part.split("/")[:3]]
-    year = 1900 + year if year >= 67 else 2000 + year
-    return pd.Timestamp(datetime(year, month, day, *[int(x) for x in time_part.split(":")[:2]]))
+        return pd.NaT
 
 
 def load_district_events(path: str | Path) -> pd.DataFrame:
@@ -70,8 +88,17 @@ def build_24h_event_labels(
 
     horizon = pd.Timedelta(hours=horizon_hours)
     for row in selected.itertuples(index=False):
-        start = pd.Timestamp(row.start).tz_localize("UTC")
-        end = pd.Timestamp(row.end).tz_localize("UTC")
+        start = pd.Timestamp(row.start)
+        end = pd.Timestamp(row.end)
+        if start.tzinfo is None:
+            start = start.tz_localize("UTC")
+        else:
+            start = start.tz_convert("UTC")
+        if end.tzinfo is None:
+            end = end.tz_localize("UTC")
+        else:
+            end = end.tz_convert("UTC")
+
         lead_mask = (
             (target["timestamp"] < start)
             & (target["timestamp"] >= start - horizon)
