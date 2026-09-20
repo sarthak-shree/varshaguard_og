@@ -69,6 +69,26 @@ class FloodPredictorTests(unittest.TestCase):
             self.assertEqual(result.status, "model_error")
             self.assertIn("feature schema", result.details["error"])
 
+    def test_manifest_checksum_mismatch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            model = DummyClassifier(strategy="prior")
+            model.fit(np.array([[0.0], [1.0]]), np.array([0, 1]))
+            model.feature_names_in_ = np.array(["rain_1h"])
+            path = Path(tmp) / "patna_flood_xgboost.joblib"
+            joblib.dump(model, path)
+            (Path(tmp) / "patna_flood_model_manifest.json").write_text(
+                '{"schema_version": 1, "district": "patna", '
+                '"model_type": "xgboost_binary_classifier", '
+                '"target": "flood_event_start_next_24h", "horizon_hours": 24, '
+                '"feature_columns": ["rain_1h"], "model_sha256": "wrong", '
+                '"operational_threshold": null, '
+                '"operational_threshold_status": "not_calibrated"}',
+                encoding="utf-8",
+            )
+            result = predict("patna", {"rain_1h": 12}, model_file=path)
+            self.assertEqual(result.status, "model_error")
+            self.assertIn("checksum", result.details["error"])
+
 
 if __name__ == "__main__":
     unittest.main()
