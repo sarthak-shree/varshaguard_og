@@ -79,6 +79,9 @@ class ModelTrainingTests(unittest.TestCase):
             self.assertTrue(Path(report["report_path"]).exists())
             persisted = json.loads(Path(report["report_path"]).read_text(encoding="utf-8"))
             self.assertEqual(persisted["status"], "trained")
+            manifest = json.loads((output / "patna_flood_model_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["dataset_period"]["train_start"], "2025-01-01T00:00:00+00:00")
+            self.assertIn("test_end", manifest["dataset_period"])
 
     def test_missing_features_fail_explicitly(self):
         with tempfile.TemporaryDirectory() as tmp:
