@@ -85,7 +85,7 @@ def build_24h_event_labels(
     target["flood_event_start_next_24h"] = False
     target["flood_event_ongoing"] = False
     target["flood_event_uei"] = pd.Series(pd.NA, index=target.index, dtype="string")
-    target["flood_event_start_timestamp"] = pd.NaT
+    target["flood_event_start_timestamp"] = pd.Series(pd.NaT, index=target.index, dtype="datetime64[ns, UTC]")
 
     horizon = pd.Timedelta(hours=horizon_hours)
     for row in selected.itertuples(index=False):
