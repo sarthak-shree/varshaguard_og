@@ -62,6 +62,11 @@ class DatasetAssemblerTests(unittest.TestCase):
             self.assertEqual(report["districts"]["patna"]["status"], "not_evaluation_ready")
             self.assertTrue((root / "out" / "processed" / "dataset_audit.json").exists())
             self.assertTrue((root / "out" / "training" / "patna_flood_training.csv").exists())
+            self.assertTrue((root / "out" / "training" / "patna" / "train.csv").exists())
+            self.assertTrue((root / "out" / "training" / "patna" / "validation.csv").exists())
+            self.assertTrue((root / "out" / "training" / "patna" / "test.csv").exists())
+            self.assertIn("pre_isolation_split_summary", report["districts"]["patna"])
+            self.assertIn("event_isolation_removed", report["districts"]["patna"])
             self.assertIn("muzaffarpur", report["districts"])
             self.assertEqual(report["districts"]["muzaffarpur"]["status"], "not_trainable")
 
