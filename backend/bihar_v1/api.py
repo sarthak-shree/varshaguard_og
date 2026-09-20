@@ -1,6 +1,8 @@
+import json
+
 from flask import Blueprint, jsonify, request
 
-from .config import PREDICTION_HORIZON_HOURS, SUPPORTED_DISTRICTS, district
+from .config import BIHAR_V1_DATA_ROOT, PREDICTION_HORIZON_HOURS, SUPPORTED_DISTRICTS, district
 from .prediction.flood_predictor import model_path, predict as predict_flood
 from .prediction.inundation_predictor import predict as predict_inundation
 from .prediction.rainfall_predictor import predict as predict_rainfall
@@ -8,6 +10,19 @@ from .services.alert_engine import build_alert
 from .services.risk_fusion import fuse
 
 bp = Blueprint("bihar_v1", __name__, url_prefix="/api/bihar/v1")
+
+def _load_model_readiness(slug: str) -> dict:
+    path = BIHAR_V1_DATA_ROOT / "processed" / "dataset_audit.json"
+    if not path.exists():
+        return {"status": "audit_unavailable", "models": {}}
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+        readiness = report.get("districts", {}).get(slug, {}).get("model_readiness")
+        if not isinstance(readiness, dict):
+            return {"status": "audit_missing_model_readiness", "models": {}}
+        return readiness
+    except (OSError, ValueError, TypeError):
+        return {"status": "audit_unavailable", "models": {}}
 
 
 def _district_or_404(slug: str):
@@ -55,11 +70,11 @@ def status(slug: str):
         except (OSError, ValueError):
             calibration_status = "manifest_unavailable"
 
-    return jsonify({
+    model_readiness = _load_model_readiness(info["slug"])\n\n    return jsonify({
         "success": True,
         "district": info,
         "horizon_hours": PREDICTION_HORIZON_HOURS,
-        "models": {
+        "model_readiness": model_readiness,\n        "models": {
             "rainfall": {"status": "model_not_trained"},
             "flood": {
                 "status": "trained_artifact_available" if flood_model.exists() else "model_not_trained",
