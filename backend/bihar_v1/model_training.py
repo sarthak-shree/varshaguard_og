@@ -187,13 +187,30 @@ def _label_window_lead_time(frame: pd.DataFrame, probability: np.ndarray, thresh
     if positives.empty:
         return {"events_with_predicted_positive": 0, "mean_hours": None, "median_hours": None}
 
-    # The positive label means the event starts within the next 24h. Without
-    # event start timestamps in the split, exact event lead time is unknowable.
+    if "flood_event_start_timestamp" not in positives.columns:
+        return {
+            "events_with_predicted_positive": int(positives["flood_event_uei"].astype(str).nunique()),
+            "mean_hours": None,
+            "median_hours": None,
+            "status": "requires_event_start_timestamp_for_exact_lead_time",
+        }
+
+    event_start = pd.to_datetime(positives["flood_event_start_timestamp"], utc=True, errors="coerce")
+    lead_hours = (event_start - pd.to_datetime(positives["timestamp"], utc=True)).dt.total_seconds() / 3600.0
+    lead_hours = lead_hours.dropna()
+    if lead_hours.empty:
+        return {
+            "events_with_predicted_positive": int(positives["flood_event_uei"].astype(str).nunique()),
+            "mean_hours": None,
+            "median_hours": None,
+            "status": "event_start_timestamps_unavailable",
+        }
+
     return {
         "events_with_predicted_positive": int(positives["flood_event_uei"].astype(str).nunique()),
-        "mean_hours": None,
-        "median_hours": None,
-        "status": "requires_event_start_timestamp_for_exact_lead_time",
+        "mean_hours": float(lead_hours.mean()),
+        "median_hours": float(lead_hours.median()),
+        "status": "computed_from_event_start_timestamps",
     }
 
 
