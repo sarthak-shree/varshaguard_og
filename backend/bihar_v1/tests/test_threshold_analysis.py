@@ -16,6 +16,11 @@ class ThresholdAnalysisTests(unittest.TestCase):
         self.assertIn("precision", rows[0])
         self.assertIn("f1", rows[0])
 
+    def test_one_class_validation_is_rejected(self):
+        frame = pd.DataFrame({TARGET_COLUMN: [0, 0]})
+        with self.assertRaisesRegex(ValueError, "both positive and negative"):
+            threshold_analysis(frame, np.array([0.2, 0.8]))
+
     def test_probability_length_must_match(self):
         frame = pd.DataFrame({TARGET_COLUMN: [0, 1]})
         with self.assertRaises(ValueError):
