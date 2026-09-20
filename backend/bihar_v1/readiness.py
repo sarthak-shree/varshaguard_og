@@ -114,3 +114,100 @@ def summarize_training_window_coverage(table: pd.DataFrame) -> dict:
         "feature_window_coverage_ratio": count / len(table),
         "feature_columns_checked": window_columns,
     }
+
+
+def build_model_readiness(
+    *,
+    district: str,
+    rainfall_hourly: pd.DataFrame,
+    river: pd.DataFrame,
+    event_inventory: dict,
+    synchronized_hourly: dict,
+    evaluation_ready: bool,
+    evaluation_reason: str | None,
+    continuous_window_hours: int = 168,
+    minimum_independent_events: int = 5,
+) -> dict:
+    """Return explicit trainability blockers for each Bihar v1 model.
+
+    This gate is intentionally conservative. Flood-event labels are not
+    treated as heavy-rainfall labels, and river observations are not treated
+    as threshold exceedances without an official danger threshold.
+    """
+    rainfall_coverage = summarize_hourly_coverage(
+        rainfall_hourly,
+        continuous_window_hours=continuous_window_hours,
+    )
+    river_coverage = summarize_hourly_coverage(
+        river,
+        continuous_window_hours=continuous_window_hours,
+    )
+    event_count = int(event_inventory.get("unique_events", 0))
+
+    heavy_rainfall = []
+    if rainfall_hourly.empty:
+        heavy_rainfall.append("No supported hourly rainfall observations are available.")
+    elif rainfall_coverage["stations_with_continuous_window"] == 0:
+        heavy_rainfall.append(
+            f"No station has a {continuous_window_hours}-hour continuous rainfall window."
+        )
+    heavy_rainfall.append(
+        "No documented heavy-rainfall target/label definition is included in the current supervised dataset."
+    )
+
+    river_flood = []
+    if river.empty:
+        river_flood.append("No supported river-level observations are available.")
+    elif river_coverage["stations_with_continuous_window"] == 0:
+        river_flood.append(
+            f"No station has a {continuous_window_hours}-hour continuous river-level window."
+        )
+    if synchronized_hourly.get("stations_with_continuous_window", 0) == 0:
+        river_flood.append(
+            f"No synchronized rainfall/river station pair has a {continuous_window_hours}-hour continuous window."
+        )
+    if event_count < minimum_independent_events:
+        river_flood.append(
+            f"Only {event_count} independent flood events are available; at least {minimum_independent_events} are required for the evaluation gate."
+        )
+    if not evaluation_ready:
+        river_flood.append(
+            evaluation_reason or "Chronological train/validation/test evaluation readiness is not satisfied."
+        )
+    river_flood.append(
+        "Official river danger-level/threshold data is not included, so event-start labels cannot be treated as river-threshold exceedance labels."
+    )
+
+    inundation = [
+        "Historical Sentinel-1 inundation masks are not included.",
+        "Static terrain/DEM features are not included.",
+    ]
+
+    models = {
+        "heavy_rainfall": heavy_rainfall,
+        "river_flood": river_flood,
+        "inundation": inundation,
+    }
+    return {
+        "district": district,
+        "status": "ready" if all(not reasons for reasons in models.values()) else "blocked",
+        "models": {
+            name: {
+                "status": "ready" if not reasons else "blocked",
+                "reasons": reasons,
+            }
+            for name, reasons in models.items()
+        },
+        "requirements": {
+            "continuous_window_hours": continuous_window_hours,
+            "minimum_independent_events": minimum_independent_events,
+        },
+        "evidence": {
+            "rainfall_hourly_rows": int(len(rainfall_hourly)),
+            "river_rows": int(len(river)),
+            "independent_flood_events": event_count,
+            "synchronized_stations_with_continuous_window": int(
+                synchronized_hourly.get("stations_with_continuous_window", 0)
+            ),
+        },
+    }
