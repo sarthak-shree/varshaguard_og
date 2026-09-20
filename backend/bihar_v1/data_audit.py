@@ -62,8 +62,11 @@ def audit_csv(path: str | Path) -> dict:
             }
 
     if "Data Acquisition Time" in frame and "Station" in frame:
-        key = frame["Station"].astype("string") + "|" + frame["Data Acquisition Time"].astype("string")
-        result["duplicate_station_timestamps"] = int(key.duplicated().sum())
+        key_columns = ["Station", "Data Acquisition Time"]
+        if "Agency" in frame:
+            key_columns.append("Agency")
+        key = frame[key_columns].astype("string").fillna("<missing>").agg("|".join, axis=1)
+        result["duplicate_observation_keys"] = int(key.duplicated().sum())
 
     return result
 
