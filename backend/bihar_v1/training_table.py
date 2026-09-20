@@ -1,9 +1,4 @@
-"""Build leakage-safe hourly training tables for Bihar v1.
-
-The generator works from normalized hourly observations and district event labels.
-It never invents missing rainfall/river values and excludes ongoing flood-event
-timestamps from negative samples.
-"""
+"""Build leakage-safe hourly training tables for Bihar v1."""
 from __future__ import annotations
 
 import pandas as pd
@@ -44,6 +39,8 @@ def build_training_table(
     labels = labels.copy()
     labels["timestamp"] = pd.to_datetime(labels["timestamp"], utc=True, errors="raise")
     label_cols = ["timestamp", "flood_event_start_next_24h", "flood_event_ongoing"]
+    if "flood_event_uei" in labels.columns:
+        label_cols.append("flood_event_uei")
     frame = frame.merge(labels[label_cols], on="timestamp", how="left")
 
     frame["flood_event_start_next_24h"] = frame["flood_event_start_next_24h"].fillna(0).astype("int8")
@@ -52,7 +49,6 @@ def build_training_table(
     # Samples during an already ongoing event are not valid negatives.
     frame = frame[frame["flood_event_ongoing"] == 0].copy()
 
-    # Do not train rows whose 24h feature windows are incomplete.
     feature_columns = [
         "rain_1h", "rain_3h", "rain_6h", "rain_12h", "rain_24h",
         "rain_72h", "rain_168h", "river_level_m",
@@ -72,9 +68,13 @@ def summarize_target(frame: pd.DataFrame) -> dict:
     counts = frame["flood_event_start_next_24h"].value_counts().to_dict()
     total = len(frame)
     positives = int(counts.get(1, 0))
+    event_count = int(frame.loc[
+        frame["flood_event_start_next_24h"] == 1, "flood_event_uei"
+    ].dropna().nunique()) if "flood_event_uei" in frame.columns else 0
     return {
         "rows": total,
         "positive": positives,
         "negative": int(counts.get(0, 0)),
         "positive_rate": (positives / total) if total else 0.0,
+        "positive_events": event_count,
     }
