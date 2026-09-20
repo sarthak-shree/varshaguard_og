@@ -49,16 +49,22 @@ def build_training_table(
     # Samples during an already ongoing event are not valid negatives.
     frame = frame[frame["flood_event_ongoing"] == 0].copy()
 
-    feature_columns = [
+    rainfall_features = [
         "rain_1h", "rain_3h", "rain_6h", "rain_12h", "rain_24h",
-        "rain_72h", "rain_168h", "river_level_m",
+        "rain_72h", "rain_168h",
+    ]
+    river_features = [
+        "river_level_m",
         "river_level_lag_1h", "river_level_lag_3h",
         "river_level_lag_6h", "river_level_lag_12h", "river_level_lag_24h",
         "river_rise_1h", "river_rise_3h", "river_rise_6h",
         "river_rise_12h", "river_rise_24h",
     ]
-    available = [c for c in feature_columns if c in frame.columns]
-    frame = frame.dropna(subset=available).reset_index(drop=True)
+    required_features = list(rainfall_features)
+    if "river_level_m" in frame.columns and frame["river_level_m"].notna().any():
+        required_features.extend(river_features)
+
+    frame = frame.dropna(subset=required_features).reset_index(drop=True)
     return frame
 
 
