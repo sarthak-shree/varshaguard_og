@@ -41,7 +41,7 @@ def status(slug: str):
 
     flood_model = model_path(info["slug"])
     manifest_path = flood_model.with_name(
-        f"{flood_model.stem.replace("_xgboost", "")}_model_manifest.json"
+        f"{flood_model.stem.replace('_xgboost', '')}_model_manifest.json"
     )
     calibration_status = "not_calibrated"
     operational_threshold = None
