@@ -27,7 +27,7 @@ def validate_observations_frame(frame: pd.DataFrame) -> dict:
     missing = sorted(required - set(frame.columns))
     result = {"valid": not missing, "rows": int(len(frame)), "missing_columns": missing,
               "invalid_timestamps": 0, "invalid_values": 0, "empty_districts": 0,
-              "empty_variables": 0}
+              "empty_variables": 0, "duplicate_timestamps": 0}
     if missing:
         return result
     timestamps = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
@@ -37,8 +37,9 @@ def validate_observations_frame(frame: pd.DataFrame) -> dict:
     result["invalid_values"] = int(invalid_value_mask.sum())
     result["empty_districts"] = int(frame["district"].astype("string").str.strip().eq("").sum())
     result["empty_variables"] = int(frame["variable"].astype("string").str.strip().eq("").sum())
+    result["duplicate_timestamps"] = int(timestamps.duplicated(keep=False).sum())
     result["valid"] = not any(result[key] for key in (
-        "invalid_timestamps", "invalid_values", "empty_districts", "empty_variables"
+        "invalid_timestamps", "invalid_values", "empty_districts", "empty_variables", "duplicate_timestamps"
     ))
     return result
 
