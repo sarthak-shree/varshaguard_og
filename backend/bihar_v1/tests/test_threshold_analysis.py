@@ -40,6 +40,9 @@ class ThresholdAnalysisTests(unittest.TestCase):
         self.assertEqual(rows[0]["events_with_predicted_positive"], 2)
         self.assertEqual(rows[0]["mean_lead_hours"], 12.0)
         self.assertEqual(rows[0]["median_lead_hours"], 12.0)
+        self.assertEqual(rows[0]["events_detected_at_least_6h"], 2)
+        self.assertEqual(rows[0]["events_detected_at_least_12h"], 2)
+        self.assertEqual(rows[0]["events_detected_at_least_24h"], 0)
 
     def test_one_class_validation_is_rejected(self):
         frame = pd.DataFrame({TARGET_COLUMN: [0, 0]})
