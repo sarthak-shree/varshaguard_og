@@ -62,3 +62,40 @@ def split_summary(splits: dict[str, pd.DataFrame]) -> dict:
             "end": frame["timestamp"].max().isoformat() if len(frame) else None,
         }
     return result
+
+
+def validate_split_readiness(
+    splits: dict[str, pd.DataFrame],
+    *,
+    minimum_positive_train: int = 10,
+    minimum_positive_validation: int = 3,
+    minimum_positive_test: int = 3,
+) -> dict:
+    """Report whether each partition contains enough positive events/samples.
+
+    This is a gate for model evaluation, not a claim that a dataset is
+    statistically sufficient. Positive sample counts are deliberately
+    conservative because adjacent lead-window rows can belong to one event.
+    """
+    minimums = {
+        "train": minimum_positive_train,
+        "validation": minimum_positive_validation,
+        "test": minimum_positive_test,
+    }
+    result = {}
+    ready = True
+    for name, minimum in minimums.items():
+        frame = splits.get(name, pd.DataFrame())
+        positives = int(frame.get(
+            "flood_event_start_next_24h", pd.Series(dtype="int8")
+        ).sum())
+        negatives = int(len(frame) - positives)
+        ok = len(frame) > 0 and positives >= minimum and negatives > 0
+        result[name] = {
+            "ready": ok,
+            "positive_samples": positives,
+            "negative_samples": negatives,
+            "minimum_positive_samples": minimum,
+        }
+        ready = ready and ok
+    return {"ready_for_model_evaluation": ready, "splits": result}
