@@ -1,6 +1,8 @@
 import json
 import tempfile
 import unittest
+
+import numpy as np
 from pathlib import Path
 
 import pandas as pd
@@ -83,6 +85,30 @@ class ModelTrainingTests(unittest.TestCase):
             manifest = json.loads((output / "patna_flood_model_manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["dataset_period"]["train_start"], "2025-01-01T00:00:00+00:00")
             self.assertIn("test_end", manifest["dataset_period"])
+
+    def test_lead_time_uses_earliest_prediction_per_event(self):
+        from backend.bihar_v1.model_training import _label_window_lead_time
+
+        frame = pd.DataFrame({
+            "timestamp": pd.to_datetime([
+                "2025-01-01T00:00:00Z",
+                "2025-01-01T06:00:00Z",
+                "2025-01-02T00:00:00Z",
+            ]),
+            "flood_event_start_next_24h": [1, 1, 1],
+            "flood_event_uei": ["E1", "E1", "E1"],
+            "flood_event_start_timestamp": pd.to_datetime([
+                "2025-01-02T00:00:00Z",
+                "2025-01-02T00:00:00Z",
+                "2025-01-02T00:00:00Z",
+            ]),
+        })
+        result = _label_window_lead_time(frame, np.array([0.8, 0.9, 0.9]), 0.5)
+        self.assertEqual(result["events_with_predicted_positive"], 1)
+        self.assertEqual(result["mean_hours"], 24.0)
+        self.assertEqual(result["min_hours"], 24.0)
+        self.assertEqual(result["max_hours"], 24.0)
+        self.assertEqual(result["status"], "computed_from_earliest_event_predictions")
 
     def test_missing_features_fail_explicitly(self):
         with tempfile.TemporaryDirectory() as tmp:
