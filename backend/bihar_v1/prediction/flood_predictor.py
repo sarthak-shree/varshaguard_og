@@ -72,6 +72,15 @@ def predict(
             },
         )
 
+    manifest_path = path.with_name(f"{path.stem.replace("_xgboost", "")}_model_manifest.json")
+    manifest = None
+    if manifest_path.exists():
+        try:
+            import json
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            manifest = None
+
     try:
         model = joblib.load(path)
         matrix = _prepare_features(model, features)
@@ -95,5 +104,8 @@ def predict(
             "model_path": str(path),
             "feature_count": len(matrix.columns),
             "features": list(matrix.columns),
+            "manifest": manifest,
+            "operational_threshold": manifest.get("operational_threshold") if manifest else None,
+            "operational_threshold_status": manifest.get("operational_threshold_status") if manifest else "manifest_unavailable",
         },
     )
