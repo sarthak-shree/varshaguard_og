@@ -340,6 +340,7 @@ def train_patna_flood_model(
         "metrics": metrics,
         "validation_threshold_analysis": validation_thresholds,
         "operational_threshold": None,
+        "operational_threshold_status": "not_calibrated",
     })
 
     if output_dir is not None:
