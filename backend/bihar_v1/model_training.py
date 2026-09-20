@@ -29,6 +29,7 @@ NON_FEATURE_COLUMNS = {
     TARGET_COLUMN,
     "flood_event_ongoing",
     "flood_event_uei",
+    "flood_event_start_timestamp",
 }
 
 
