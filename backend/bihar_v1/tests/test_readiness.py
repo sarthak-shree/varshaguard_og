@@ -48,3 +48,47 @@ class ReadinessTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_model_readiness_requires_real_target_and_threshold_evidence(self):
+        from backend.bihar_v1.readiness import build_model_readiness
+
+        timestamps = pd.date_range("2026-01-01", periods=168, freq="h", tz="UTC")
+        rainfall = pd.DataFrame({
+            "timestamp": timestamps,
+            "station_id": ["rain-1"] * len(timestamps),
+        })
+        river = pd.DataFrame({
+            "timestamp": timestamps,
+            "station_id": ["river-1"] * len(timestamps),
+        })
+        result = build_model_readiness(
+            district="patna",
+            rainfall_hourly=rainfall,
+            river=river,
+            event_inventory={"unique_events": 5},
+            synchronized_hourly={"stations_with_continuous_window": 1},
+            evaluation_ready=True,
+            evaluation_reason=None,
+        )
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["models"]["heavy_rainfall"]["status"], "blocked")
+        self.assertTrue(any("target/label" in reason for reason in result["models"]["heavy_rainfall"]["reasons"]))
+        self.assertTrue(any("danger-level" in reason for reason in result["models"]["river_flood"]["reasons"]))
+        self.assertEqual(result["models"]["inundation"]["status"], "blocked")
+
+    def test_model_readiness_reports_missing_sources(self):
+        from backend.bihar_v1.readiness import build_model_readiness
+
+        result = build_model_readiness(
+            district="muzaffarpur",
+            rainfall_hourly=pd.DataFrame(),
+            river=pd.DataFrame(),
+            event_inventory={"unique_events": 0},
+            synchronized_hourly={"stations_with_continuous_window": 0},
+            evaluation_ready=False,
+            evaluation_reason="evaluation thresholds not met",
+        )
+        self.assertEqual(result["status"], "blocked")
+        self.assertTrue(result["models"]["heavy_rainfall"]["reasons"])
+        self.assertTrue(result["models"]["river_flood"]["reasons"])
