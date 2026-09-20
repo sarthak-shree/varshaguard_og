@@ -4,6 +4,7 @@ import pandas as pd
 
 from backend.bihar_v1.splitting import (
     chronological_split,
+    enforce_event_isolation,
     split_summary,
     validate_split_readiness,
 )
@@ -62,6 +63,31 @@ class SplittingTests(unittest.TestCase):
         self.assertFalse(readiness["splits"]["train"]["ready"])
         self.assertEqual(readiness["splits"]["train"]["positive_samples"], 10)
         self.assertEqual(readiness["splits"]["train"]["positive_events"], 1)
+
+    def test_event_isolation_removes_cross_split_positive_event(self):
+        base = pd.Timestamp("2025-01-01", tz="UTC")
+        splits = {
+            "train": pd.DataFrame({
+                "timestamp": [base],
+                "flood_event_start_next_24h": [1],
+                "flood_event_uei": ["E1"],
+            }),
+            "validation": pd.DataFrame({
+                "timestamp": [base + pd.Timedelta(days=1)],
+                "flood_event_start_next_24h": [1],
+                "flood_event_uei": ["E1"],
+            }),
+            "test": pd.DataFrame({
+                "timestamp": [base + pd.Timedelta(days=2)],
+                "flood_event_start_next_24h": [1],
+                "flood_event_uei": ["E2"],
+            }),
+        }
+        isolated = enforce_event_isolation(splits)
+        self.assertEqual(len(isolated["train"]), 0)
+        self.assertEqual(len(isolated["validation"]), 0)
+        self.assertEqual(len(isolated["test"]), 1)
+        self.assertEqual(isolated["test"]["flood_event_uei"].iloc[0], "E2")
 
 
 if __name__ == "__main__":
