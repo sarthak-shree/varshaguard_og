@@ -11,6 +11,7 @@ import pandas as pd
 from .data_pipeline import ensure_data_dirs, observations_to_frame
 from .ingestion.normalizers import normalize_rainfall_csv, normalize_river_csv
 from .labeling import build_24h_event_labels, load_district_events
+from .readiness import summarize_hourly_coverage, summarize_training_window_coverage
 from .splitting import (
     chronological_split,
     enforce_event_isolation,
@@ -236,6 +237,11 @@ def _assemble_district(
         "reason": split_reason,
         "training": target,
         "observation_coverage": _audit_observations(observations),
+        "hourly_readiness": {
+            "rainfall": summarize_hourly_coverage(hourly_rain[hourly_rain["district"] == district] if not hourly_rain.empty else hourly_rain),
+            "river": summarize_hourly_coverage(river[river["district"] == district] if not river.empty else river),
+        },
+        "training_window_coverage": summarize_training_window_coverage(table),
         "label_positive_timestamps": int(labels["flood_event_start_next_24h"].sum()),
         "ongoing_timestamps_excluded": int(labels["flood_event_ongoing"].sum()),
         "pre_isolation_split_summary": pre_isolation_summary,
