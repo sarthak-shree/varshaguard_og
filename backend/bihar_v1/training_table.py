@@ -24,11 +24,13 @@ def build_training_table(
 
     rain = (
         obs[obs["variable"] == "rain_mm"]
+        .dropna(subset=["value"])
         .groupby("timestamp", as_index=False)["value"].sum()
         .rename(columns={"value": "rain_mm"})
     )
     river = (
         obs[obs["variable"] == "river_level_m"]
+        .dropna(subset=["value"])
         .groupby("timestamp", as_index=False)["value"].mean()
         .rename(columns={"value": "river_level_m"})
     )
