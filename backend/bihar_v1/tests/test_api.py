@@ -29,6 +29,12 @@ class BiharV1ApiTests(unittest.TestCase):
         self.assertEqual(payload["data_feeds"]["status"], "not_ready")
         self.assertEqual(payload["operational_risk"], "not_ready")
 
+    def test_status_exposes_offline_readiness_contract(self):
+        response = self.client.get("/api/bihar/v1/patna/status")
+        self.assertEqual(response.status_code, 200)
+        readiness = response.json["model_readiness"]
+        self.assertIn(readiness["status"], {"audit_unavailable", "audit_missing_model_readiness", "blocked", "ready"})
+
     def test_forecast_refuses_uncalibrated_risk(self):
         response = self.client.get("/api/bihar/v1/patna/forecast")
         self.assertEqual(response.status_code, 200)
