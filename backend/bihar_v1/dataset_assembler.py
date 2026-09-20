@@ -148,11 +148,26 @@ def _assemble_district(
     table_path = output_dir / f"{district}_flood_training.csv"
     table.to_csv(table_path, index=False)
 
-    raw_splits = chronological_split(table)
-    pre_isolation_summary = split_summary(raw_splits)
-    splits = enforce_event_isolation(raw_splits)
-    split_info = split_summary(splits)
-    readiness = validate_split_readiness(splits)
+    # Small/synthetic tables must produce an auditable "not ready" result,
+    # not crash the entire dataset assembly job.
+    if table["timestamp"].nunique() < 3:
+        raw_splits = {
+            "train": table.iloc[0:0].copy(),
+            "validation": table.iloc[0:0].copy(),
+            "test": table.iloc[0:0].copy(),
+        }
+        pre_isolation_summary = split_summary(raw_splits)
+        splits = enforce_event_isolation(raw_splits)
+        split_info = split_summary(splits)
+        readiness = validate_split_readiness(splits)
+        split_reason = "Fewer than 3 unique timestamps remain after feature/label filtering."
+    else:
+        raw_splits = chronological_split(table)
+        pre_isolation_summary = split_summary(raw_splits)
+        splits = enforce_event_isolation(raw_splits)
+        split_info = split_summary(splits)
+        readiness = validate_split_readiness(splits)
+        split_reason = None
 
     split_dir = output_dir / district
     split_dir.mkdir(parents=True, exist_ok=True)
@@ -170,6 +185,7 @@ def _assemble_district(
 
     return {
         "status": status,
+        "reason": split_reason,
         "training": target,
         "observation_coverage": _audit_observations(observations),
         "label_positive_timestamps": int(labels["flood_event_start_next_24h"].sum()),
