@@ -1,8 +1,8 @@
 """Assemble source CSVs into auditable Bihar v1 training datasets.
 
-This module is intentionally local/offline: raw source files stay outside GitHub.
-It filters only stations explicitly supported by station_registry.py and never
-creates synthetic hourly observations from daily data.
+Raw source files stay outside GitHub. This module filters only stations explicitly
+supported by station_registry.py and never manufactures hourly observations from
+daily rainfall.
 """
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ from .labeling import build_24h_event_labels, load_district_events
 from .station_registry import stations_for_district
 from .training_table import build_training_table, summarize_target
 
-
 DISTRICTS = ("patna", "muzaffarpur")
 
 
@@ -33,7 +32,6 @@ def _station_aliases(district: str, variable: str, granularity: str) -> set[str]
     supported = stations_for_district(district)
     names = supported.get(variable if variable == "river" else f"rainfall_{granularity}", set())
     aliases = {_norm_station(x) for x in names}
-    # Known spelling/format variations in the supplied historical sources.
     if district == "patna" and variable == "rainfall" and granularity == "daily":
         aliases.update({_norm_station("Gandhi Ghat"), _norm_station("Gandhighat")})
     if district == "muzaffarpur" and variable == "rainfall" and granularity == "daily":
@@ -43,15 +41,6 @@ def _station_aliases(district: str, variable: str, granularity: str) -> set[str]
             _norm_station("Sikandarpur (Muzaffarpur)"),
         })
     return aliases
-
-
-def _filter_supported(frame: pd.DataFrame, district: str, *, variable: str, granularity: str) -> pd.DataFrame:
-    aliases = _station_aliases(district, variable, granularity)
-    if not aliases:
-        return frame.iloc[0:0].copy()
-    mask = frame["District"].astype(str).str.strip().str.lower().str.replace(r"\s+", "_", regex=True).eq(district)
-    mask &= frame["Station"].map(_norm_station).isin(aliases)
-    return frame.loc[mask].copy()
 
 
 def _read_csv(path: str | Path) -> pd.DataFrame:
@@ -108,17 +97,68 @@ def _audit_observations(frame: pd.DataFrame) -> dict:
     }
 
 
+def _empty_training_summary(reason: str) -> dict:
+    return {
+        "status": "not_trainable",
+        "reason": reason,
+        "training": {"rows": 0, "positive": 0, "negative": 0, "positive_rate": 0.0},
+    }
+
+
+def _assemble_district(
+    district: str,
+    sources: dict[str, pd.DataFrame],
+    event_frame: pd.DataFrame,
+    output_dir: Path,
+) -> dict:
+    hourly_rain = sources.get("rainfall_hourly", pd.DataFrame())
+    river = sources.get("river", pd.DataFrame())
+    parts = [
+        frame[frame["district"] == district].copy()
+        for frame in (hourly_rain, river)
+        if not frame.empty
+    ]
+    observations = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+
+    if observations.empty:
+        return _empty_training_summary(
+            "No supported hourly rainfall or river observations for this district."
+        )
+
+    timestamps = pd.Series(
+        pd.to_datetime(observations["timestamp"], utc=True).drop_duplicates()
+    )
+    labels = build_24h_event_labels(timestamps, event_frame, district=district)
+    table = build_training_table(observations, labels, district=district)
+    target = summarize_target(table)
+
+    table_path = output_dir / f"{district}_flood_training.csv"
+    table.to_csv(table_path, index=False)
+
+    return {
+        "status": "trainable" if target["positive"] > 0 and target["negative"] > 0 else "not_trainable",
+        "training": target,
+        "observation_coverage": _audit_observations(observations),
+        "label_positive_timestamps": int(labels["flood_event_start_next_24h"].sum()),
+        "ongoing_timestamps_excluded": int(labels["flood_event_ongoing"].sum()),
+        "training_table": str(table_path),
+    }
+
+
 def assemble(
     *,
     hourly_rainfall: str | Path | None = None,
     daily_rainfall: str | Path | None = None,
     river: str | Path | None = None,
-    events: str | Path,
+    events: str | Path | None = None,
     rainfall_hourly_value_column: str = "Telemetry Hourly Rainfall (mm)",
     rainfall_daily_value_column: str = "Manual Rainfall (mm)",
     river_value_column: str = "River Water Level Telemetry Hourly (meter)",
     output_root: str | Path | None = None,
 ) -> dict:
+    if not events:
+        raise ValueError("A flood-event inventory is required for supervised training.")
+
     paths = ensure_data_dirs(Path(output_root) if output_root else None)
     event_frame = load_district_events(events)
 
@@ -148,43 +188,22 @@ def assemble(
         "notes": [
             "Daily rainfall is retained as processed evidence but is not upsampled into hourly training rows.",
             "Only stations explicitly listed in station_registry.py are included.",
+            "A supervised training table requires a flood-event inventory; no labels are fabricated when the inventory is unavailable.",
         ],
     }
 
     for district in DISTRICTS:
-        district_frames = [
-            frame for name, frame in sources.items()
-            if name in {"rainfall_hourly", "river"} and not frame.empty
-        ]
-        observations = (
-            pd.concat(district_frames, ignore_index=True)
-            if district_frames else pd.DataFrame()
+        report["districts"][district] = _assemble_district(
+            district, sources, event_frame, paths["training"]
         )
-        if observations.empty:
-            report["districts"][district] = {
-                "status": "not_trainable",
-                "reason": "No supported hourly rainfall or river observations.",
-                "training": {"rows": 0, "positive": 0, "negative": 0, "positive_rate": 0.0},
-            }
-            continue
-
-        observations = observations[observations["district"] == district].copy()
-        timestamps = pd.Series(pd.to_datetime(observations["timestamp"], utc=True).drop_duplicates())
-        labels = build_24h_event_labels(timestamps, event_frame, district=district)
-        table = build_training_table(observations, labels, district=district)
-
-        target = summarize_target(table)
-        status = "trainable" if target["positive"] > 0 and target["negative"] > 0 else "not_trainable"
-        table.to_csv(paths["training"] / f"{district}_flood_training.csv", index=False)
-        report["districts"][district] = {
-            "status": status,
-            "training": target,
-            "observation_coverage": _audit_observations(observations),
-            "label_positive_timestamps": int(labels["flood_event_start_next_24h"].sum()),
-            "ongoing_timestamps_excluded": int(labels["flood_event_ongoing"].sum()),
-        }
 
     report_path = paths["processed"] / "dataset_audit.json"
+    report["event_inventory"] = {
+        "rows": int(len(event_frame)),
+        "districts": sorted(event_frame["district"].dropna().unique().tolist()),
+        "start": event_frame["start"].min().isoformat() if not event_frame.empty else None,
+        "end": event_frame["end"].max().isoformat() if not event_frame.empty else None,
+    }
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report
 
