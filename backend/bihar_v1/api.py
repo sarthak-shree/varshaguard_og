@@ -76,7 +76,8 @@ def status(slug: str):
         "success": True,
         "district": info,
         "horizon_hours": PREDICTION_HORIZON_HOURS,
-        "model_readiness": model_readiness,\n        "models": {
+        "model_readiness": model_readiness,
+        "models": {
             "rainfall": {"status": "model_not_trained"},
             "flood": {
                 "status": "trained_artifact_available" if flood_model.exists() else "model_not_trained",
