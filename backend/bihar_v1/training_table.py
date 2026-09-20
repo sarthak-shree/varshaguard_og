@@ -12,7 +12,7 @@ def build_training_table(
     *,
     district: str,
 ) -> pd.DataFrame:
-    required = {"timestamp", "variable", "value"}
+    required = {"timestamp", "district", "variable", "value"}
     missing = required - set(observations.columns)
     if missing:
         raise ValueError(f"Missing observation columns: {sorted(missing)}")
