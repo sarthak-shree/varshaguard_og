@@ -62,14 +62,14 @@ class DatasetAssemblerTests(unittest.TestCase):
             self.assertEqual(report["districts"]["patna"]["status"], "trainable")
             self.assertTrue((root / "out" / "processed" / "dataset_audit.json").exists())
             self.assertTrue((root / "out" / "training" / "patna_flood_training.csv").exists())
-            self.assertNotIn("muzaffarpur", report["districts"]["patna"])
+            self.assertIn("muzaffarpur", report["districts"])
+            self.assertEqual(report["districts"]["muzaffarpur"]["status"], "not_trainable")
 
     def test_muzaffarpur_without_supported_river_is_not_synthesized(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             events = root / "events.csv"
             river = root / "river.csv"
-            ts = pd.date_range("2026-01-01", periods=220, freq="h")
 
             pd.DataFrame({
                 "Start Date": ["08-01-2026"],
@@ -88,6 +88,11 @@ class DatasetAssemblerTests(unittest.TestCase):
             report = assemble(river=river, events=events, output_root=root / "out")
             self.assertEqual(report["districts"]["muzaffarpur"]["status"], "not_trainable")
             self.assertEqual(report["districts"]["muzaffarpur"]["training"]["rows"], 0)
+
+    def test_missing_event_inventory_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                assemble(output_root=Path(tmp) / "out")
 
 
 if __name__ == "__main__":
