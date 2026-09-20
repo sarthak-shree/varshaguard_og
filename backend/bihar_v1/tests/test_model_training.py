@@ -79,6 +79,7 @@ class ModelTrainingTests(unittest.TestCase):
             self.assertTrue(Path(report["report_path"]).exists())
             persisted = json.loads(Path(report["report_path"]).read_text(encoding="utf-8"))
             self.assertEqual(persisted["status"], "trained")
+            self.assertEqual(persisted["dataset_period"]["train_end"], "2025-01-02T05:00:00+00:00")
             manifest = json.loads((output / "patna_flood_model_manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["dataset_period"]["train_start"], "2025-01-01T00:00:00+00:00")
             self.assertIn("test_end", manifest["dataset_period"])
