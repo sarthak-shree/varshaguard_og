@@ -28,6 +28,20 @@ def _model_features(model: Any) -> list[str] | None:
     return [str(name) for name in names]
 
 
+def _validate_manifest(manifest: dict[str, Any], district: str, model_features: list[str]) -> None:
+    if manifest.get("district") != district:
+        raise ValueError("Model manifest district does not match requested district")
+    if manifest.get("model_type") != "xgboost_binary_classifier":
+        raise ValueError("Unsupported model manifest type")
+    if manifest.get("target") != "flood_event_start_next_24h":
+        raise ValueError("Model manifest target is incompatible with Bihar v1 flood inference")
+    if manifest.get("horizon_hours") != 24:
+        raise ValueError("Model manifest horizon is not 24 hours")
+    manifest_features = manifest.get("feature_columns")
+    if manifest_features is not None and [str(x) for x in manifest_features] != model_features:
+        raise ValueError("Model manifest feature schema does not match model artifact")
+
+
 def _prepare_features(model: Any, features: dict[str, Any]) -> pd.DataFrame:
     columns = _model_features(model)
     if not columns:
@@ -83,6 +97,9 @@ def predict(
 
     try:
         model = joblib.load(path)
+        model_features = _model_features(model)
+        if manifest is not None:
+            _validate_manifest(manifest, district_key, model_features or [])
         matrix = _prepare_features(model, features)
         probability = float(model.predict_proba(matrix)[0, 1])
     except (OSError, ValueError, TypeError, KeyError, IndexError) as exc:
