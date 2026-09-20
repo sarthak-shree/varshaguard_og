@@ -298,6 +298,7 @@ def train_patna_flood_model(
     report.update({
         "status": "trained",
         "feature_columns": features,
+        "dataset_period": dataset_period,
         "class_balance": {
             "train_positive": positives,
             "train_negative": negatives,
