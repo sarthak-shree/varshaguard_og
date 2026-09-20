@@ -26,6 +26,9 @@ class ModelTrainingTests(unittest.TestCase):
                 "river_rise_1h": float(i % 3) / 10.0,
                 "flood_event_start_next_24h": int(is_positive),
                 "flood_event_uei": event,
+                "flood_event_start_timestamp": (
+                    timestamp + pd.Timedelta(hours=12)
+                ).isoformat() if is_positive else None,
                 "flood_event_ongoing": 0,
             })
         pd.DataFrame(rows).to_csv(root / f"{name}.csv", index=False)
@@ -58,6 +61,7 @@ class ModelTrainingTests(unittest.TestCase):
 
             self.assertEqual(report["status"], "trained")
             self.assertEqual(report["model"], "xgboost")
+            self.assertNotIn("flood_event_start_timestamp", report["feature_columns"])
             for split_name in ("train", "validation", "test"):
                 metrics = report["metrics"][split_name]
                 self.assertIn("recall", metrics)
