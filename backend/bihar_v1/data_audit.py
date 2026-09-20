@@ -67,6 +67,7 @@ def audit_csv(path: str | Path) -> dict:
             key_columns.append("Agency")
         key = frame[key_columns].astype("string").fillna("<missing>").agg("|".join, axis=1)
         result["duplicate_observation_keys"] = int(key.duplicated().sum())
+        result["duplicate_observation_rows"] = int(key.duplicated(keep=False).sum())
 
     return result
 
