@@ -3,12 +3,31 @@
 Labels are built from the supplied Bihar district-event inventory. A positive
 sample at time t means a flood event for that district is documented to START
 within the next 24 hours. Ongoing events are not counted as new positives.
-This avoids using future event duration as a hidden feature.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
+
 import pandas as pd
+
+
+def _parse_inventory_datetime(value: object) -> pd.Timestamp:
+    """Parse the inventory's dd/mm/yy dates without pandas' 1969/2068 pivot.
+
+    The inventory uses two-digit years spanning 1967-2023. We therefore map
+    67-99 to 1967-1999 and 00-68 to 2000-2068 explicitly.
+    """
+    text = str(value).strip()
+    if not text:
+        return pd.NaT
+    try:
+        date_part, time_part = text.split(maxsplit=1)
+    except ValueError:
+        date_part, time_part = text, "00:00"
+    day, month, year = [int(x) for x in date_part.split("/")[:3]]
+    year = 1900 + year if year >= 67 else 2000 + year
+    return pd.Timestamp(datetime(year, month, day, *[int(x) for x in time_part.split(":")[:2]]))
 
 
 def load_district_events(path: str | Path) -> pd.DataFrame:
@@ -19,8 +38,8 @@ def load_district_events(path: str | Path) -> pd.DataFrame:
         raise ValueError(f"Missing event columns: {sorted(missing)}")
 
     out = frame.copy()
-    out["start"] = pd.to_datetime(out["Start Date"], dayfirst=True, errors="coerce")
-    out["end"] = pd.to_datetime(out["End Date"], dayfirst=True, errors="coerce")
+    out["start"] = out["Start Date"].map(_parse_inventory_datetime)
+    out["end"] = out["End Date"].map(_parse_inventory_datetime)
     if out[["start", "end"]].isna().any().any():
         raise ValueError("Flood inventory contains invalid event dates")
     out["district"] = (
@@ -51,13 +70,15 @@ def build_24h_event_labels(
 
     horizon = pd.Timedelta(hours=horizon_hours)
     for row in selected.itertuples(index=False):
+        start = pd.Timestamp(row.start).tz_localize("UTC")
+        end = pd.Timestamp(row.end).tz_localize("UTC")
         target["flood_event_start_next_24h"] |= (
-            (target["timestamp"] < row.start.tz_localize("UTC")) &
-            (target["timestamp"] >= row.start.tz_localize("UTC") - horizon)
+            (target["timestamp"] < start) &
+            (target["timestamp"] >= start - horizon)
         )
         target["flood_event_ongoing"] |= (
-            (target["timestamp"] >= row.start.tz_localize("UTC")) &
-            (target["timestamp"] <= row.end.tz_localize("UTC"))
+            (target["timestamp"] >= start) &
+            (target["timestamp"] <= end)
         )
 
     target["flood_event_start_next_24h"] = target["flood_event_start_next_24h"].astype("int8")
