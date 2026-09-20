@@ -77,6 +77,7 @@ class ModelTrainingTests(unittest.TestCase):
 
             self.assertTrue(report["validation_threshold_analysis"])
             self.assertIsNone(report["operational_threshold"])
+            self.assertEqual(report["operational_threshold_status"], "not_calibrated")
             self.assertTrue(Path(report["model_path"]).exists())
             self.assertTrue(Path(report["report_path"]).exists())
             persisted = json.loads(Path(report["report_path"]).read_text(encoding="utf-8"))
