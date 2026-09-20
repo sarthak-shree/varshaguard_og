@@ -20,6 +20,7 @@ from sklearn.metrics import (
 from xgboost import XGBClassifier
 
 from .splitting import validate_split_readiness
+from .threshold_analysis import threshold_analysis
 
 TARGET_COLUMN = "flood_event_start_next_24h"
 NON_FEATURE_COLUMNS = {
@@ -246,6 +247,9 @@ def train_patna_flood_model(
     metrics["test"]["lead_time"] = _label_window_lead_time(
         splits["test"], probabilities["test"], threshold
     )
+    validation_thresholds = threshold_analysis(
+        splits["validation"], probabilities["validation"]
+    )
 
     report.update({
         "status": "trained",
@@ -256,6 +260,8 @@ def train_patna_flood_model(
             "scale_pos_weight": negatives / positives,
         },
         "metrics": metrics,
+        "validation_threshold_analysis": validation_thresholds,
+        "operational_threshold": None,
     })
 
     if output_dir is not None:
