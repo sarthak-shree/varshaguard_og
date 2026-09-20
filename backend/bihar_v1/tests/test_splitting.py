@@ -63,6 +63,7 @@ class SplittingTests(unittest.TestCase):
         self.assertFalse(readiness["splits"]["train"]["ready"])
         self.assertEqual(readiness["splits"]["train"]["positive_samples"], 10)
         self.assertEqual(readiness["splits"]["train"]["positive_events"], 1)
+        self.assertIn("Evaluation readiness thresholds not met", readiness["reason"])
 
     def test_event_isolation_removes_cross_split_positive_event(self):
         base = pd.Timestamp("2025-01-01", tz="UTC")
