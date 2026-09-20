@@ -1,0 +1,1 @@
+const API_BASE='/api/bihar/v1';async function loadStatus(){const el=document.getElementById('status');if(!el)return;try{const r=await fetch(`${API_BASE}/health`,{cache:'no-store'});const d=await r.json();el.textContent=`System status: ${d.status} · ${d.prediction_horizon_hours}-hour horizon`;}catch(e){el.textContent='Bihar v1 API is not connected yet.';}}loadStatus();
