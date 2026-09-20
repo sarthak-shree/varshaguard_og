@@ -15,6 +15,17 @@ class EventReadinessTests(unittest.TestCase):
         self.assertEqual(result["unique_events"], 2)
         self.assertEqual(result["events_by_year"], {"2021": 1, "2023": 1})
 
+    def test_source_uei_spelling_is_accepted(self):
+        events = pd.DataFrame({
+            "district": ["patna"],
+            "start": ["2023-07-01"],
+            "end": ["2023-07-02"],
+            "UEI": ["E1"],
+        })
+        result = summarize_event_coverage(events, district="patna")
+        self.assertEqual(result["unique_events"], 1)
+        self.assertEqual(result["event_ids"], ["E1"])
+
     def test_missing_event_columns_rejected(self):
         with self.assertRaises(ValueError):
             summarize_event_coverage(pd.DataFrame({"district": ["patna"]}), district="patna")
