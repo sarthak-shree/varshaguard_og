@@ -15,6 +15,9 @@ class ThresholdAnalysisTests(unittest.TestCase):
         self.assertIn("recall", rows[0])
         self.assertIn("precision", rows[0])
         self.assertIn("f1", rows[0])
+        self.assertIn("false_alarm_rate", rows[0])
+        self.assertIn("miss_rate", rows[0])
+        self.assertEqual(rows[0]["true_positive"] + rows[0]["false_negative"], 2)
 
     def test_one_class_validation_is_rejected(self):
         frame = pd.DataFrame({TARGET_COLUMN: [0, 0]})
