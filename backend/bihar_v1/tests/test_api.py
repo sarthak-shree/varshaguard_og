@@ -24,6 +24,8 @@ class BiharV1ApiTests(unittest.TestCase):
         self.assertEqual(payload["models"]["rainfall"]["status"], "model_not_trained")
         self.assertEqual(payload["models"]["inundation"]["status"], "model_not_trained")
         self.assertFalse(payload["models"]["flood"]["artifact_available"])
+        self.assertIsNone(payload["models"]["flood"]["operational_threshold"])
+        self.assertEqual(payload["models"]["flood"]["operational_threshold_status"], "not_calibrated")
         self.assertEqual(payload["data_feeds"]["status"], "not_ready")
         self.assertEqual(payload["operational_risk"], "not_ready")
 
