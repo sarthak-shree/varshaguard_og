@@ -1,4 +1,4 @@
-"""Small, dependency-light response schemas for Bihar v1."""
+"""Dependency-light data and API schemas for Bihar v1."""
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -6,6 +6,24 @@ from typing import Any
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+@dataclass
+class Observation:
+    """Provider-neutral normalized observation used by the ingestion pipeline."""
+
+    timestamp: str
+    district: str
+    variable: str
+    value: float | None
+    unit: str
+    source: str
+    station_id: str | None = None
+    quality: str = "unknown"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass
