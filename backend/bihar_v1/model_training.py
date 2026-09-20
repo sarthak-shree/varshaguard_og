@@ -8,6 +8,8 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+import sklearn
+import xgboost
 import pandas as pd
 from sklearn.metrics import (
     average_precision_score,
@@ -371,6 +373,13 @@ def train_patna_flood_model(
             "operational_threshold": None,
             "operational_threshold_status": "not_calibrated",
             "model_sha256": model_sha256,
+        "training_library_versions": {
+            "python": __import__("platform").python_version(),
+            "pandas": pd.__version__,
+            "scikit_learn": sklearn.__version__,
+            "xgboost": xgboost.__version__,
+            "joblib": joblib.__version__,
+        },
         }
         report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
