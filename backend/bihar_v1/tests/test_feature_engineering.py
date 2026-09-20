@@ -2,6 +2,12 @@ import unittest
 import pandas as pd
 from backend.bihar_v1.feature_engineering import build_tabular_features
 class FeatureEngineeringTests(unittest.TestCase):
+    def test_duplicate_timestamps_are_rejected(self):
+        ts = pd.to_datetime(["2026-01-01 00:00", "2026-01-01 00:00"], utc=True)
+        frame = pd.DataFrame({"timestamp": ts, "rain_mm": [1.0, 2.0]})
+        with self.assertRaises(ValueError):
+            build_tabular_features(frame)
+
     def test_rainfall_windows(self):
         frame=pd.DataFrame({"timestamp":pd.date_range("2026-01-01",periods=24,freq="h",tz="UTC"),"rain_mm":[1.0]*24})
         out=build_tabular_features(frame)
