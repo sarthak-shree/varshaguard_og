@@ -1,8 +1,7 @@
-"""Flask blueprint for the Bihar v1 API."""
 from flask import Blueprint, jsonify, request
 
 from .config import PREDICTION_HORIZON_HOURS, SUPPORTED_DISTRICTS, district
-from .prediction.flood_predictor import predict as predict_flood
+from .prediction.flood_predictor import model_path, predict as predict_flood
 from .prediction.inundation_predictor import predict as predict_inundation
 from .prediction.rainfall_predictor import predict as predict_rainfall
 from .services.alert_engine import build_alert
@@ -32,6 +31,33 @@ def health():
 @bp.get("/districts")
 def districts():
     return jsonify({"success": True, "districts": list(SUPPORTED_DISTRICTS.values())})
+
+
+@bp.get("/<slug>/status")
+def status(slug: str):
+    info, error = _district_or_404(slug)
+    if error:
+        return error
+
+    flood_model = model_path(info["slug"])
+    return jsonify({
+        "success": True,
+        "district": info,
+        "horizon_hours": PREDICTION_HORIZON_HOURS,
+        "models": {
+            "rainfall": {"status": "model_not_trained"},
+            "flood": {
+                "status": "trained_artifact_available" if flood_model.exists() else "model_not_trained",
+                "artifact_available": flood_model.exists(),
+            },
+            "inundation": {"status": "model_not_trained"},
+        },
+        "data_feeds": {
+            "live_observations": "not_connected",
+            "status": "not_ready",
+        },
+        "operational_risk": "not_ready",
+    })
 
 
 @bp.get("/<slug>/forecast")
