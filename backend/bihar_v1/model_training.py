@@ -285,10 +285,29 @@ def train_patna_flood_model(
         destination.mkdir(parents=True, exist_ok=True)
         model_path = destination / f"{district}_flood_xgboost.joblib"
         report_path = destination / f"{district}_flood_training_report.json"
+        manifest_path = destination / f"{district}_flood_model_manifest.json"
         joblib.dump(model, model_path)
         report["model_path"] = str(model_path)
         report["report_path"] = str(report_path)
+        report["manifest_path"] = str(manifest_path)
+        manifest = {
+            "schema_version": 1,
+            "district": district,
+            "model_type": "xgboost_binary_classifier",
+            "target": TARGET_COLUMN,
+            "horizon_hours": 24,
+            "feature_columns": features,
+            "training_samples": positives + negatives,
+            "training_positive_events": int(readiness["train"]["positive_events"]),
+            "validation_positive_events": int(readiness["validation"]["positive_events"]),
+            "test_positive_events": int(readiness["test"]["positive_events"]),
+            "validation_calibration_error": metrics["validation"]["calibration_error"],
+            "validation_brier": metrics["validation"]["brier"],
+            "operational_threshold": None,
+            "operational_threshold_status": "not_calibrated",
+        }
         report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     return report
 
