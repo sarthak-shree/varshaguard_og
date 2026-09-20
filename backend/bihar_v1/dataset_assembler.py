@@ -128,15 +128,35 @@ def _audit_observations(frame: pd.DataFrame) -> dict:
     }
 
 
-def _empty_training_summary(reason: str) -> dict:
+def _empty_training_summary(
+    reason: str,
+    *,
+    district: str,
+    rainfall_hourly: pd.DataFrame,
+    river: pd.DataFrame,
+    event_frame: pd.DataFrame,
+) -> dict:
+    """Return a complete audit shape even when no training rows exist."""
+    district_rain = rainfall_hourly[rainfall_hourly["district"] == district] if not rainfall_hourly.empty else rainfall_hourly
+    district_river = river[river["district"] == district] if not river.empty else river
+    synchronized = summarize_synchronized_hourly_coverage(district_rain, district_river)
+    event_coverage = summarize_event_coverage(event_frame, district=district)
     return {
         "status": "not_trainable",
         "reason": reason,
         "training": {"rows": 0, "positive": 0, "negative": 0, "positive_rate": 0.0, "positive_events": 0},
         "split_summary": {},
         "readiness": {"ready_for_model_evaluation": False, "splits": {}},
+        "model_readiness": build_model_readiness(
+            district=district,
+            rainfall_hourly=district_rain,
+            river=district_river,
+            event_inventory=event_coverage,
+            synchronized_hourly=synchronized,
+            evaluation_ready=False,
+            evaluation_reason=reason,
+        ),
     }
-
 
 
 def _readiness_blockers(district: str, sources: dict[str, pd.DataFrame], event_frame: pd.DataFrame, district_result: dict) -> dict:
@@ -186,7 +206,11 @@ def _assemble_district(
 
     if observations.empty:
         return _empty_training_summary(
-            "No supported hourly rainfall or river observations for this district."
+            "No supported hourly rainfall or river observations for this district.",
+            district=district,
+            rainfall_hourly=hourly_rain,
+            river=river,
+            event_frame=event_frame,
         )
 
     timestamps = pd.Series(
