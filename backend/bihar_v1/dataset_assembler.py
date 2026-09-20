@@ -12,7 +12,7 @@ from .data_pipeline import ensure_data_dirs, observations_to_frame
 from .ingestion.normalizers import normalize_rainfall_csv, normalize_river_csv
 from .labeling import build_24h_event_labels, load_district_events
 from .event_readiness import summarize_event_coverage
-from .readiness import summarize_hourly_coverage, summarize_training_window_coverage
+from .readiness import build_model_readiness, summarize_hourly_coverage, summarize_training_window_coverage
 from .synchronized_readiness import summarize_synchronized_hourly_coverage
 from .splitting import (
     chronological_split,
@@ -234,20 +234,35 @@ def _assemble_district(
     if not readiness["ready_for_model_evaluation"]:
         status = "not_evaluation_ready"
 
+    district_hourly = hourly_rain[hourly_rain["district"] == district] if not hourly_rain.empty else hourly_rain
+    district_river = river[river["district"] == district] if not river.empty else river
+    synchronized_readiness = summarize_synchronized_hourly_coverage(
+        district_hourly,
+        district_river,
+    )
+    event_coverage = summarize_event_coverage(event_frame, district=district)
+    model_readiness = build_model_readiness(
+        district=district,
+        rainfall_hourly=district_hourly,
+        river=district_river,
+        event_inventory=event_coverage,
+        synchronized_hourly=synchronized_readiness,
+        evaluation_ready=readiness["ready_for_model_evaluation"],
+        evaluation_reason=readiness.get("reason"),
+    )
+
     return {
         "status": status,
         "reason": split_reason,
         "training": target,
         "observation_coverage": _audit_observations(observations),
         "hourly_readiness": {
-            "rainfall": summarize_hourly_coverage(hourly_rain[hourly_rain["district"] == district] if not hourly_rain.empty else hourly_rain),
-            "river": summarize_hourly_coverage(river[river["district"] == district] if not river.empty else river),
+            "rainfall": summarize_hourly_coverage(district_hourly),
+            "river": summarize_hourly_coverage(district_river),
         },
         "training_window_coverage": summarize_training_window_coverage(table),
-        "synchronized_hourly_readiness": summarize_synchronized_hourly_coverage(
-            hourly_rain[hourly_rain["district"] == district] if not hourly_rain.empty else hourly_rain,
-            river[river["district"] == district] if not river.empty else river,
-        ),
+        "synchronized_hourly_readiness": synchronized_readiness,
+        "model_readiness": model_readiness,
         "label_positive_timestamps": int(labels["flood_event_start_next_24h"].sum()),
         "ongoing_timestamps_excluded": int(labels["flood_event_ongoing"].sum()),
         "pre_isolation_split_summary": pre_isolation_summary,
