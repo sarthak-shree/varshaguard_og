@@ -98,6 +98,26 @@ class DatasetAssemblerTests(unittest.TestCase):
             self.assertEqual(audit["duplicate_observation_keys"], 2)
             self.assertEqual(audit["gaps_over_1h"], 0)
 
+    def test_duplicate_rows_do_not_create_zero_hour_intervals(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            events = root / "events.csv"
+            river = root / "river.csv"
+            pd.DataFrame({
+                "Start Date": ["08-01-2026"], "End Date": ["10-01-2026"],
+                "Bihar District": ["Patna"], "UEI": ["E1"],
+            }).to_csv(events, index=False)
+            pd.DataFrame({
+                "District": ["PATNA"] * 3,
+                "Station": ["Kharuara_1"] * 3,
+                "Agency": ["CWC"] * 3,
+                "Data Acquisition Time": ["01-01-2026 00:00", "01-01-2026 00:00", "01-01-2026 01:00"],
+                "River Water Level Telemetry Hourly (meter)": [50.0, 50.0, 50.1],
+            }).to_csv(river, index=False)
+            report = assemble(river=river, events=events, output_root=root / "out")
+            self.assertEqual(report["sources"]["river"]["duplicate_observation_keys"], 1)
+            self.assertEqual(report["sources"]["river"]["median_interval_hours"], 1.0)
+
     def test_muzaffarpur_without_supported_river_is_not_synthesized(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
