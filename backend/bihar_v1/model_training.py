@@ -302,7 +302,7 @@ def train_patna_flood_model(
             "validation_positive_events": int(readiness["splits"]["validation"]["positive_events"]),
             "test_positive_events": int(readiness["splits"]["test"]["positive_events"]),
             "validation_calibration_error": metrics["validation"]["calibration_error"],
-            "validation_brier": metrics["validation"]["brier"],
+            "validation_brier": metrics["validation"]["brier_score"],
             "operational_threshold": None,
             "operational_threshold_status": "not_calibrated",
         }
