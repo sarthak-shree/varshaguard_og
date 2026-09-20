@@ -38,9 +38,19 @@ def threshold_analysis(
         if not 0.0 < threshold < 1.0:
             raise ValueError("Candidate thresholds must be strictly between 0 and 1")
         predicted = (probabilities >= threshold).astype(int)
+        tp = int(((predicted == 1) & (y_true == 1)).sum())
+        fp = int(((predicted == 1) & (y_true == 0)).sum())
+        fn = int(((predicted == 0) & (y_true == 1)).sum())
+        tn = int(((predicted == 0) & (y_true == 0)).sum())
         rows.append({
             "threshold": threshold,
             "positive_predictions": int(predicted.sum()),
+            "true_positive": tp,
+            "false_positive": fp,
+            "false_negative": fn,
+            "true_negative": tn,
+            "false_alarm_rate": float(fp / (fp + tn)) if (fp + tn) else None,
+            "miss_rate": float(fn / (fn + tp)) if (fn + tp) else None,
             "recall": float(recall_score(y_true, predicted, zero_division=0)),
             "precision": float(precision_score(y_true, predicted, zero_division=0)),
             "f1": float(f1_score(y_true, predicted, zero_division=0)),
