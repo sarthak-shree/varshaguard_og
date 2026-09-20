@@ -40,6 +40,21 @@ def status(slug: str):
         return error
 
     flood_model = model_path(info["slug"])
+    manifest_path = flood_model.with_name(
+        f"{flood_model.stem.replace("_xgboost", "")}_model_manifest.json"
+    )
+    calibration_status = "not_calibrated"
+    operational_threshold = None
+    if manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            calibration_status = manifest.get(
+                "operational_threshold_status", "not_calibrated"
+            )
+            operational_threshold = manifest.get("operational_threshold")
+        except (OSError, ValueError):
+            calibration_status = "manifest_unavailable"
+
     return jsonify({
         "success": True,
         "district": info,
@@ -49,6 +64,8 @@ def status(slug: str):
             "flood": {
                 "status": "trained_artifact_available" if flood_model.exists() else "model_not_trained",
                 "artifact_available": flood_model.exists(),
+                "operational_threshold": operational_threshold,
+                "operational_threshold_status": calibration_status,
             },
             "inundation": {"status": "model_not_trained"},
         },
