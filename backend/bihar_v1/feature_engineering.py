@@ -17,10 +17,11 @@ def add_rainfall_features(frame: pd.DataFrame, *, rain_col: str = "rain_mm") -> 
         raise ValueError(f"Missing required column: {rain_col}")
     rain = pd.to_numeric(out[rain_col], errors="coerce")
     indexed = pd.Series(rain.to_numpy(), index=out["timestamp"])
+    hourly = indexed.reindex(pd.date_range(indexed.index.min(), indexed.index.max(), freq="1h", tz="UTC"))
     for hours in RAIN_WINDOWS:
-        out[f"rain_{hours}h"] = indexed.rolling(f"{hours}h", min_periods=hours).sum().to_numpy()
+        out[f"rain_{hours}h"] = [hourly.loc[:ts].tail(hours).sum(min_count=hours) for ts in out["timestamp"]]
     out["rain_1h_intensity"] = rain
-    out["rain_24h_peak_1h"] = indexed.rolling("24h", min_periods=24).max().to_numpy()
+    out["rain_24h_peak_1h"] = [hourly.loc[:ts].tail(24).max() if hourly.loc[:ts].tail(24).notna().all() else float("nan") for ts in out["timestamp"]]
     return out
 
 def add_river_features(frame: pd.DataFrame, *, level_col: str = "river_level_m") -> pd.DataFrame:
