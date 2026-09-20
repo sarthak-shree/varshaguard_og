@@ -70,7 +70,9 @@ def status(slug: str):
         except (OSError, ValueError):
             calibration_status = "manifest_unavailable"
 
-    model_readiness = _load_model_readiness(info["slug"])\n\n    return jsonify({
+    model_readiness = _load_model_readiness(info["slug"])
+
+    return jsonify({
         "success": True,
         "district": info,
         "horizon_hours": PREDICTION_HORIZON_HOURS,
