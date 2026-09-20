@@ -45,6 +45,37 @@ def chronological_split(
     return {"train": train, "validation": validation, "test": test}
 
 
+def enforce_event_isolation(splits: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """Remove positive rows whose flood event appears in another split.
+
+    The split remains chronological, but an event cannot contribute positive
+    examples to more than one partition. This is an evaluation safeguard, not
+    a substitute for event-aware sampling of the underlying observations.
+    """
+    if not any("flood_event_uei" in frame.columns for frame in splits.values()):
+        return {name: frame.copy() for name, frame in splits.items()}
+
+    event_sets = {
+        name: set(
+            frame.loc[
+                frame.get("flood_event_start_next_24h", pd.Series(dtype="int8")) == 1,
+                "flood_event_uei",
+            ].dropna().astype(str)
+        )
+        for name, frame in splits.items()
+    }
+
+    isolated = {}
+    for name, frame in splits.items():
+        other_events = set().union(*(events for other, events in event_sets.items() if other != name))
+        keep = ~(
+            (frame.get("flood_event_start_next_24h", pd.Series(0, index=frame.index)) == 1)
+            & frame["flood_event_uei"].astype("string").isin(other_events)
+        )
+        isolated[name] = frame.loc[keep].copy().reset_index(drop=True)
+    return isolated
+
+
 def split_summary(splits: dict[str, pd.DataFrame]) -> dict:
     result = {}
     for name, frame in splits.items():
