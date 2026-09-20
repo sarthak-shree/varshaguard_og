@@ -142,6 +142,24 @@ class DatasetAssemblerTests(unittest.TestCase):
             self.assertEqual(report["districts"]["muzaffarpur"]["status"], "not_trainable")
             self.assertEqual(report["districts"]["muzaffarpur"]["training"]["rows"], 0)
 
+    def test_empty_district_still_reports_model_readiness(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            events = root / "events.csv"
+            pd.DataFrame({
+                "Start Date": ["08-01-2026"],
+                "End Date": ["10-01-2026"],
+                "Bihar District": ["Muzaffarpur"],
+                "UEI": ["E1"],
+            }).to_csv(events, index=False)
+
+            report = assemble(events=events, output_root=root / "out")
+            readiness = report["districts"]["muzaffarpur"]["model_readiness"]
+            self.assertEqual(readiness["status"], "blocked")
+            self.assertIn("heavy_rainfall", readiness["models"])
+            self.assertIn("river_flood", readiness["models"])
+            self.assertIn("inundation", readiness["models"])
+
     def test_missing_event_inventory_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
