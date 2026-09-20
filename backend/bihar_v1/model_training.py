@@ -169,13 +169,28 @@ def evaluate_predictions(
 
 
 def _label_window_lead_time(frame: pd.DataFrame, probability: np.ndarray, threshold: float) -> dict:
-    """Measure lead time only for correctly predicted positive label rows.
+    """Measure earliest predicted lead time once per event.
 
     This is a label-window metric, not a claim of first operational alert time.
-    The inventory event start is intentionally not reconstructed from the label.
+    For each event, only the earliest positive prediction in the test window is
+    used so repeated hourly predictions cannot artificially improve lead time.
     """
     if "flood_event_uei" not in frame.columns:
-        return {"events_with_predicted_positive": 0, "mean_hours": None, "median_hours": None}
+        return {
+            "events_with_predicted_positive": 0,
+            "mean_hours": None,
+            "median_hours": None,
+            "status": "event_ids_unavailable",
+        }
+
+    required = {"timestamp", "flood_event_start_timestamp"}
+    if not required.issubset(frame.columns):
+        return {
+            "events_with_predicted_positive": 0,
+            "mean_hours": None,
+            "median_hours": None,
+            "status": "requires_event_start_timestamp_for_exact_lead_time",
+        }
 
     work = frame.copy()
     work["_probability"] = probability
@@ -184,34 +199,52 @@ def _label_window_lead_time(frame: pd.DataFrame, probability: np.ndarray, thresh
         (work[TARGET_COLUMN] == 1)
         & (work["_predicted"] == 1)
         & work["flood_event_uei"].notna()
-    ]
+    ].copy()
     if positives.empty:
-        return {"events_with_predicted_positive": 0, "mean_hours": None, "median_hours": None}
-
-    if "flood_event_start_timestamp" not in positives.columns:
         return {
-            "events_with_predicted_positive": int(positives["flood_event_uei"].astype(str).nunique()),
+            "events_with_predicted_positive": 0,
             "mean_hours": None,
             "median_hours": None,
-            "status": "requires_event_start_timestamp_for_exact_lead_time",
+            "status": "no_predicted_positive_events",
         }
 
-    event_start = pd.to_datetime(positives["flood_event_start_timestamp"], utc=True, errors="coerce")
-    lead_hours = (event_start - pd.to_datetime(positives["timestamp"], utc=True)).dt.total_seconds() / 3600.0
-    lead_hours = lead_hours.dropna()
-    if lead_hours.empty:
+    positives["_timestamp"] = pd.to_datetime(positives["timestamp"], utc=True, errors="coerce")
+    positives["_event_start"] = pd.to_datetime(
+        positives["flood_event_start_timestamp"], utc=True, errors="coerce"
+    )
+    positives = positives.dropna(subset=["_timestamp", "_event_start"])
+    if positives.empty:
         return {
-            "events_with_predicted_positive": int(positives["flood_event_uei"].astype(str).nunique()),
+            "events_with_predicted_positive": 0,
             "mean_hours": None,
             "median_hours": None,
             "status": "event_start_timestamps_unavailable",
         }
 
+    earliest = (
+        positives.sort_values("_timestamp")
+        .groupby("flood_event_uei", as_index=False)
+        .first()
+    )
+    lead_hours = (
+        earliest["_event_start"] - earliest["_timestamp"]
+    ).dt.total_seconds() / 3600.0
+    lead_hours = lead_hours[lead_hours >= 0]
+    if lead_hours.empty:
+        return {
+            "events_with_predicted_positive": 0,
+            "mean_hours": None,
+            "median_hours": None,
+            "status": "no_valid_nonnegative_lead_times",
+        }
+
     return {
-        "events_with_predicted_positive": int(positives["flood_event_uei"].astype(str).nunique()),
+        "events_with_predicted_positive": int(len(lead_hours)),
         "mean_hours": float(lead_hours.mean()),
         "median_hours": float(lead_hours.median()),
-        "status": "computed_from_event_start_timestamps",
+        "min_hours": float(lead_hours.min()),
+        "max_hours": float(lead_hours.max()),
+        "status": "computed_from_earliest_event_predictions",
     }
 
 
