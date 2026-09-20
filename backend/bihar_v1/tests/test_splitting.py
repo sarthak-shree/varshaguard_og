@@ -30,6 +30,15 @@ class SplittingTests(unittest.TestCase):
             24 * 3600,
         )
 
+    def test_duplicate_timestamps_are_rejected(self):
+        ts = pd.to_datetime(["2025-01-01 00:00", "2025-01-01 00:00", "2025-01-01 01:00"], utc=True)
+        frame = pd.DataFrame({
+            "timestamp": ts,
+            "flood_event_start_next_24h": [0, 0, 1],
+        })
+        with self.assertRaisesRegex(ValueError, "unique timestamps"):
+            chronological_split(frame)
+
     def test_summary_reports_class_balance_and_events(self):
         frame = pd.DataFrame({
             "timestamp": pd.date_range("2025-01-01", periods=4, freq="h", tz="UTC"),
