@@ -96,10 +96,10 @@ def _audit_observations(frame: pd.DataFrame) -> dict:
 
     interval_hours = []
     for _, station_frame in valid.groupby(
-        [valid["district"], valid["station_id"], valid["variable"]],
+        [valid["district"], valid["station_id"], valid["variable"], valid["source"]],
         dropna=False,
     ):
-        ordered = station_frame["timestamp"].sort_values()
+        ordered = station_frame["timestamp"].drop_duplicates().sort_values()
         interval_hours.extend(
             ordered.diff().dropna().dt.total_seconds().div(3600).tolist()
         )
