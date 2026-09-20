@@ -16,10 +16,11 @@ def add_rainfall_features(frame: pd.DataFrame, *, rain_col: str = "rain_mm") -> 
     if rain_col not in out.columns:
         raise ValueError(f"Missing required column: {rain_col}")
     rain = pd.to_numeric(out[rain_col], errors="coerce")
+    indexed = pd.Series(rain.to_numpy(), index=out["timestamp"])
     for hours in RAIN_WINDOWS:
-        out[f"rain_{hours}h"] = rain.rolling(hours, min_periods=hours).sum()
+        out[f"rain_{hours}h"] = indexed.rolling(f"{hours}h", min_periods=hours).sum().to_numpy()
     out["rain_1h_intensity"] = rain
-    out["rain_24h_peak_1h"] = rain.rolling(24, min_periods=24).max()
+    out["rain_24h_peak_1h"] = indexed.rolling("24h", min_periods=24).max().to_numpy()
     return out
 
 def add_river_features(frame: pd.DataFrame, *, level_col: str = "river_level_m") -> pd.DataFrame:
@@ -27,9 +28,15 @@ def add_river_features(frame: pd.DataFrame, *, level_col: str = "river_level_m")
     if level_col not in out.columns:
         raise ValueError(f"Missing required column: {level_col}")
     level = pd.to_numeric(out[level_col], errors="coerce")
+    indexed = pd.DataFrame({"timestamp": out["timestamp"], "level": level}).sort_values("timestamp")
+    source = indexed.rename(columns={"timestamp": "source_timestamp", "level": "source_level"})
     for hours in RIVER_LAG_HOURS:
-        out[f"river_level_lag_{hours}h"] = level.shift(hours)
-        out[f"river_rise_{hours}h"] = level - level.shift(hours)
+        target = indexed[["timestamp"]].copy()
+        target["lookup"] = target["timestamp"] - pd.Timedelta(hours=hours)
+        matched = pd.merge_asof(target.sort_values("lookup"), source.sort_values("source_timestamp"), left_on="lookup", right_on="source_timestamp", direction="backward", tolerance=pd.Timedelta(minutes=30)).sort_values("timestamp")
+        lag = matched["source_level"].to_numpy()
+        out[f"river_level_lag_{hours}h"] = lag
+        out[f"river_rise_{hours}h"] = level.to_numpy() - lag
     return out
 
 def build_tabular_features(frame: pd.DataFrame) -> pd.DataFrame:
