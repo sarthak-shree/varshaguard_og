@@ -11,7 +11,12 @@ import pandas as pd
 from .data_pipeline import ensure_data_dirs, observations_to_frame
 from .ingestion.normalizers import normalize_rainfall_csv, normalize_river_csv
 from .labeling import build_24h_event_labels, load_district_events
-from .splitting import chronological_split, split_summary, validate_split_readiness
+from .splitting import (
+    chronological_split,
+    enforce_event_isolation,
+    split_summary,
+    validate_split_readiness,
+)
 from .station_registry import stations_for_district
 from .training_table import build_training_table, summarize_target
 
@@ -143,9 +148,21 @@ def _assemble_district(
     table_path = output_dir / f"{district}_flood_training.csv"
     table.to_csv(table_path, index=False)
 
-    splits = chronological_split(table)
+    raw_splits = chronological_split(table)
+    pre_isolation_summary = split_summary(raw_splits)
+    splits = enforce_event_isolation(raw_splits)
     split_info = split_summary(splits)
     readiness = validate_split_readiness(splits)
+
+    split_dir = output_dir / district
+    split_dir.mkdir(parents=True, exist_ok=True)
+    for split_name, split_frame in splits.items():
+        split_frame.to_csv(split_dir / f"{split_name}.csv", index=False)
+
+    pre_rows = sum(item["rows"] for item in pre_isolation_summary.values())
+    post_rows = sum(item["rows"] for item in split_info.values())
+    pre_events = sum(item["positive_events"] for item in pre_isolation_summary.values())
+    post_events = sum(item["positive_events"] for item in split_info.values())
 
     status = "trainable" if target["positive"] > 0 and target["negative"] > 0 else "not_trainable"
     if not readiness["ready_for_model_evaluation"]:
@@ -157,9 +174,21 @@ def _assemble_district(
         "observation_coverage": _audit_observations(observations),
         "label_positive_timestamps": int(labels["flood_event_start_next_24h"].sum()),
         "ongoing_timestamps_excluded": int(labels["flood_event_ongoing"].sum()),
+        "pre_isolation_split_summary": pre_isolation_summary,
         "split_summary": split_info,
+        "event_isolation_removed": {
+            "rows": int(pre_rows - post_rows),
+            "positive_rows": int(
+                sum(item["positive"] for item in pre_isolation_summary.values())
+                - sum(item["positive"] for item in split_info.values())
+            ),
+            "positive_event_assignments": int(pre_events - post_events),
+        },
         "readiness": readiness,
         "training_table": str(table_path),
+        "split_files": {
+            name: str(split_dir / f"{name}.csv") for name in splits
+        },
     }
 
 
