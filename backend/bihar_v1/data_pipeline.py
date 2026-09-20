@@ -38,8 +38,9 @@ def validate_observations_frame(frame: pd.DataFrame) -> dict:
     result["empty_districts"] = int(frame["district"].astype("string").str.strip().eq("").sum())
     result["empty_variables"] = int(frame["variable"].astype("string").str.strip().eq("").sum())
     key_columns = ["timestamp", "district", "variable"]
-    if "station_id" in frame.columns:
-        key_columns.append("station_id")
+    for column in ("source", "station_id"):
+        if column in frame.columns:
+            key_columns.append(column)
     result["duplicate_observations"] = int(frame.duplicated(subset=key_columns, keep=False).sum())
     result["valid"] = not any(result[key] for key in (
         "invalid_timestamps", "invalid_values", "empty_districts", "empty_variables", "duplicate_observations"
