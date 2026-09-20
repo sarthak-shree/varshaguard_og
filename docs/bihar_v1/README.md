@@ -1,12 +1,27 @@
 # VarshaGuard Bihar v1
 
-New isolated Bihar subsystem inside the same repository and main branch.
+Bihar v1 is isolated from the historical v0.2.0 prototype. The first geography is Patna and Muzaffarpur with a 24-hour forecast horizon.
 
-- Patna + Muzaffarpur initially
-- 24-hour horizon
-- Heavy rainfall, river flood, inundation prediction
-- Risk fusion and alerts
+## Dataset assembly
 
-The existing v0.2.0 prototype remains untouched: Random Forest + historical Assam/Uttarakhand.
+Use `backend.bihar_v1.dataset_assembler` to turn local source CSVs into filtered, normalized evidence and leakage-safe training tables.
 
-This increment is a foundation only. It does not claim live predictions or trained Bihar models. Next: verify provider access, build synchronized historical data, create Sentinel-1 flood labels, train/validate models, calibrate risk fusion, then connect scheduled live inference and the dashboard.
+Example:
+
+```bash
+python -m backend.bihar_v1.dataset_assembler \
+  --hourly-rainfall /path/hourly_rainfall.csv \
+  --daily-rainfall /path/daily_rainfall.csv \
+  --river /path/river_level.csv \
+  --events /path/flood_inventory.csv
+```
+
+Value-column names are configurable with `--*-value-column`.
+
+The assembler writes only derived datasets under `data/bihar_v1/processed` and `data/bihar_v1/training` when no `--output-root` is supplied. Raw source files are never copied into the repository.
+
+Daily rainfall is retained as a separate processed dataset. It is not repeated across hourly timestamps, because that would manufacture temporal resolution and leak assumptions into the model.
+
+A district is marked `trainable` only when its assembled training table contains both positive and negative samples. Muzaffarpur is not granted synthetic river coverage when the source registry has no supported river station.
+
+The existing v0.2.0 prototype remains untouched.
