@@ -89,22 +89,39 @@ def _audit_observations(frame: pd.DataFrame) -> dict:
     if frame.empty:
         return {"rows": 0, "districts": [], "stations": [], "start": None, "end": None}
     ts = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
-    valid = ts.dropna().sort_values()
+    valid = frame.loc[ts.notna()].copy()
+    valid["timestamp"] = ts.loc[valid.index]
     if valid.empty:
         return {"rows": int(len(frame)), "districts": [], "stations": [], "start": None, "end": None}
-    gaps = valid.diff().dropna().dt.total_seconds().div(3600)
+
+    interval_hours = []
+    for _, station_frame in valid.groupby(
+        [valid["district"], valid["station_id"], valid["variable"]],
+        dropna=False,
+    ):
+        ordered = station_frame["timestamp"].sort_values()
+        interval_hours.extend(
+            ordered.diff().dropna().dt.total_seconds().div(3600).tolist()
+        )
+    gaps = pd.Series(interval_hours, dtype="float64")
     gap_values = gaps[gaps > 1.0]
+
+    key_columns = ["timestamp", "district", "variable", "station_id", "source"]
+    key = valid[key_columns].astype("string").fillna("<missing>").agg("|".join, axis=1)
+
     return {
         "rows": int(len(frame)),
-        "districts": sorted(frame["district"].dropna().unique().tolist()),
-        "stations": sorted(frame["station_id"].dropna().astype(str).unique().tolist()),
-        "start": valid.min().isoformat(),
-        "end": valid.max().isoformat(),
+        "districts": sorted(valid["district"].dropna().unique().tolist()),
+        "stations": sorted(valid["station_id"].dropna().astype(str).unique().tolist()),
+        "start": valid["timestamp"].min().isoformat(),
+        "end": valid["timestamp"].max().isoformat(),
         "median_interval_hours": float(gaps.median()) if not gaps.empty else None,
         "max_interval_hours": float(gaps.max()) if not gaps.empty else None,
         "gaps_over_1h": int(len(gap_values)),
-        "duplicate_timestamps": int(ts.duplicated().sum()),
-        "coverage_hours": float((valid.max() - valid.min()).total_seconds() / 3600),
+        "duplicate_observation_keys": int(key.duplicated().sum()),
+        "coverage_hours": float(
+            (valid["timestamp"].max() - valid["timestamp"].min()).total_seconds() / 3600
+        ),
     }
 
 
