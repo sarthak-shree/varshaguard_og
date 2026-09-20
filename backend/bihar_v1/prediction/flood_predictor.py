@@ -1,6 +1,7 @@
 """Inference wrapper for the trained Bihar v1 river-flood model."""
 from __future__ import annotations
 
+import hashlib
 import math
 import os
 from pathlib import Path
@@ -96,6 +97,11 @@ def predict(
             manifest = None
 
     try:
+        expected_sha256 = manifest.get("model_sha256") if manifest else None
+        if expected_sha256:
+            actual_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+            if actual_sha256 != expected_sha256:
+                raise ValueError("Model artifact checksum does not match manifest")
         model = joblib.load(path)
         model_features = _model_features(model)
         if manifest is not None:
