@@ -24,7 +24,9 @@ def chronological_split(
 
     out = frame.copy()
     out["timestamp"] = pd.to_datetime(out["timestamp"], utc=True, errors="raise")
-    out = out.sort_values("timestamp").drop_duplicates(subset=["timestamp"]).reset_index(drop=True)
+    out = out.sort_values("timestamp").reset_index(drop=True)
+    if out["timestamp"].duplicated().any():
+        raise ValueError("Training table must contain unique timestamps before splitting")
     if len(out) < 3:
         raise ValueError("At least 3 unique timestamps are required")
 
