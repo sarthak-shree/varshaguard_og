@@ -13,11 +13,7 @@ import pandas as pd
 
 
 def _parse_inventory_datetime(value: object) -> pd.Timestamp:
-    """Parse the inventory's dd/mm/yy dates without pandas' 1969/2068 pivot.
-
-    The inventory uses two-digit years spanning 1967-2023. We therefore map
-    67-99 to 1967-1999 and 00-68 to 2000-2068 explicitly.
-    """
+    """Parse dd/mm/yy inventory dates without pandas' two-digit-year pivot."""
     text = str(value).strip()
     if not text:
         return pd.NaT
@@ -47,6 +43,9 @@ def load_district_events(path: str | Path) -> pd.DataFrame:
     )
     if (out["end"] < out["start"]).any():
         raise ValueError("Flood inventory contains events ending before they start")
+    out["UEI"] = out["UEI"].astype(str).str.strip()
+    if out["UEI"].eq("").any():
+        raise ValueError("Flood inventory contains empty UEI values")
     return out
 
 
@@ -67,19 +66,23 @@ def build_24h_event_labels(
 
     target["flood_event_start_next_24h"] = False
     target["flood_event_ongoing"] = False
+    target["flood_event_uei"] = pd.Series(pd.NA, index=target.index, dtype="string")
 
     horizon = pd.Timedelta(hours=horizon_hours)
     for row in selected.itertuples(index=False):
         start = pd.Timestamp(row.start).tz_localize("UTC")
         end = pd.Timestamp(row.end).tz_localize("UTC")
-        target["flood_event_start_next_24h"] |= (
-            (target["timestamp"] < start) &
-            (target["timestamp"] >= start - horizon)
+        lead_mask = (
+            (target["timestamp"] < start)
+            & (target["timestamp"] >= start - horizon)
         )
-        target["flood_event_ongoing"] |= (
-            (target["timestamp"] >= start) &
-            (target["timestamp"] <= end)
+        ongoing_mask = (
+            (target["timestamp"] >= start)
+            & (target["timestamp"] <= end)
         )
+        target.loc[lead_mask, "flood_event_start_next_24h"] = True
+        target.loc[lead_mask, "flood_event_uei"] = str(row.UEI)
+        target.loc[ongoing_mask, "flood_event_ongoing"] = True
 
     target["flood_event_start_next_24h"] = target["flood_event_start_next_24h"].astype("int8")
     target["flood_event_ongoing"] = target["flood_event_ongoing"].astype("int8")
