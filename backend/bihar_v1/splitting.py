@@ -1,8 +1,4 @@
-"""Chronological and event-aware dataset splitting for Bihar v1.
-
-Splits are made by time, never randomly. A purge gap prevents feature windows
-near the validation/test boundary from leaking across partitions.
-"""
+"""Chronological and event-aware dataset splitting for Bihar v1."""
 from __future__ import annotations
 
 import pandas as pd
@@ -53,11 +49,17 @@ def split_summary(splits: dict[str, pd.DataFrame]) -> dict:
     result = {}
     for name, frame in splits.items():
         positives = int(frame.get("flood_event_start_next_24h", pd.Series(dtype="int8")).sum())
+        event_ids = (
+            frame.loc[frame["flood_event_start_next_24h"] == 1, "flood_event_uei"]
+            .dropna().astype(str).nunique()
+            if "flood_event_uei" in frame.columns else 0
+        )
         result[name] = {
             "rows": int(len(frame)),
             "positive": positives,
             "negative": int(len(frame) - positives),
             "positive_rate": (positives / len(frame)) if len(frame) else 0.0,
+            "positive_events": int(event_ids),
             "start": frame["timestamp"].min().isoformat() if len(frame) else None,
             "end": frame["timestamp"].max().isoformat() if len(frame) else None,
         }
@@ -70,32 +72,42 @@ def validate_split_readiness(
     minimum_positive_train: int = 10,
     minimum_positive_validation: int = 3,
     minimum_positive_test: int = 3,
+    minimum_events_train: int = 5,
+    minimum_events_validation: int = 2,
+    minimum_events_test: int = 2,
 ) -> dict:
-    """Report whether each partition contains enough positive events/samples.
-
-    This is a gate for model evaluation, not a claim that a dataset is
-    statistically sufficient. Positive sample counts are deliberately
-    conservative because adjacent lead-window rows can belong to one event.
-    """
+    """Gate evaluation on both positive samples and independent flood events."""
     minimums = {
-        "train": minimum_positive_train,
-        "validation": minimum_positive_validation,
-        "test": minimum_positive_test,
+        "train": (minimum_positive_train, minimum_events_train),
+        "validation": (minimum_positive_validation, minimum_events_validation),
+        "test": (minimum_positive_test, minimum_events_test),
     }
     result = {}
     ready = True
-    for name, minimum in minimums.items():
+    for name, (minimum_positive, minimum_events) in minimums.items():
         frame = splits.get(name, pd.DataFrame())
         positives = int(frame.get(
             "flood_event_start_next_24h", pd.Series(dtype="int8")
         ).sum())
         negatives = int(len(frame) - positives)
-        ok = len(frame) > 0 and positives >= minimum and negatives > 0
+        event_ids = (
+            frame.loc[frame["flood_event_start_next_24h"] == 1, "flood_event_uei"]
+            .dropna().astype(str).nunique()
+            if "flood_event_uei" in frame.columns else 0
+        )
+        ok = (
+            len(frame) > 0
+            and positives >= minimum_positive
+            and event_ids >= minimum_events
+            and negatives > 0
+        )
         result[name] = {
             "ready": ok,
             "positive_samples": positives,
+            "positive_events": int(event_ids),
             "negative_samples": negatives,
-            "minimum_positive_samples": minimum,
+            "minimum_positive_samples": minimum_positive,
+            "minimum_positive_events": minimum_events,
         }
         ready = ready and ok
     return {"ready_for_model_evaluation": ready, "splits": result}
