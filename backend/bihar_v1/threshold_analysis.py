@@ -101,4 +101,7 @@ def _event_level_metrics(frame: pd.DataFrame, predicted: np.ndarray) -> dict:
         "events_with_predicted_positive": int(len(lead)),
         "mean_lead_hours": float(lead.mean()) if not lead.empty else None,
         "median_lead_hours": float(lead.median()) if not lead.empty else None,
+        "events_detected_at_least_6h": int((lead >= 6).sum()),
+        "events_detected_at_least_12h": int((lead >= 12).sum()),
+        "events_detected_at_least_24h": int((lead >= 24).sum()),
     }
