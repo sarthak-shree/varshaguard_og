@@ -42,6 +42,7 @@ def threshold_analysis(
         fp = int(((predicted == 1) & (y_true == 0)).sum())
         fn = int(((predicted == 0) & (y_true == 1)).sum())
         tn = int(((predicted == 0) & (y_true == 0)).sum())
+        event_metrics = _event_level_metrics(frame, predicted)
         rows.append({
             "threshold": threshold,
             "positive_predictions": int(predicted.sum()),
@@ -54,5 +55,50 @@ def threshold_analysis(
             "recall": float(recall_score(y_true, predicted, zero_division=0)),
             "precision": float(precision_score(y_true, predicted, zero_division=0)),
             "f1": float(f1_score(y_true, predicted, zero_division=0)),
+            **event_metrics,
         })
     return rows
+
+
+def _event_level_metrics(frame: pd.DataFrame, predicted: np.ndarray) -> dict:
+    """Measure earliest predicted warning per event without choosing a threshold."""
+    required = {"flood_event_uei", "flood_event_start_timestamp", "timestamp"}
+    if not required.issubset(frame.columns):
+        return {
+            "events_with_predicted_positive": None,
+            "mean_lead_hours": None,
+            "median_lead_hours": None,
+        }
+
+    work = frame.copy()
+    work["_predicted"] = predicted
+    work["_timestamp"] = pd.to_datetime(work["timestamp"], utc=True, errors="coerce")
+    work["_event_start"] = pd.to_datetime(
+        work["flood_event_start_timestamp"], utc=True, errors="coerce"
+    )
+    work = work[
+        (work[TARGET_COLUMN] == 1)
+        & (work["_predicted"] == 1)
+        & work["flood_event_uei"].notna()
+    ].dropna(subset=["_timestamp", "_event_start"])
+    if work.empty:
+        return {
+            "events_with_predicted_positive": 0,
+            "mean_lead_hours": None,
+            "median_lead_hours": None,
+        }
+
+    earliest = (
+        work.sort_values("_timestamp")
+        .groupby("flood_event_uei", as_index=False)
+        .first()
+    )
+    lead = (
+        earliest["_event_start"] - earliest["_timestamp"]
+    ).dt.total_seconds() / 3600.0
+    lead = lead[lead >= 0]
+    return {
+        "events_with_predicted_positive": int(len(lead)),
+        "mean_lead_hours": float(lead.mean()) if not lead.empty else None,
+        "median_lead_hours": float(lead.median()) if not lead.empty else None,
+    }
