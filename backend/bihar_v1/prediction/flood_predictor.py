@@ -72,7 +72,7 @@ def predict(
             },
         )
 
-    manifest_path = path.with_name(f"{path.stem.replace("_xgboost", "")}_model_manifest.json")
+    manifest_path = path.with_name(f"{path.stem.replace('_xgboost', '')}_model_manifest.json")
     manifest = None
     if manifest_path.exists():
         try:
