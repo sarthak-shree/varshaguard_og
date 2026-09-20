@@ -76,6 +76,28 @@ class DatasetAssemblerTests(unittest.TestCase):
             self.assertEqual(report["districts"]["muzaffarpur"]["readiness_blockers"]["river_flood"]["status"], "blocked")
             self.assertEqual(report["districts"]["muzaffarpur"]["readiness_blockers"]["inundation"]["status"], "blocked")
 
+    def test_coverage_audit_is_station_aware(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            events = root / "events.csv"
+            river = root / "river.csv"
+            pd.DataFrame({
+                "Start Date": ["08-01-2026"], "End Date": ["10-01-2026"],
+                "Bihar District": ["Patna"], "UEI": ["E1"],
+            }).to_csv(events, index=False)
+            ts = ["01-01-2026 00:00", "01-01-2026 01:00", "01-01-2026 00:00", "01-01-2026 01:00"]
+            pd.DataFrame({
+                "District": ["PATNA"] * 4,
+                "Station": ["Kharuara_1"] * 4,
+                "Agency": ["CWC", "CWC", "CWC", "CWC"] ,
+                "Data Acquisition Time": ts,
+                "River Water Level Telemetry Hourly (meter)": [50.0, 50.1, 50.2, 50.3],
+            }).to_csv(river, index=False)
+            report = assemble(river=river, events=events, output_root=root / "out")
+            audit = report["sources"]["river"]
+            self.assertEqual(audit["duplicate_observation_keys"], 2)
+            self.assertEqual(audit["gaps_over_1h"], 0)
+
     def test_muzaffarpur_without_supported_river_is_not_synthesized(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
