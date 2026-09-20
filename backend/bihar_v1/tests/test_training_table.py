@@ -5,6 +5,20 @@ from backend.bihar_v1.training_table import build_training_table, summarize_targ
 
 
 class TrainingTableTests(unittest.TestCase):
+    def test_missing_district_column_is_rejected(self):
+        obs = pd.DataFrame({
+            "timestamp": pd.date_range("2026-01-01", periods=3, freq="h", tz="UTC"),
+            "variable": ["rain_mm"] * 3,
+            "value": [1.0] * 3,
+        })
+        labels = pd.DataFrame({
+            "timestamp": obs["timestamp"],
+            "flood_event_start_next_24h": [0, 0, 0],
+            "flood_event_ongoing": [0, 0, 0],
+        })
+        with self.assertRaisesRegex(ValueError, "district"):
+            build_training_table(obs, labels, district="patna")
+
     def test_ongoing_events_are_excluded(self):
         obs = pd.DataFrame({
             "timestamp": pd.date_range("2026-01-01", periods=220, freq="h", tz="UTC"),
