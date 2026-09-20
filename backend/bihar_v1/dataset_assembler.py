@@ -279,6 +279,7 @@ def assemble(
     report: dict = {
         "districts": {},
         "sources": {name: _audit_observations(frame) for name, frame in sources.items()},
+        "source_coverage_matrix": {district: {"rainfall_hourly_rows": int((sources.get("rainfall_hourly", pd.DataFrame()).get("district", pd.Series(dtype=str)) == district).sum()), "river_rows": int((sources.get("river", pd.DataFrame()).get("district", pd.Series(dtype=str)) == district).sum()), "event_rows": int((event_frame["district"] == district).sum())} for district in DISTRICTS},
         "notes": [
             "Daily rainfall is retained as processed evidence but is not upsampled into hourly training rows.",
             "Only stations explicitly listed in station_registry.py are included.",
