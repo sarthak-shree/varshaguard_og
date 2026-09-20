@@ -286,6 +286,15 @@ def train_patna_flood_model(
         splits["validation"], probabilities["validation"]
     )
 
+    dataset_period = {
+        "train_start": splits["train"]["timestamp"].min().isoformat(),
+        "train_end": splits["train"]["timestamp"].max().isoformat(),
+        "validation_start": splits["validation"]["timestamp"].min().isoformat(),
+        "validation_end": splits["validation"]["timestamp"].max().isoformat(),
+        "test_start": splits["test"]["timestamp"].min().isoformat(),
+        "test_end": splits["test"]["timestamp"].max().isoformat(),
+    }
+
     report.update({
         "status": "trained",
         "feature_columns": features,
