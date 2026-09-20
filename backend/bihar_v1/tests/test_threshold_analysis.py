@@ -19,6 +19,28 @@ class ThresholdAnalysisTests(unittest.TestCase):
         self.assertIn("miss_rate", rows[0])
         self.assertEqual(rows[0]["true_positive"] + rows[0]["false_negative"], 2)
 
+    def test_reports_event_level_lead_time_when_event_metadata_exists(self):
+        frame = pd.DataFrame({
+            TARGET_COLUMN: [1, 1, 0, 1],
+            "flood_event_uei": ["E1", "E1", None, "E2"],
+            "timestamp": pd.to_datetime([
+                "2025-01-01T00:00:00Z",
+                "2025-01-01T06:00:00Z",
+                "2025-01-01T12:00:00Z",
+                "2025-01-02T00:00:00Z",
+            ]),
+            "flood_event_start_timestamp": pd.to_datetime([
+                "2025-01-01T12:00:00Z",
+                "2025-01-01T12:00:00Z",
+                None,
+                "2025-01-02T12:00:00Z",
+            ]),
+        })
+        rows = threshold_analysis(frame, np.array([0.8, 0.9, 0.1, 0.9]), thresholds=[0.5])
+        self.assertEqual(rows[0]["events_with_predicted_positive"], 2)
+        self.assertEqual(rows[0]["mean_lead_hours"], 12.0)
+        self.assertEqual(rows[0]["median_lead_hours"], 12.0)
+
     def test_one_class_validation_is_rejected(self):
         frame = pd.DataFrame({TARGET_COLUMN: [0, 0]})
         with self.assertRaisesRegex(ValueError, "both positive and negative"):
