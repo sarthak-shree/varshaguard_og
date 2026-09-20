@@ -141,4 +141,11 @@ def validate_split_readiness(
             "minimum_positive_events": minimum_events,
         }
         ready = ready and ok
-    return {"ready_for_model_evaluation": ready, "splits": result}
+    if ready:
+        return {"ready_for_model_evaluation": True, "splits": result, "reason": None}
+
+    blocked = []
+    for name, details in result.items():
+        if not details["ready"]:
+            blocked.append(f"{name}: positives={details['positive_samples']}/{details['minimum_positive_samples']}, events={details['positive_events']}/{details['minimum_positive_events']}, negatives={details['negative_samples']}")
+    return {"ready_for_model_evaluation": False, "splits": result, "reason": "Evaluation readiness thresholds not met: " + "; ".join(blocked)}
