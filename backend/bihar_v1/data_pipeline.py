@@ -32,8 +32,9 @@ def validate_observations_frame(frame: pd.DataFrame) -> dict:
         return result
     timestamps = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
     values = pd.to_numeric(frame["value"], errors="coerce")
+    invalid_value_mask = values.isna() & frame["value"].notna()
     result["invalid_timestamps"] = int(timestamps.isna().sum())
-    result["invalid_values"] = int(values.isna().sum())
+    result["invalid_values"] = int(invalid_value_mask.sum())
     result["empty_districts"] = int(frame["district"].astype("string").str.strip().eq("").sum())
     result["empty_variables"] = int(frame["variable"].astype("string").str.strip().eq("").sum())
     result["valid"] = not any(result[key] for key in (
@@ -50,8 +51,8 @@ def load_observations(path: str | Path) -> pd.DataFrame:
     missing = required - set(frame.columns)
     if missing: raise ValueError(f"Missing normalized columns: {sorted(missing)}")
     frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True, errors="raise")
-    frame["value"] = pd.to_numeric(frame["value"], errors="coerce")
     validation = validate_observations_frame(frame)
+    frame["value"] = pd.to_numeric(frame["value"], errors="coerce")
     if not validation["valid"]:
         raise ValueError(f"Invalid normalized observations: {validation}")
     return frame
