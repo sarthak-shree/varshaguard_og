@@ -28,6 +28,7 @@ class DataAuditTests(unittest.TestCase):
             frame.to_csv(path, index=False)
             result = audit_csv(path)
         self.assertEqual(result["duplicate_observation_keys"], 1)
+        self.assertEqual(result["duplicate_observation_rows"], 2)
 
 
 if __name__ == "__main__":
