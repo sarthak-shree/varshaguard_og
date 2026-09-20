@@ -21,6 +21,27 @@ def save_observations(observations: Iterable[Observation], path: str | Path) -> 
     observations_to_frame(observations).to_csv(target, index=False)
     return target
 
+def validate_observations_frame(frame: pd.DataFrame) -> dict:
+    """Validate normalized observations without modifying the input frame."""
+    required = {"timestamp", "district", "variable", "value", "unit", "source"}
+    missing = sorted(required - set(frame.columns))
+    result = {"valid": not missing, "rows": int(len(frame)), "missing_columns": missing,
+              "invalid_timestamps": 0, "invalid_values": 0, "empty_districts": 0,
+              "empty_variables": 0}
+    if missing:
+        return result
+    timestamps = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+    values = pd.to_numeric(frame["value"], errors="coerce")
+    result["invalid_timestamps"] = int(timestamps.isna().sum())
+    result["invalid_values"] = int(values.isna().sum())
+    result["empty_districts"] = int(frame["district"].astype("string").str.strip().eq("").sum())
+    result["empty_variables"] = int(frame["variable"].astype("string").str.strip().eq("").sum())
+    result["valid"] = not any(result[key] for key in (
+        "invalid_timestamps", "invalid_values", "empty_districts", "empty_variables"
+    ))
+    return result
+
+
 def load_observations(path: str | Path) -> pd.DataFrame:
     target = Path(path)
     if not target.exists(): raise FileNotFoundError(target)
@@ -30,4 +51,7 @@ def load_observations(path: str | Path) -> pd.DataFrame:
     if missing: raise ValueError(f"Missing normalized columns: {sorted(missing)}")
     frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True, errors="raise")
     frame["value"] = pd.to_numeric(frame["value"], errors="coerce")
+    validation = validate_observations_frame(frame)
+    if not validation["valid"]:
+        raise ValueError(f"Invalid normalized observations: {validation}")
     return frame
