@@ -50,12 +50,12 @@ def _point_in_geometry(longitude: float, latitude: float, geometry: dict) -> boo
     coordinates = geometry.get("coordinates")
     if kind == "Polygon":
         rings = coordinates or []
-        return bool(rings) and _point_in_ring(longitude, latitude, rings[0])
+        if not rings or not _point_in_ring(longitude, latitude, rings[0]):
+            return False
+        return not any(_point_in_ring(longitude, latitude, hole) for hole in rings[1:])
     if kind == "MultiPolygon":
-        return any(
-            polygon and _point_in_ring(longitude, latitude, polygon[0])
-            for polygon in (coordinates or [])
-        )
+        return any(_point_in_geometry(longitude, latitude, {"type": "Polygon", "coordinates": polygon})
+                   for polygon in (coordinates or []))
     raise ValueError(f"Unsupported GeoJSON geometry type: {kind}")
 
 
