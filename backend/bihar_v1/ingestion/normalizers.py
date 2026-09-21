@@ -53,7 +53,7 @@ def normalize_rainfall_csv(frame: pd.DataFrame, *, value_column: str) -> list[Ob
             variable="rain_mm",
             value=None if pd.isna(value) else float(value),
             unit="mm",
-            source=str(row.get("Agency") or "unknown").lower(),
+            source=(_text(row.get("Agency")) or "unknown").lower(),
             station_id=station,
             quality="unknown",
             metadata={
@@ -91,7 +91,7 @@ def normalize_river_csv(frame: pd.DataFrame, *, value_column: str) -> list[Obser
             variable="river_level_m",
             value=None if pd.isna(value) else float(value),
             unit="m",
-            source=str(row.get("Agency") or "unknown").lower(),
+            source=(_text(row.get("Agency")) or "unknown").lower(),
             station_id=station,
             quality="unknown",
             metadata={
