@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
         result = build_source_readiness(district="patna", source_paths={})
         self.assertEqual(result["status"], "blocked")
-        self.assertEqual(len(result["sources"]), 6)
+        self.assertEqual(len(result["sources"]), 7)
         self.assertTrue(any("hourly_rainfall: missing" == blocker for blocker in result["blockers"]))
 
     def test_source_readiness_accepts_structural_csv_sources(self):
@@ -69,10 +69,18 @@ if __name__ == "__main__":
             pd.DataFrame(columns=["Data Acquisition Time", "District", "Station", "River Water Level Telemetry Hourly (meter)"]).to_csv(root / "river.csv", index=False)
             pd.DataFrame(columns=["Station", "Danger Level"]).to_csv(root / "threshold.csv", index=False)
             pd.DataFrame(columns=["Start Date", "End Date", "Bihar District"]).to_csv(root / "events.csv", index=False)
+            sentinel = root / "sentinel.json"
+            dem = root / "dem.json"
+            sentinel.write_text(
+                '{"scenes":[{"scene_timestamp":"2025-08-01T00:00:00Z","district":"Patna","mask_path":"mask.tif"}]}',
+                encoding="utf-8",
+            )
+            dem.write_text('{"elevation_path":"patna_dem.tif"}', encoding="utf-8")
             paths = {
                 "hourly_rainfall": root / "rain.csv", "river_level": root / "river.csv",
                 "river_threshold": root / "threshold.csv", "flood_events": root / "events.csv",
-                "sentinel1_inundation": root / "masks.manifest", "dem": root / "dem.manifest",
+                "sentinel1_inundation": sentinel, "dem": dem,
+                "district_boundaries": root / "districts.geojson",
             }
             result = build_source_readiness(district="patna", source_paths=paths)
 
