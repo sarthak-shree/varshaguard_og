@@ -17,53 +17,43 @@ class SourceRequirement:
     temporal_granularity: str
     required_columns: tuple[str, ...]
     purpose: str
+    format: str = "csv"
 
 
 SOURCE_REQUIREMENTS: tuple[SourceRequirement, ...] = (
     SourceRequirement(
-        "hourly_rainfall",
-        True,
-        "hourly",
+        "hourly_rainfall", True, "hourly",
         ("Data Acquisition Time", "District", "Station", "Telemetry Hourly Rainfall (mm)"),
         "Predict heavy rainfall and provide precipitation forcing for flood prediction.",
     ),
     SourceRequirement(
-        "river_level",
-        True,
-        "hourly_or_better",
+        "river_level", True, "hourly_or_better",
         ("Data Acquisition Time", "District", "Station", "River Water Level Telemetry Hourly (meter)"),
         "Predict river-threshold exceedance within the 24-hour horizon.",
     ),
     SourceRequirement(
-        "river_threshold",
-        True,
-        "static_or_versioned",
+        "river_threshold", True, "static_or_versioned",
         ("Station", "Danger Level"),
         "Define the official station-specific river danger threshold; values must not be invented.",
     ),
     SourceRequirement(
-        "flood_events",
-        True,
-        "event",
+        "flood_events", True, "event",
         ("Start Date", "End Date", "Bihar District"),
         "Provide independent historical flood-event labels.",
     ),
     SourceRequirement(
-        "sentinel1_inundation",
-        True,
-        "event_or_scene",
+        "sentinel1_inundation", True, "event_or_scene",
         ("scene_timestamp", "district", "mask_path"),
         "Provide historical spatial inundation labels.",
+        "manifest",
     ),
     SourceRequirement(
-        "dem",
-        True,
-        "static",
+        "dem", True, "static",
         ("elevation_path",),
         "Provide static terrain/elevation features for spatial inundation modeling.",
+        "manifest",
     ),
 )
-
 
 DISTRICT_REQUIRED_SOURCES = {
     "patna": tuple(item.name for item in SOURCE_REQUIREMENTS),
@@ -78,27 +68,36 @@ def source_contract(name: str) -> SourceRequirement:
     raise ValueError(f"Unknown Bihar v1 source: {name}")
 
 
-def validate_source_file(path: str | Path, source_name: str) -> dict:
-    """Validate only the structural contract of one local source file."""
-    path = Path(path)
+def validate_source_file(path: str | Path | None, source_name: str) -> dict:
+    """Validate the structural contract of one local source."""
     requirement = source_contract(source_name)
+    raw_path = str(path or "").strip()
     result = {
         "source": source_name,
-        "path": str(path),
-        "exists": path.exists(),
+        "path": raw_path,
+        "exists": False,
         "status": "missing",
         "missing_columns": [],
     }
-    if not path.exists():
+    if not raw_path:
         return result
 
-    if path.suffix.lower() != ".csv":
-        result["status"] = "present_non_csv"
+    file_path = Path(raw_path)
+    result["exists"] = file_path.exists()
+    if not file_path.exists():
+        return result
+
+    if requirement.format != "csv":
+        result["status"] = "present"
+        return result
+
+    if file_path.suffix.lower() != ".csv":
+        result["status"] = "invalid_format"
         return result
 
     import pandas as pd
 
-    frame = pd.read_csv(path, nrows=0)
+    frame = pd.read_csv(file_path, nrows=0)
     missing = sorted(set(requirement.required_columns) - set(frame.columns))
     result["missing_columns"] = missing
     result["status"] = "ready" if not missing else "invalid_schema"
@@ -110,17 +109,14 @@ def validate_contract(paths: dict[str, str | Path]) -> dict:
     results = {}
     blockers = []
     for requirement in SOURCE_REQUIREMENTS:
-        result = validate_source_file(paths.get(requirement.name, ""), requirement.name)
+        result = validate_source_file(paths.get(requirement.name), requirement.name)
         results[requirement.name] = result
-        if requirement.required and result["status"] != "ready":
-            blockers.append(
-                f"{requirement.name}: {result['status']}"
-                + (
-                    f" (missing columns: {', '.join(result['missing_columns'])})"
-                    if result["missing_columns"]
-                    else ""
-                )
+        if requirement.required and result["status"] != "ready" and result["status"] != "present":
+            detail = (
+                f" (missing columns: {', '.join(result['missing_columns'])})"
+                if result["missing_columns"] else ""
             )
+            blockers.append(f"{requirement.name}: {result['status']}{detail}")
     return {
         "status": "ready" if not blockers else "blocked",
         "required_sources": list(results),
