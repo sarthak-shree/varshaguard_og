@@ -69,6 +69,9 @@ class DatasetAssemblerTests(unittest.TestCase):
             self.assertIn("event_isolation_removed", report["districts"]["patna"])
             self.assertIn("muzaffarpur", report["districts"])
             self.assertIn("source_coverage_matrix", report)
+            self.assertTrue((root / "out" / "processed" / "raw_source_manifest.json").exists())
+            self.assertEqual(report["raw_source_manifest_schema_version"], 1)
+
             self.assertEqual(report["source_coverage_matrix"]["patna"]["river_rows"], 220)
             self.assertEqual(report["source_coverage_matrix"]["muzaffarpur"]["river_rows"], 0)
             self.assertEqual(report["districts"]["muzaffarpur"]["status"], "not_trainable")
