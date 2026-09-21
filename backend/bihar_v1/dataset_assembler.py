@@ -140,7 +140,11 @@ def _empty_training_summary(
     """Return a complete audit shape even when no training rows exist."""
     district_rain = rainfall_hourly[rainfall_hourly["district"] == district] if not rainfall_hourly.empty else rainfall_hourly
     district_river = river[river["district"] == district] if not river.empty else river
-    synchronized = summarize_synchronized_hourly_coverage(district_rain, district_river)
+    synchronized = summarize_synchronized_hourly_coverage(
+        district_rain,
+        district_river,
+        station_pairs=stations_for_district(district).get("rainfall_river_pairs", set()),
+    )
     event_coverage = summarize_event_coverage(event_frame, district=district)
     return {
         "status": "not_trainable",
@@ -252,6 +256,7 @@ def _assemble_district(
     synchronized_readiness = summarize_synchronized_hourly_coverage(
         district_hourly,
         district_river,
+        station_pairs=stations_for_district(district).get("rainfall_river_pairs", set()),
     )
     event_coverage = summarize_event_coverage(event_frame, district=district)
     model_readiness = build_model_readiness(
@@ -357,6 +362,7 @@ def assemble(
             "Only stations explicitly listed in station_registry.py are included.",
             "A supervised training table requires a flood-event inventory; no labels are fabricated when the inventory is unavailable.",
             "Evaluation readiness requires independent flood events in each chronological split.",
+            "Rainfall/river synchronization requires an explicit station mapping; coincident timestamps alone are not treated as physical pairing.",
         ],
     }
 
