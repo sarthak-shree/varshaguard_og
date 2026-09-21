@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import json
+from datetime import datetime, timezone
+import hashlib
 
 
 @dataclass(frozen=True)
@@ -102,6 +105,35 @@ def validate_source_file(path: str | Path | None, source_name: str) -> dict:
     result["missing_columns"] = missing
     result["status"] = "ready" if not missing else "invalid_schema"
     return result
+
+
+def build_source_manifest(paths: dict[str, str | Path | None]) -> dict:
+    """Create a reproducible manifest of the currently supplied raw sources."""
+    sources = {}
+    for requirement in SOURCE_REQUIREMENTS:
+        raw = str(paths.get(requirement.name) or "").strip()
+        item = {"path": raw, "status": "missing", "sha256": None, "size_bytes": None}
+        if raw:
+            path = Path(raw)
+            if path.is_file():
+                digest = hashlib.sha256()
+                with path.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                        digest.update(chunk)
+                item.update({"status": "present", "sha256": digest.hexdigest(), "size_bytes": path.stat().st_size})
+        sources[requirement.name] = item
+    return {
+        "schema_version": 1,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "sources": sources,
+    }
+
+
+def write_source_manifest(paths: dict[str, str | Path | None], output: str | Path) -> dict:
+    """Write a deterministic source inventory manifest with file hashes."""
+    manifest = build_source_manifest(paths)
+    Path(output).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    return manifest
 
 
 def validate_contract(paths: dict[str, str | Path]) -> dict:
