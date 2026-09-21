@@ -8,6 +8,7 @@ from backend.bihar_v1.data_contract import (
     DISTRICT_REQUIRED_SOURCES,
     source_contract,
     build_source_manifest,
+    validate_source_manifest,
     validate_contract,
     validate_source_file,
 )
@@ -71,6 +72,17 @@ class DataContractTests(unittest.TestCase):
             result = validate_source_file(path, "hourly_rainfall")
 
         self.assertEqual(result["status"], "ready")
+
+    def test_source_manifest_detects_changed_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.csv"
+            path.write_text("Start Date,End Date,Bihar District\\n", encoding="utf-8")
+            manifest = build_source_manifest({"flood_events": path})
+            path.write_text("changed\\n", encoding="utf-8")
+
+        result = validate_source_manifest(manifest)
+        self.assertEqual(result["status"], "invalid")
+        self.assertIn("flood_events:sha256_mismatch", result["errors"])
 
     def test_source_manifest_records_hash_and_size(self):
         with tempfile.TemporaryDirectory() as directory:
