@@ -41,7 +41,7 @@ class BiharIMERGIngestionTests(unittest.TestCase):
             },
         }]
         observations = bihar_precipitation_to_observations(records, features)
-        self.assertEqual(observations[0].district, "")
+        self.assertEqual(observations, [])
 
 
 if __name__ == "__main__":
