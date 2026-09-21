@@ -124,10 +124,23 @@ def validate_source_file(path: str | Path | None, source_name: str) -> dict:
                 result["status"] = "invalid_schema"
                 result["missing_columns"] = [f"scene[{index}]" for index in invalid]
                 return result
+            missing_masks = [
+                index for index, row in enumerate(rows)
+                if not (file_path.parent / str(row["mask_path"])).is_file()
+            ]
+            if missing_masks:
+                result["status"] = "invalid_schema"
+                result["missing_columns"] = [f"scene[{index}].mask_path" for index in missing_masks]
+                return result
         elif source_name == "dem":
-            if not isinstance(payload, dict) or not str(payload.get("elevation_path") or "").strip():
+            elevation = payload.get("elevation_path") if isinstance(payload, dict) else None
+            if not str(elevation or "").strip():
                 result["status"] = "invalid_schema"
                 result["missing_columns"] = ["elevation_path"]
+                return result
+            if not (file_path.parent / str(elevation)).is_file():
+                result["status"] = "invalid_schema"
+                result["missing_columns"] = ["elevation_path:file_missing"]
                 return result
 
         result["status"] = "ready"
