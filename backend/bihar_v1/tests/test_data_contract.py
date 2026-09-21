@@ -86,6 +86,26 @@ class DataContractTests(unittest.TestCase):
             result = validate_source_file(path, "district_boundaries")
         self.assertEqual(result["status"], "invalid_schema")
 
+    def test_spatial_manifests_require_their_declared_schema(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sentinel = root / "sentinel.json"
+            dem = root / "dem.json"
+            sentinel.write_text(json.dumps({"scenes": [{"scene_timestamp": "2025-08-01T00:00:00Z", "district": "Patna", "mask_path": "mask.tif"}]}), encoding="utf-8")
+            dem.write_text(json.dumps({"elevation_path": "patna_dem.tif"}), encoding="utf-8")
+            self.assertEqual(validate_source_file(sentinel, "sentinel1_inundation")["status"], "ready")
+            self.assertEqual(validate_source_file(dem, "dem")["status"], "ready")
+
+    def test_invalid_spatial_manifests_are_blocked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sentinel = root / "sentinel.json"
+            dem = root / "dem.json"
+            sentinel.write_text(json.dumps({"scenes": []}), encoding="utf-8")
+            dem.write_text(json.dumps({"wrong_key": "dem.tif"}), encoding="utf-8")
+            self.assertEqual(validate_source_file(sentinel, "sentinel1_inundation")["status"], "invalid_schema")
+            self.assertEqual(validate_source_file(dem, "dem")["status"], "invalid_schema")
+
     def test_source_manifest_detects_changed_file(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "events.csv"
