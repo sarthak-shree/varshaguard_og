@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .data_contract import build_source_manifest, validate_contract
+from .data_contract import build_source_manifest, validate_contract, validate_source_manifest
 
 
 SOURCE_ARGS = (
@@ -20,9 +20,11 @@ SOURCE_ARGS = (
 
 def audit_sources(paths: dict[str, str | Path | None]) -> dict:
     """Return contract and provenance state without modifying source files."""
+    manifest = build_source_manifest(paths)
     return {
         "data_acquisition_contract": validate_contract(paths),
-        "raw_source_manifest": build_source_manifest(paths),
+        "raw_source_manifest": manifest,
+        "raw_source_manifest_validation": validate_source_manifest(manifest),
     }
 
 
