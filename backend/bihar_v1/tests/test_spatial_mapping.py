@@ -24,6 +24,39 @@ class SpatialMappingTests(unittest.TestCase):
         result = assign_districts(records, features)
         self.assertEqual(result[0]["district"], "patna")
 
+    def test_point_inside_polygon_hole_is_unmatched(self):
+        records = [{"latitude": 25.5, "longitude": 85.1, "rainfall_mm": 2.0}]
+        features = [{
+            "type": "Feature",
+            "properties": {"district": "Patna"},
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [[85.0, 25.0], [85.2, 25.0], [85.2, 26.0], [85.0, 26.0], [85.0, 25.0]],
+                    [[85.05, 25.4], [85.15, 25.4], [85.15, 25.6], [85.05, 25.6], [85.05, 25.4]],
+                ],
+            },
+        }]
+        result = assign_districts(records, features)
+        self.assertIsNone(result[0]["district"])
+
+    def test_multipolygon_matches_non_first_polygon(self):
+        records = [{"latitude": 26.5, "longitude": 86.5, "rainfall_mm": 2.0}]
+        features = [{
+            "type": "Feature",
+            "properties": {"district": "Patna"},
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [[
+                    [[85.0, 25.0], [85.2, 25.0], [85.2, 25.2], [85.0, 25.2], [85.0, 25.0]]
+                ], [
+                    [[86.0, 26.0], [87.0, 26.0], [87.0, 27.0], [86.0, 27.0], [86.0, 26.0]]
+                ]],
+            },
+        }]
+        result = assign_districts(records, features)
+        self.assertEqual(result[0]["district"], "patna")
+
     def test_unmatched_point_is_not_guessed(self):
         records = [{"latitude": 27.0, "longitude": 85.1, "rainfall_mm": 2.0}]
         features = [{
