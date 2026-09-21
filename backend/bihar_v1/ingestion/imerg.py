@@ -59,5 +59,12 @@ def normalize_precipitation(payload: Any) -> list[dict[str, Any]]:
         if frame[column].isna().any():
             raise ValueError(f"IMERG payload contains invalid {column} values")
 
+    if ((frame["latitude"] < -90) | (frame["latitude"] > 90)).any():
+        raise ValueError("IMERG payload contains out-of-range latitude values")
+    if ((frame["longitude"] < -180) | (frame["longitude"] > 180)).any():
+        raise ValueError("IMERG payload contains out-of-range longitude values")
+    if (frame["rainfall_mm"] < 0).any():
+        raise ValueError("IMERG payload contains negative precipitation values")
+
     frame = frame.sort_values(["timestamp", "latitude", "longitude"]).reset_index(drop=True)
     return frame.to_dict(orient="records")
