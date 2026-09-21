@@ -57,6 +57,22 @@ class NormalizerTests(unittest.TestCase):
         obs = normalize_rainfall_csv(frame, value_column="Manual Daily Rainfall (mm)")
         self.assertEqual(obs[0].value, 18.0)
 
+    def test_normalizer_rejects_blank_district_or_station(self):
+        for field in ("District", "Station"):
+            row = {
+                "District": "PATNA",
+                "Station": "Test Rain",
+                "Agency": "Bihar",
+                "Data Acquisition Time": "20-09-2026 08:00",
+                "Telemetry Hourly Rainfall (mm)": 12.5,
+            }
+            row[field] = "   "
+            with self.assertRaises(ValueError):
+                normalize_rainfall_csv(
+                    pd.DataFrame([row]),
+                    value_column="Telemetry Hourly Rainfall (mm)",
+                )
+
     def test_rainfall_normalizer_rejects_negative_values(self):
         frame = pd.DataFrame([{
             "District": "PATNA",
