@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from .data_contract import DISTRICT_REQUIRED_SOURCES, validate_contract
+
 
 def _station_hourly_stats(frame: pd.DataFrame) -> list[dict]:
     if frame.empty:
@@ -113,6 +115,26 @@ def summarize_training_window_coverage(table: pd.DataFrame) -> dict:
         "complete_feature_rows": count,
         "feature_window_coverage_ratio": count / len(table),
         "feature_columns_checked": window_columns,
+    }
+
+
+def build_source_readiness(*, district: str, source_paths: dict[str, str]) -> dict:
+    """Combine the formal source contract with district-specific availability."""
+    if district not in DISTRICT_REQUIRED_SOURCES:
+        raise ValueError(f"Unsupported Bihar district: {district}")
+    contract = validate_contract(source_paths)
+    required = set(DISTRICT_REQUIRED_SOURCES[district])
+    sources = {name: details for name, details in contract["sources"].items() if name in required}
+    blockers = [
+        blocker for name, details in sources.items()
+        if details["status"] not in {"ready", "present"}
+        for blocker in [f"{name}: {details['status']}"]
+    ]
+    return {
+        "district": district,
+        "status": "ready" if not blockers else "blocked",
+        "sources": sources,
+        "blockers": blockers,
     }
 
 
