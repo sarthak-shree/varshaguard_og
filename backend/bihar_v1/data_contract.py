@@ -45,6 +45,12 @@ SOURCE_REQUIREMENTS: tuple[SourceRequirement, ...] = (
         "Provide independent historical flood-event labels.",
     ),
     SourceRequirement(
+        "district_boundaries", True, "static_or_versioned",
+        ("FeatureCollection",),
+        "Assign gridded precipitation and spatial labels to districts using authoritative polygons.",
+        "geojson",
+    ),
+    SourceRequirement(
         "sentinel1_inundation", True, "event_or_scene",
         ("scene_timestamp", "district", "mask_path"),
         "Provide historical spatial inundation labels.",
@@ -90,8 +96,40 @@ def validate_source_file(path: str | Path | None, source_name: str) -> dict:
     if not file_path.exists():
         return result
 
-    if requirement.format != "csv":
+    if requirement.format == "manifest":
         result["status"] = "present"
+        return result
+
+    if requirement.format == "geojson":
+        if file_path.suffix.lower() not in {".geojson", ".json"}:
+            result["status"] = "invalid_format"
+            return result
+        try:
+            payload = json.loads(file_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            result["status"] = "invalid_schema"
+            result["missing_columns"] = ["FeatureCollection"]
+            return result
+        if payload.get("type") != "FeatureCollection":
+            result["status"] = "invalid_schema"
+            result["missing_columns"] = ["FeatureCollection"]
+            return result
+        features = payload.get("features")
+        if not isinstance(features, list) or not features:
+            result["status"] = "invalid_schema"
+            result["missing_columns"] = ["features"]
+            return result
+        invalid = [
+            index for index, feature in enumerate(features)
+            if feature.get("type") != "Feature"
+            or not str((feature.get("properties") or {}).get("district") or "").strip()
+            or (feature.get("geometry") or {}).get("type") not in {"Polygon", "MultiPolygon"}
+        ]
+        if invalid:
+            result["status"] = "invalid_schema"
+            result["missing_columns"] = [f"valid_feature[{index}]" for index in invalid]
+            return result
+        result["status"] = "ready"
         return result
 
     if file_path.suffix.lower() != ".csv":
@@ -135,6 +173,7 @@ def write_source_manifest(paths: dict[str, str | Path | None], output: str | Pat
     Path(output).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 
+
 def validate_source_manifest(manifest: dict, *, require_existing_files: bool = True) -> dict:
     """Verify manifest structure and recorded file checksums."""
     errors = []
@@ -168,7 +207,7 @@ def validate_contract(paths: dict[str, str | Path]) -> dict:
     for requirement in SOURCE_REQUIREMENTS:
         result = validate_source_file(paths.get(requirement.name), requirement.name)
         results[requirement.name] = result
-        if requirement.required and result["status"] != "ready" and result["status"] != "present":
+        if requirement.required and result["status"] not in {"ready", "present"}:
             detail = (
                 f" (missing columns: {', '.join(result['missing_columns'])})"
                 if result["missing_columns"] else ""
