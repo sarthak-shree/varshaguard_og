@@ -14,6 +14,8 @@ def _normalize_timestamps(series: pd.Series) -> pd.Series:
     timestamps = pd.to_datetime(series, dayfirst=True, errors="coerce")
     if timestamps.isna().any():
         raise ValueError("Source file contains invalid timestamps")
+    if timestamps.dt.tz is not None:
+        raise ValueError("Source timestamps must be timezone-naive local India time")
     return timestamps
 
 
