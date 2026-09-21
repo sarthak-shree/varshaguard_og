@@ -307,6 +307,7 @@ def assemble(
     river_value_column: str = "River Water Level Telemetry Hourly (meter)",
     output_root: str | Path | None = None,
     river_threshold: str | Path | None = None,
+    district_boundaries: str | Path | None = None,
     sentinel1_inundation: str | Path | None = None,
     dem: str | Path | None = None,
 ) -> dict:
@@ -321,6 +322,7 @@ def assemble(
         "river_level": river,
         "river_threshold": river_threshold,
         "flood_events": events,
+        "district_boundaries": district_boundaries,
         "sentinel1_inundation": sentinel1_inundation,
         "dem": dem,
     })
@@ -370,6 +372,7 @@ def assemble(
             "river_level": river,
             "river_threshold": river_threshold,
             "flood_events": events,
+            "district_boundaries": district_boundaries,
             "sentinel1_inundation": sentinel1_inundation,
             "dem": dem,
         },
@@ -399,6 +402,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hourly-rainfall")
     parser.add_argument("--daily-rainfall")
     parser.add_argument("--river")
+    parser.add_argument("--river-threshold")
+    parser.add_argument("--district-boundaries")
+    parser.add_argument("--sentinel1-inundation")
+    parser.add_argument("--dem")
     parser.add_argument("--output-root")
     parser.add_argument("--rainfall-hourly-value-column", default="Telemetry Hourly Rainfall (mm)")
     parser.add_argument("--rainfall-daily-value-column", default="Manual Rainfall (mm)")
@@ -413,6 +420,10 @@ def main() -> int:
         daily_rainfall=args.daily_rainfall,
         river=args.river,
         events=args.events,
+        river_threshold=args.river_threshold,
+        district_boundaries=args.district_boundaries,
+        sentinel1_inundation=args.sentinel1_inundation,
+        dem=args.dem,
         rainfall_hourly_value_column=args.rainfall_hourly_value_column,
         rainfall_daily_value_column=args.rainfall_daily_value_column,
         river_value_column=args.river_value_column,
