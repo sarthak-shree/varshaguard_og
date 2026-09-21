@@ -13,6 +13,7 @@ SOURCE_ARGS = (
     "river_level",
     "river_threshold",
     "flood_events",
+    "district_boundaries",
     "sentinel1_inundation",
     "dem",
 )
