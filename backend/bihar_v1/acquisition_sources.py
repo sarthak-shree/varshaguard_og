@@ -40,7 +40,6 @@ ACQUISITION_SOURCES = (
         True,
         "hourly_rainfall",
     ),
-)
     AcquisitionSource(
         "cwc_floodwatch",
         "Central Water Commission",
@@ -50,6 +49,16 @@ ACQUISITION_SOURCES = (
         "https://ffs.india-water.gov.in/",
         True,
         "river_level",
+    ),
+    AcquisitionSource(
+        "district_boundary_nwic",
+        "National Water Data Portal / Geological Survey of India",
+        "Administrative district polygons for spatially assigning gridded precipitation and inundation data.",
+        "Versioned static",
+        "District polygons",
+        "https://www.nwdp.nwic.gov.in/dataset/district-boundary",
+        False,
+        "district_boundaries",
     ),
     AcquisitionSource(
         "sentinel1_copernicus",
@@ -71,6 +80,7 @@ ACQUISITION_SOURCES = (
         True,
         "dem",
     ),
+)
 
 
 def list_acquisition_sources() -> list[dict]:
