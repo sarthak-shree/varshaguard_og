@@ -46,6 +46,17 @@ class NormalizerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_rainfall_csv(frame, value_column="Telemetry Hourly Rainfall (mm)")
 
+    def test_normalizer_strips_and_normalizes_agency_provenance(self):
+        frame = pd.DataFrame([{
+            "District": "PATNA",
+            "Station": "Test Rain",
+            "Agency": "  CWC  ",
+            "Data Acquisition Time": "20-09-2026 08:00",
+            "Telemetry Hourly Rainfall (mm)": 12.5,
+        }])
+        obs = normalize_rainfall_csv(frame, value_column="Telemetry Hourly Rainfall (mm)")
+        self.assertEqual(obs[0].source, "cwc")
+
     def test_rainfall_normalizer_handles_non_identifier_value_column(self):
         frame = pd.DataFrame([{
             "District": "PATNA",
