@@ -97,7 +97,40 @@ def validate_source_file(path: str | Path | None, source_name: str) -> dict:
         return result
 
     if requirement.format == "manifest":
-        result["status"] = "present"
+        if file_path.suffix.lower() not in {".json", ".manifest"}:
+            result["status"] = "invalid_format"
+            return result
+        try:
+            payload = json.loads(file_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            result["status"] = "invalid_schema"
+            result["missing_columns"] = list(requirement.required_columns)
+            return result
+
+        if source_name == "sentinel1_inundation":
+            rows = payload.get("scenes") if isinstance(payload, dict) else None
+            if not isinstance(rows, list) or not rows:
+                result["status"] = "invalid_schema"
+                result["missing_columns"] = ["scenes"]
+                return result
+            invalid = [
+                index for index, row in enumerate(rows)
+                if not isinstance(row, dict)
+                or not str(row.get("scene_timestamp") or "").strip()
+                or not str(row.get("district") or "").strip()
+                or not str(row.get("mask_path") or "").strip()
+            ]
+            if invalid:
+                result["status"] = "invalid_schema"
+                result["missing_columns"] = [f"scene[{index}]" for index in invalid]
+                return result
+        elif source_name == "dem":
+            if not isinstance(payload, dict) or not str(payload.get("elevation_path") or "").strip():
+                result["status"] = "invalid_schema"
+                result["missing_columns"] = ["elevation_path"]
+                return result
+
+        result["status"] = "ready"
         return result
 
     if requirement.format == "geojson":
