@@ -37,6 +37,22 @@ def summarize_synchronized_hourly_coverage(
     riv = river.copy()
     rain["timestamp"] = pd.to_datetime(rain["timestamp"], utc=True, errors="raise")
     riv["timestamp"] = pd.to_datetime(riv["timestamp"], utc=True, errors="raise")
+    # A timestamp with a missing measurement is not usable synchronized evidence.
+    # Keep compatibility with diagnostic frames that omit value columns entirely.
+    if "value" in rain.columns:
+        rain = rain[rain["value"].notna()].copy()
+    if "value" in riv.columns:
+        riv = riv[riv["value"].notna()].copy()
+    if rain.empty or riv.empty:
+        return {
+            "rainfall_rows": int(len(rainfall)),
+            "river_rows": int(len(river)),
+            "synchronized_hours": 0,
+            "stations": [],
+            "stations_with_continuous_window": 0,
+            "usable_continuous_windows": 0,
+            "window_hours": window_hours,
+        }
 
     rain_keys = rain[["timestamp", "station_id"]].drop_duplicates()
     riv_keys = riv[["timestamp", "station_id"]].drop_duplicates()
