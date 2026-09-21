@@ -16,4 +16,6 @@ def bihar_precipitation_to_observations(
     """Normalize, spatially assign, and convert IMERG records for Bihar."""
     normalized = normalize_precipitation(records)
     assigned = assign_districts(normalized, district_features)
+    # Never emit an observation with an unknown district into the Bihar training/inference path.
+    assigned = [record for record in assigned if record.get("district")]
     return precipitation_to_observations(assigned)
