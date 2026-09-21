@@ -32,6 +32,31 @@ class ImergNormalizationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_precipitation([{"timestamp": "2026-01-01T00:00:00Z"}])
 
+    def test_rejects_out_of_range_coordinates(self):
+        with self.assertRaises(ValueError):
+            normalize_precipitation([{
+                "timestamp": "2026-01-01T00:00:00Z",
+                "latitude": 95,
+                "longitude": 85.1,
+                "rainfall_mm": 1.0,
+            }])
+        with self.assertRaises(ValueError):
+            normalize_precipitation([{
+                "timestamp": "2026-01-01T00:00:00Z",
+                "latitude": 25.6,
+                "longitude": 185,
+                "rainfall_mm": 1.0,
+            }])
+
+    def test_rejects_negative_precipitation(self):
+        with self.assertRaises(ValueError):
+            normalize_precipitation([{
+                "timestamp": "2026-01-01T00:00:00Z",
+                "latitude": 25.6,
+                "longitude": 85.1,
+                "rainfall_mm": -0.1,
+            }])
+
     def test_rejects_invalid_numeric_values(self):
         with self.assertRaises(ValueError):
             normalize_precipitation([{
