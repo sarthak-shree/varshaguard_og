@@ -61,7 +61,11 @@ def normalize_river_csv(frame: pd.DataFrame, *, value_column: str) -> list[Obser
         raise ValueError(f"Missing river columns: {sorted(missing)}")
 
     timestamps = _normalize_timestamps(frame["Data Acquisition Time"])
-    values = pd.to_numeric(frame[value_column], errors="coerce")
+    raw_values = frame[value_column]
+    values = pd.to_numeric(raw_values, errors="coerce")
+    invalid_values = values.isna() & raw_values.notna()
+    if invalid_values.any():
+        raise ValueError("Source file contains non-numeric values")
     out = []
     for idx, ts in timestamps.items():
         row = frame.loc[idx]
