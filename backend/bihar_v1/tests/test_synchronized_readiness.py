@@ -17,6 +17,22 @@ class SynchronizedReadinessTests(unittest.TestCase):
         self.assertEqual(result["stations_with_continuous_window"], 1)
         self.assertEqual(result["usable_continuous_windows"], 2)
 
+    def test_missing_measurements_do_not_count_as_synchronized(self):
+        timestamps = pd.date_range("2026-01-01", periods=168, freq="h")
+        rain = pd.DataFrame({
+            "timestamp": timestamps,
+            "station_id": ["rain"] * 168,
+            "value": [1.0] * 167 + [None],
+        })
+        river = pd.DataFrame({
+            "timestamp": timestamps,
+            "station_id": ["river"] * 168,
+            "value": [2.0] * 168,
+        })
+        result = summarize_synchronized_hourly_coverage(rain, river)
+        self.assertEqual(result["synchronized_hours"], 167)
+        self.assertEqual(result["stations_with_continuous_window"], 0)
+
     def test_gap_blocks_continuous_window(self):
         rain_ts = list(pd.date_range("2026-01-01", periods=100, freq="h")) + list(pd.date_range("2026-01-06", periods=100, freq="h"))
         river_ts = list(pd.date_range("2026-01-01", periods=200, freq="h"))
