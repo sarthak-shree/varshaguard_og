@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -167,6 +168,31 @@ class DatasetAssemblerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 assemble(output_root=Path(tmp) / "out")
+
+    def test_district_boundaries_are_passed_to_contract_and_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            events = root / "events.csv"
+            boundaries = root / "districts.geojson"
+            pd.DataFrame({
+                "Start Date": ["08-01-2026"], "End Date": ["10-01-2026"],
+                "Bihar District": ["Patna"], "UEI": ["E1"],
+            }).to_csv(events, index=False)
+            boundaries.write_text(
+                '{"type":"FeatureCollection","features":[{"type":"Feature",'
+                '"properties":{"district":"Patna"},"geometry":{"type":"Polygon",'
+                '"coordinates":[[[85.0,25.0],[85.1,25.0],[85.1,25.1],[85.0,25.1],[85.0,25.0]]]}}]}',
+                encoding="utf-8",
+            )
+            report = assemble(
+                events=events,
+                district_boundaries=boundaries,
+                output_root=root / "out",
+            )
+            contract = report["data_acquisition_contract"]
+            self.assertEqual(contract["sources"]["district_boundaries"]["status"], "ready")
+            manifest = json.loads((root / "out" / "processed" / "raw_source_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["sources"]["district_boundaries"]["status"], "present")
 
     def test_dataset_audit_exposes_data_acquisition_contract(self):
         with tempfile.TemporaryDirectory() as tmp:
