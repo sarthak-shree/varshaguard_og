@@ -50,6 +50,34 @@ if __name__ == "__main__":
     unittest.main()
 
 
+    def test_source_readiness_uses_formal_contract(self):
+        from backend.bihar_v1.readiness import build_source_readiness
+
+        result = build_source_readiness(district="patna", source_paths={})
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(len(result["sources"]), 6)
+        self.assertTrue(any("hourly_rainfall: missing" == blocker for blocker in result["blockers"]))
+
+    def test_source_readiness_accepts_structural_csv_sources(self):
+        import tempfile
+        from pathlib import Path
+        from backend.bihar_v1.readiness import build_source_readiness
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pd.DataFrame(columns=["Data Acquisition Time", "District", "Station", "Telemetry Hourly Rainfall (mm)"]).to_csv(root / "rain.csv", index=False)
+            pd.DataFrame(columns=["Data Acquisition Time", "District", "Station", "River Water Level Telemetry Hourly (meter)"]).to_csv(root / "river.csv", index=False)
+            pd.DataFrame(columns=["Station", "Danger Level"]).to_csv(root / "threshold.csv", index=False)
+            pd.DataFrame(columns=["Start Date", "End Date", "Bihar District"]).to_csv(root / "events.csv", index=False)
+            paths = {
+                "hourly_rainfall": root / "rain.csv", "river_level": root / "river.csv",
+                "river_threshold": root / "threshold.csv", "flood_events": root / "events.csv",
+                "sentinel1_inundation": root / "masks.manifest", "dem": root / "dem.manifest",
+            }
+            result = build_source_readiness(district="patna", source_paths=paths)
+
+        self.assertEqual(result["status"], "ready")
+
     def test_model_readiness_requires_real_target_and_threshold_evidence(self):
         from backend.bihar_v1.readiness import build_model_readiness
 
