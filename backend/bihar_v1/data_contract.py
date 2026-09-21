@@ -135,6 +135,31 @@ def write_source_manifest(paths: dict[str, str | Path | None], output: str | Pat
     Path(output).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 
+def validate_source_manifest(manifest: dict, *, require_existing_files: bool = True) -> dict:
+    """Verify manifest structure and recorded file checksums."""
+    errors = []
+    if manifest.get("schema_version") != 1:
+        errors.append("unsupported_schema_version")
+    sources = manifest.get("sources")
+    if not isinstance(sources, dict):
+        return {"status": "invalid", "errors": errors + ["sources_missing_or_invalid"]}
+    for requirement in SOURCE_REQUIREMENTS:
+        item = sources.get(requirement.name)
+        if not isinstance(item, dict):
+            errors.append(f"{requirement.name}:entry_missing")
+            continue
+        if item.get("status") != "present":
+            continue
+        path = Path(str(item.get("path") or ""))
+        if require_existing_files and not path.is_file():
+            errors.append(f"{requirement.name}:file_missing")
+            continue
+        if path.is_file() and item.get("sha256"):
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            if digest != item["sha256"]:
+                errors.append(f"{requirement.name}:sha256_mismatch")
+    return {"status": "valid" if not errors else "invalid", "errors": errors}
+
 
 def validate_contract(paths: dict[str, str | Path]) -> dict:
     """Validate the required source inventory without modifying any source."""
