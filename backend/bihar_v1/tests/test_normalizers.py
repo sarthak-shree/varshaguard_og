@@ -18,6 +18,17 @@ class NormalizerTests(unittest.TestCase):
         self.assertEqual(obs[0].value, 12.5)
         self.assertEqual(obs[0].timestamp, "2026-09-20T02:30:00+00:00")
 
+    def test_normalizer_rejects_timezone_aware_source_timestamp(self):
+        frame = pd.DataFrame([{
+            "District": "PATNA",
+            "Station": "Test Rain",
+            "Agency": "Bihar",
+            "Data Acquisition Time": "2026-09-20T08:00:00+05:30",
+            "Telemetry Hourly Rainfall (mm)": 12.5,
+        }])
+        with self.assertRaises(ValueError):
+            normalize_rainfall_csv(frame, value_column="Telemetry Hourly Rainfall (mm)")
+
     def test_rainfall_normalizer_handles_non_identifier_value_column(self):
         frame = pd.DataFrame([{
             "District": "PATNA",
