@@ -8,16 +8,20 @@ def summarize_synchronized_hourly_coverage(
     rainfall: pd.DataFrame,
     river: pd.DataFrame,
     *,
+    station_pairs: set[tuple[str, str]] | None = None,
     window_hours: int = 168,
 ) -> dict:
     """Measure hours where both rainfall and river inputs coexist.
 
-    Coverage is computed per station pair and never treats missing source data
-    as zero. The result is diagnostic only; it does not fabricate observations.
+    Coverage is computed only for explicitly mapped station pairs and never
+    treats missing source data as zero. If an empty mapping is supplied, no
+    synchronization is inferred from timestamps alone.
     """
     if window_hours < 1:
         raise ValueError("window_hours must be positive")
-    if rainfall.empty or river.empty:
+    if station_pairs is not None:
+        station_pairs = {(str(rain), str(river)) for rain, river in station_pairs}
+    if rainfall.empty or river.empty or station_pairs == set():
         return {
             "rainfall_rows": int(len(rainfall)),
             "river_rows": int(len(river)),
@@ -25,6 +29,8 @@ def summarize_synchronized_hourly_coverage(
             "stations": [],
             "stations_with_continuous_window": 0,
             "usable_continuous_windows": 0,
+            "window_hours": window_hours,
+            "station_mapping": "explicit" if station_pairs is not None else "unmapped_timestamp_only",
         }
 
     required = {"timestamp", "station_id"}
@@ -62,6 +68,12 @@ def summarize_synchronized_hourly_coverage(
     rain_keys = rain_keys.rename(columns={"station_id": "rainfall_station"})
     riv_keys = riv_keys.rename(columns={"station_id": "river_station"})
     joined = rain_keys.merge(riv_keys, on="timestamp", how="inner").drop_duplicates()
+    if station_pairs is not None:
+        joined = joined[
+            joined[["rainfall_station", "river_station"]]
+            .apply(tuple, axis=1)
+            .isin(station_pairs)
+        ].copy()
 
     station_stats = []
     for (rain_station, river_station), part in joined.groupby(
@@ -97,4 +109,5 @@ def summarize_synchronized_hourly_coverage(
         )),
         "usable_continuous_windows": int(usable_windows),
         "window_hours": window_hours,
+        "station_mapping": "explicit" if station_pairs is not None else "unmapped_timestamp_only",
     }
