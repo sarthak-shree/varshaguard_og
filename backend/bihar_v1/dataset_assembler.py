@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from .data_contract import validate_contract
 from .data_pipeline import ensure_data_dirs, observations_to_frame
 from .ingestion.normalizers import normalize_rainfall_csv, normalize_river_csv
 from .labeling import build_24h_event_labels, load_district_events
@@ -305,12 +306,24 @@ def assemble(
     rainfall_daily_value_column: str = "Manual Rainfall (mm)",
     river_value_column: str = "River Water Level Telemetry Hourly (meter)",
     output_root: str | Path | None = None,
+    river_threshold: str | Path | None = None,
+    sentinel1_inundation: str | Path | None = None,
+    dem: str | Path | None = None,
 ) -> dict:
     if not events:
         raise ValueError("A flood-event inventory is required for supervised training.")
 
     paths = ensure_data_dirs(Path(output_root) if output_root else None)
     event_frame = load_district_events(events)
+
+    source_contract_report = validate_contract({
+        "hourly_rainfall": hourly_rainfall,
+        "river_level": river,
+        "river_threshold": river_threshold,
+        "flood_events": events,
+        "sentinel1_inundation": sentinel1_inundation,
+        "dem": dem,
+    })
 
     sources: dict[str, pd.DataFrame] = {}
     if hourly_rainfall:
@@ -335,6 +348,7 @@ def assemble(
     report: dict = {
         "districts": {},
         "sources": {name: _audit_observations(frame) for name, frame in sources.items()},
+        "data_acquisition_contract": source_contract_report,
         "source_coverage_matrix": {district: {"rainfall_hourly_rows": int((sources.get("rainfall_hourly", pd.DataFrame()).get("district", pd.Series(dtype=str)) == district).sum()), "river_rows": int((sources.get("river", pd.DataFrame()).get("district", pd.Series(dtype=str)) == district).sum()), "event_rows": int((event_frame["district"] == district).sum())} for district in DISTRICTS},
         "notes": [
             "Daily rainfall is retained as processed evidence but is not upsampled into hourly training rows.",
