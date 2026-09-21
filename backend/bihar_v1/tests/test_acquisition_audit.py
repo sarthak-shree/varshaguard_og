@@ -24,6 +24,7 @@ class AcquisitionAuditTests(unittest.TestCase):
         self.assertIsNotNone(
             report["raw_source_manifest"]["sources"]["flood_events"]["sha256"]
         )
+        self.assertEqual(report["raw_source_manifest_validation"]["status"], "valid")
 
 
 if __name__ == "__main__":
