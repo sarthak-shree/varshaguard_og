@@ -41,6 +41,36 @@ ACQUISITION_SOURCES = (
         "hourly_rainfall",
     ),
 )
+    AcquisitionSource(
+        "cwc_floodwatch",
+        "Central Water Commission",
+        "River observations and flood forecasting reference data; station danger thresholds must be obtained from authoritative station records.",
+        "Provider-dependent",
+        "Station-based",
+        "https://ffs.india-water.gov.in/",
+        True,
+        "river_level",
+    ),
+    AcquisitionSource(
+        "sentinel1_copernicus",
+        "Copernicus Data Space Ecosystem",
+        "Historical SAR scenes for deriving inundation masks; not used as a direct future 24-hour predictor.",
+        "Scene-dependent",
+        "Radar scene footprint",
+        "https://dataspace.copernicus.eu/",
+        True,
+        "sentinel1_inundation",
+    ),
+    AcquisitionSource(
+        "srtm_1arcsec",
+        "USGS / NASA",
+        "Static elevation terrain features for spatial inundation modeling.",
+        "Static",
+        "1 arc-second (~30 m)",
+        "https://www.usgs.gov/centers/eros/science/usgs-eros-archive-digital-elevation-shuttle-radar-topography-mission-srtm-1",
+        True,
+        "dem",
+    ),
 
 
 def list_acquisition_sources() -> list[dict]:
