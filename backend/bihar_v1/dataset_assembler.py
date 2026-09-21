@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .data_contract import validate_contract
+from .data_contract import validate_contract, write_source_manifest
 from .data_pipeline import ensure_data_dirs, observations_to_frame
 from .ingestion.normalizers import normalize_rainfall_csv, normalize_river_csv
 from .labeling import build_24h_event_labels, load_district_events
@@ -362,6 +362,21 @@ def assemble(
         result = _assemble_district(district, sources, event_frame, paths["training"])
         result["readiness_blockers"] = _readiness_blockers(district, sources, event_frame, result)
         report["districts"][district] = result
+
+    manifest_path = paths["processed"] / "raw_source_manifest.json"
+    source_manifest = write_source_manifest(
+        {
+            "hourly_rainfall": hourly_rainfall,
+            "river_level": river,
+            "river_threshold": river_threshold,
+            "flood_events": events,
+            "sentinel1_inundation": sentinel1_inundation,
+            "dem": dem,
+        },
+        manifest_path,
+    )
+    report["raw_source_manifest"] = str(manifest_path)
+    report["raw_source_manifest_schema_version"] = source_manifest["schema_version"]
 
     report_path = paths["processed"] / "dataset_audit.json"
     report["event_inventory"] = {
