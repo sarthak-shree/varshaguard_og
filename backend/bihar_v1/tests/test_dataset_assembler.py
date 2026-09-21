@@ -165,6 +165,21 @@ class DatasetAssemblerTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 assemble(output_root=Path(tmp) / "out")
 
+    def test_dataset_audit_exposes_data_acquisition_contract(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            events = root / "events.csv"
+            pd.DataFrame({
+                "Start Date": ["08-01-2026"], "End Date": ["10-01-2026"],
+                "Bihar District": ["Patna"], "UEI": ["E1"],
+            }).to_csv(events, index=False)
+            report = assemble(events=events, output_root=root / "out")
+
+        contract = report["data_acquisition_contract"]
+        self.assertEqual(contract["status"], "blocked")
+        self.assertEqual(contract["sources"]["flood_events"]["status"], "ready")
+        self.assertEqual(contract["sources"]["hourly_rainfall"]["status"], "missing")
+        self.assertEqual(contract["sources"]["river_threshold"]["status"], "missing")
 
 if __name__ == "__main__":
     unittest.main()
