@@ -91,10 +91,22 @@ class DataContractTests(unittest.TestCase):
             root = Path(directory)
             sentinel = root / "sentinel.json"
             dem = root / "dem.json"
+            (root / "mask.tif").write_bytes(b"mask")
+            (root / "patna_dem.tif").write_bytes(b"dem")
             sentinel.write_text(json.dumps({"scenes": [{"scene_timestamp": "2025-08-01T00:00:00Z", "district": "Patna", "mask_path": "mask.tif"}]}), encoding="utf-8")
             dem.write_text(json.dumps({"elevation_path": "patna_dem.tif"}), encoding="utf-8")
             self.assertEqual(validate_source_file(sentinel, "sentinel1_inundation")["status"], "ready")
             self.assertEqual(validate_source_file(dem, "dem")["status"], "ready")
+
+    def test_spatial_manifests_block_missing_assets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sentinel = root / "sentinel.json"
+            dem = root / "dem.json"
+            sentinel.write_text(json.dumps({"scenes": [{"scene_timestamp": "2025-08-01T00:00:00Z", "district": "Patna", "mask_path": "missing.tif"}]}), encoding="utf-8")
+            dem.write_text(json.dumps({"elevation_path": "missing_dem.tif"}), encoding="utf-8")
+            self.assertEqual(validate_source_file(sentinel, "sentinel1_inundation")["status"], "invalid_schema")
+            self.assertEqual(validate_source_file(dem, "dem")["status"], "invalid_schema")
 
     def test_invalid_spatial_manifests_are_blocked(self):
         with tempfile.TemporaryDirectory() as directory:
