@@ -76,6 +76,11 @@ if __name__ == "__main__":
                 encoding="utf-8",
             )
             dem.write_text('{"elevation_path":"patna_dem.tif"}', encoding="utf-8")
+            (root / "districts.geojson").write_text(
+                '{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"district":"Patna"},'
+                '"geometry":{"type":"Polygon","coordinates":[[[85,25],[86,25],[86,26],[85,26],[85,25]]]}}]}',
+                encoding="utf-8",
+            )
             paths = {
                 "hourly_rainfall": root / "rain.csv", "river_level": root / "river.csv",
                 "river_threshold": root / "threshold.csv", "flood_events": root / "events.csv",
