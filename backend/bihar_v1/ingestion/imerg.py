@@ -7,6 +7,30 @@ from typing import Any
 
 import pandas as pd
 
+from ..schemas import Observation
+
+
+def precipitation_to_observations(records: list[dict[str, Any]]) -> list[Observation]:
+    """Convert validated IMERG grid records into provider-neutral observations."""
+    normalized = normalize_precipitation(records)
+    observations = []
+    for record in normalized:
+        observations.append(
+            Observation(
+                timestamp=pd.Timestamp(record["timestamp"]).isoformat(),
+                district="",
+                variable="rain_mm",
+                value=float(record["rainfall_mm"]),
+                unit="mm",
+                source="nasa_gpm_imerg",
+                metadata={
+                    "latitude": float(record["latitude"]),
+                    "longitude": float(record["longitude"]),
+                },
+            )
+        )
+    return observations
+
 
 REQUIRED_COLUMNS = {"timestamp", "latitude", "longitude", "rainfall_mm"}
 
