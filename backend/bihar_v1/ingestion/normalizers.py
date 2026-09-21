@@ -24,11 +24,12 @@ def normalize_rainfall_csv(frame: pd.DataFrame, *, value_column: str) -> list[Ob
         raise ValueError(f"Missing rainfall columns: {sorted(missing)}")
 
     timestamps = _normalize_timestamps(frame["Data Acquisition Time"])
-    values = pd.to_numeric(frame[value_column], errors="coerce")
-    invalid_finite = values.notna() & ~values.map(pd.api.types.is_number)
-    if invalid_finite.any():
+    raw_values = frame[value_column]
+    values = pd.to_numeric(raw_values, errors="coerce")
+    invalid_values = values.isna() & raw_values.notna()
+    if invalid_values.any():
         raise ValueError("Source file contains non-numeric values")
-    if variable == "rainfall" and (values.dropna() < 0).any():
+    if (values.dropna() < 0).any():
         raise ValueError("Rainfall observations cannot be negative")
     out = []
     for idx, ts in timestamps.items():
