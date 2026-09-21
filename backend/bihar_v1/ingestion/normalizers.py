@@ -44,6 +44,9 @@ def normalize_rainfall_csv(frame: pd.DataFrame, *, value_column: str) -> list[Ob
         row = frame.loc[idx]
         value = values.loc[idx]
         district = _text(row["District"])
+        station = _text(row["Station"])
+        if not district or not station:
+            raise ValueError("Source observation requires non-empty district and station")
         out.append(Observation(
             timestamp=ts.tz_localize("Asia/Kolkata").tz_convert("UTC").isoformat(),
             district=(district or "").strip().lower().replace(" ", "_"),
@@ -51,7 +54,7 @@ def normalize_rainfall_csv(frame: pd.DataFrame, *, value_column: str) -> list[Ob
             value=None if pd.isna(value) else float(value),
             unit="mm",
             source=str(row.get("Agency") or "unknown").lower(),
-            station_id=_text(row.get("Station")),
+            station_id=station,
             quality="unknown",
             metadata={
                 "latitude": _text(row.get("Latitude")),
@@ -79,6 +82,9 @@ def normalize_river_csv(frame: pd.DataFrame, *, value_column: str) -> list[Obser
         row = frame.loc[idx]
         value = values.loc[idx]
         district = _text(row["District"])
+        station = _text(row["Station"])
+        if not district or not station:
+            raise ValueError("Source observation requires non-empty district and station")
         out.append(Observation(
             timestamp=ts.tz_localize("Asia/Kolkata").tz_convert("UTC").isoformat(),
             district=(district or "").strip().lower().replace(" ", "_"),
@@ -86,7 +92,7 @@ def normalize_river_csv(frame: pd.DataFrame, *, value_column: str) -> list[Obser
             value=None if pd.isna(value) else float(value),
             unit="m",
             source=str(row.get("Agency") or "unknown").lower(),
-            station_id=_text(row.get("Station")),
+            station_id=station,
             quality="unknown",
             metadata={
                 "latitude": _text(row.get("Latitude")),
