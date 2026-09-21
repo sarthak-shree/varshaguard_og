@@ -7,6 +7,7 @@ import pandas as pd
 from backend.bihar_v1.data_contract import (
     DISTRICT_REQUIRED_SOURCES,
     source_contract,
+    build_source_manifest,
     validate_contract,
     validate_source_file,
 )
@@ -71,6 +72,17 @@ class DataContractTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "ready")
 
+    def test_source_manifest_records_hash_and_size(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.csv"
+            path.write_text("Start Date,End Date,Bihar District\\n", encoding="utf-8")
+            manifest = build_source_manifest({"flood_events": path})
+
+        item = manifest["sources"]["flood_events"]
+        self.assertEqual(item["status"], "present")
+        self.assertIsNotNone(item["sha256"])
+        self.assertGreater(item["size_bytes"], 0)
+        self.assertEqual(manifest["schema_version"], 1)
 
 if __name__ == "__main__":
     unittest.main()
