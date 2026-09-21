@@ -51,6 +51,17 @@ class NormalizerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_rainfall_csv(frame, value_column="Telemetry Hourly Rainfall (mm)")
 
+    def test_river_normalizer_rejects_non_numeric_values(self):
+        frame = pd.DataFrame([{
+            "District": "PATNA",
+            "Station": "Kharuara_1",
+            "Agency": "CWC",
+            "Data Acquisition Time": "20-09-2026 09:00",
+            "River Water Level Telemetry Hourly (meter)": "bad",
+        }])
+        with self.assertRaises(ValueError):
+            normalize_river_csv(frame, value_column="River Water Level Telemetry Hourly (meter)")
+
     def test_river_normalizer_preserves_station_and_value(self):
         frame = pd.DataFrame([{
             "District": "MUZAFFARPUR",
