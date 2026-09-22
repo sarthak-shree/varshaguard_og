@@ -27,16 +27,29 @@
 
     <main class="layout">
         <section class="dashboard-header">
-            <div>
+            <div class="region-title-card">
                 <div class="eyebrow">REGIONAL FLOOD INTELLIGENCE</div>
-                <h2><span id="currentRegion">Assam</span> <span class="status-chip">PROTOTYPE</span></h2>
+                <div class="region-title-row">
+                    <h2><span id="currentRegion">Assam</span></h2>
+                    <span class="status-chip">PROTOTYPE</span>
+                </div>
                 <p>Prototype flood-risk conditions, rainfall and station telemetry.</p>
+                <div class="region-card-meta">
+                    <span class="region-meta-pill">AI-assisted risk interpretation</span>
+                    <span class="region-meta-pill">Station-aware context</span>
+                </div>
             </div>
             <div class="ai-hero-card">
+                <div class="ai-orb" aria-hidden="true"><span></span></div>
                 <div class="ai-hero-copy">
                     <span class="ai-hero-kicker">✦ CORE INTELLIGENCE</span>
                     <strong>VarshaGuard AI</strong>
                     <span>Ask the dashboard. Understand the risk.</span>
+                    <div class="ai-feature-row">
+                        <span class="ai-feature-chip">Risk explained</span>
+                        <span class="ai-feature-chip">Rainfall analyzed</span>
+                        <span class="ai-feature-chip">Model context ready</span>
+                    </div>
                 </div>
                 <button id="assistantTopButton" class="assistant-top-btn" type="button">
                     <span>Ask VarshaGuard AI</span>
