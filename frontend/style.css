@@ -157,3 +157,33 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
 
 /* Backend health checks remain active; hide their panel from the prototype UI. */
 .system-health { display: none !important; }
+
+
+.risk-explanation-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.assistant-open-btn{flex:0 0 auto;padding:8px 11px;border:1px solid #a8c7cc;border-radius:6px;background:#eef8f9;color:var(--cyan);font-size:10px;font-weight:800;white-space:nowrap}
+.assistant-open-btn:hover{background:#e2f3f5}
+.assistant-modal{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(17,27,38,.38)}
+.assistant-modal.hidden{display:none}
+.assistant-dialog{width:min(680px,100%);max-height:min(760px,90vh);display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 20px 60px rgba(20,30,45,.22);overflow:hidden}
+.assistant-dialog-header{display:flex;justify-content:space-between;gap:18px;padding:18px;border-bottom:1px solid var(--line)}
+.assistant-dialog-header h3{margin:3px 0 2px;font-size:18px}
+.assistant-dialog-header p{margin:0;color:var(--muted);font-size:11px;max-width:520px}
+.assistant-kicker{display:block;color:var(--cyan);font:800 9px var(--mono);letter-spacing:.8px}
+.assistant-close-btn{width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--muted);font-size:20px;line-height:1}
+.assistant-messages{display:flex;flex-direction:column;gap:10px;padding:15px;overflow:auto;min-height:220px}
+.assistant-message{max-width:85%;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.55;white-space:pre-wrap}
+.assistant-bot{align-self:flex-start;background:var(--panel2);border:1px solid var(--line);color:var(--text)}
+.assistant-user{align-self:flex-end;background:#eef8f9;border:1px solid #a8c7cc;color:var(--text)}
+.assistant-error{align-self:flex-start;background:#fff3f2;border:1px solid #e3b0ad;color:#8d332f}
+.assistant-form{display:flex;gap:8px;padding:12px 15px;border-top:1px solid var(--line)}
+.assistant-form input{flex:1;min-width:0;padding:10px 11px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;outline:none;font-size:12px}
+.assistant-form input:focus{border-color:#a8c7cc;box-shadow:0 0 0 3px rgba(25,127,137,.08)}
+.assistant-form button{padding:10px 14px;border:0;border-radius:6px;background:var(--cyan);color:#fff;font-size:11px;font-weight:800}
+.assistant-form button:disabled{opacity:.55;cursor:not-allowed}
+.assistant-disclaimer{padding:0 15px 12px;color:var(--muted);font-size:9px}
+@media(max-width:640px){
+  .risk-explanation-head{flex-direction:column}
+  .assistant-open-btn{width:100%}
+  .assistant-modal{padding:10px}
+  .assistant-dialog{max-height:94vh}
+}
