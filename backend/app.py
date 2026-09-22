@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from flask import Flask, jsonify, request, send_from_directory, make_response
 from flask_cors import CORS
+from groq import Groq
 
 try:
     from .model import load_model
@@ -166,6 +167,51 @@ def stations():
     if error:
         return error_response(error, 500)
     return no_store_json({"success": True, "region": region, "stations": rows})
+
+
+@app.route("/api/assistant", methods=["POST"])
+def assistant():
+    payload = request.get_json(silent=True) or {}
+    message = str(payload.get("message", "")).strip()
+    context = payload.get("context") or {}
+
+    if not message:
+        return error_response("Message is required", 400)
+
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        return error_response("Groq API key is not configured on the backend", 503)
+
+    try:
+        client = Groq(api_key=api_key)
+
+        system_prompt = """You are VarshaGuard Assistant, the explanation layer for a flood-risk monitoring dashboard.
+Explain only what is supported by the dashboard context provided by the application.
+The dashboard prototype may use historical data, so never describe it as live unless the context explicitly says so.
+Help users understand flood probability, risk level, rainfall, river level, model features, forecast horizon, station information, and dashboard sections in clear operational language.
+Do not invent measurements, causes, alerts, locations, or forecasts.
+When discussing a risk prediction, clearly distinguish model output from certainty. This is a prototype and not a substitute for official warnings.
+Keep responses concise and practical. If asked about something outside the dashboard, say that it is outside your available dashboard context."""
+
+        user_prompt = (
+            f"Dashboard context:\n{context}\n\n"
+            f"User question:\n{message}"
+        )
+
+        completion = client.chat.completions.create(
+            model=os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+            max_tokens=500,
+        )
+
+        answer = completion.choices[0].message.content.strip()
+        return no_store_json({"success": True, "answer": answer})
+    except Exception as exc:
+        return error_response(f"Assistant request failed: {exc}", 502)
 
 
 @app.route("/")
