@@ -15,10 +15,6 @@
             <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
         </div>
         <div class="topbar-actions">
-            <div class="live-state">
-                <span class="live-dot"></span>
-                <span>LIVE</span>
-            </div>
             <div class="prototype-switch">
                 <button id="prototypeMenuButton" class="prototype-badge" type="button" aria-haspopup="true" aria-expanded="false">Prototype WIP (0.2.1) ▾</button>
                 <div id="prototypeMenu" class="prototype-menu" hidden>
@@ -33,11 +29,11 @@
         <section class="dashboard-header">
             <div>
                 <div class="eyebrow">REGIONAL FLOOD INTELLIGENCE</div>
-                <h2><span id="currentRegion">Assam</span> <span class="status-chip"><span class="live-dot"></span> LIVE</span></h2>
-                <p>Current flood-risk conditions, rainfall and station telemetry.</p>
+                <h2><span id="currentRegion">Assam</span> <span class="status-chip">PROTOTYPE</span></h2>
+                <p>Prototype flood-risk conditions, rainfall and station telemetry.</p>
             </div>
             <div class="freshness-card">
-                <span class="freshness-label">LAST SYNCHRONIZED</span>
+                <span class="freshness-label">PROTOTYPE DATA</span>
                 <strong id="lastUpdated">—</strong>
             </div>
         </section>
@@ -119,10 +115,10 @@
                 <section class="panel map-panel">
                     <div class="panel-heading-row">
                         <div>
-                            <h3>Live Flood-Risk Map</h3>
+                            <h3>Prototype Flood-Risk Map</h3>
                             <span>Station status and predicted risk</span>
                         </div>
-                        <span class="map-updated">Live</span>
+                        <span class="map-updated">Prototype</span>
                     </div>
                     <div class="map-wrap">
                         <div id="map"></div>
@@ -156,7 +152,7 @@
             <div class="metric-card">
                 <span>DATA FRESHNESS</span>
                 <strong id="freshnessMetric">—</strong>
-                <small>Latest station update</small>
+                <small>Prototype dataset timestamp</small>
             </div>
         </section>
 
@@ -198,7 +194,7 @@
             <div class="panel-heading-row">
                 <div>
                     <h3>Selected Station</h3>
-                    <span id="stationFocusSubtitle">Live telemetry snapshot</span>
+                    <span id="stationFocusSubtitle">Prototype telemetry snapshot</span>
                 </div>
                 <span id="stationFocusRisk" class="station-risk-badge">—</span>
             </div>
@@ -220,7 +216,7 @@
                     <strong id="stationFocusRiver">—</strong>
                 </div>
                 <div class="station-focus-stat">
-                    <span>Prediction updated</span>
+                    <span>Prediction timestamp</span>
                     <strong id="stationFocusTime">—</strong>
                 </div>
             </div>
