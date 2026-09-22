@@ -187,3 +187,49 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
   .assistant-modal{padding:10px}
   .assistant-dialog{max-height:94vh}
 }
+
+
+/* AI is the signature feature: make the assistant prominent without overpowering the dashboard. */
+.dashboard-header{align-items:center}
+.ai-hero-card{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:min(470px,100%);
+  padding:11px 12px 11px 15px;
+  border:1px solid #9dcfd4;
+  border-radius:10px;
+  background:linear-gradient(135deg,#f7ffff 0%,#eef8f9 55%,#f7fbfc 100%);
+  box-shadow:0 8px 24px rgba(25,127,137,.10);
+}
+.ai-hero-copy{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ai-hero-kicker{color:var(--cyan);font:800 8px var(--mono);letter-spacing:1px}
+.ai-hero-copy strong{font-size:15px;line-height:1.25}
+.ai-hero-copy>span:last-child{color:var(--muted);font-size:10px}
+.assistant-top-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:11px;
+  flex:0 0 auto;
+  padding:10px 13px;
+  border:0;
+  border-radius:7px;
+  background:var(--cyan);
+  color:#fff;
+  font-size:11px;
+  font-weight:800;
+  box-shadow:0 5px 14px rgba(25,127,137,.20);
+  transition:transform .15s ease,box-shadow .15s ease,background .15s ease;
+}
+.assistant-top-btn b{font-size:15px;line-height:1;font-weight:500}
+.assistant-top-btn:hover{background:#126c75;transform:translateY(-1px);box-shadow:0 8px 18px rgba(25,127,137,.25)}
+.assistant-top-btn:active{transform:translateY(0)}
+.assistant-dialog-header{background:linear-gradient(135deg,#ffffff,#f2fafb)}
+@media(max-width:780px){
+  .dashboard-header{align-items:stretch}
+  .ai-hero-card{min-width:0;justify-content:space-between}
+}
+@media(max-width:520px){
+  .ai-hero-card{align-items:stretch;flex-direction:column;gap:10px}
+  .assistant-top-btn{width:100%;justify-content:center}
+}
