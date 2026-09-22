@@ -175,9 +175,12 @@
                         <span>Key model inputs translated for operators</span>
                     </div>
                 </div>
-                <p class="plain-text" id="riskExplanation">
-                    Recent rainfall and time-based signals are used by the probabilistic model to estimate flood likelihood. This is a prototype prediction, not a guaranteed outcome.
-                </p>
+                <div class="risk-explanation-head">
+                    <p class="plain-text" id="riskExplanation">
+                        Recent rainfall and time-based signals are used by the probabilistic model to estimate flood likelihood. This is a prototype prediction, not a guaranteed outcome.
+                    </p>
+                    <button id="assistantOpenButton" class="assistant-open-btn" type="button">Ask VarshaGuard AI</button>
+                </div>
                 <div id="riskDrivers" class="risk-drivers"></div>
                 <details class="technical-details">
                     <summary>View model features</summary>
@@ -218,6 +221,27 @@
             </div>
         </section>
     </main>
+
+    <div id="assistantModal" class="assistant-modal hidden" role="dialog" aria-modal="true" aria-labelledby="assistantTitle">
+        <div class="assistant-dialog">
+            <div class="assistant-dialog-header">
+                <div>
+                    <span class="assistant-kicker">GROQ-POWERED</span>
+                    <h3 id="assistantTitle">VarshaGuard AI</h3>
+                    <p>Ask about this dashboard, the current risk estimate, rainfall, river level, model inputs, or what a chart means.</p>
+                </div>
+                <button id="assistantCloseButton" class="assistant-close-btn" type="button" aria-label="Close assistant">&times;</button>
+            </div>
+            <div id="assistantMessages" class="assistant-messages">
+                <div class="assistant-message assistant-bot">Hi. Ask me to explain the current flood-risk prediction or any dashboard value.</div>
+            </div>
+            <form id="assistantForm" class="assistant-form">
+                <input id="assistantInput" type="text" autocomplete="off" placeholder="Ask: Why is the flood risk LOW?" maxlength="500" required>
+                <button id="assistantSendButton" type="submit">Send</button>
+            </form>
+            <div class="assistant-disclaimer">Uses the dashboard's current context. Prototype predictions should not be treated as official alerts.</div>
+        </div>
+    </div>
 
     <div id="message" class="message hidden"></div>
     <footer></footer>
