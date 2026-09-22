@@ -3,10 +3,6 @@ from datetime import datetime, timezone
 
 from flask import Flask, jsonify, request, send_from_directory, make_response
 from flask_cors import CORS
-try:
-    from groq import Groq
-except ImportError:
-    Groq = None
 
 try:
     from .model import load_model
@@ -186,8 +182,6 @@ def assistant():
         return error_response("Groq API key is not configured on the backend", 503)
 
     try:
-        client = Groq(api_key=api_key)
-
         system_prompt = """You are VarshaGuard Assistant, the explanation layer for a flood-risk monitoring dashboard.
 Explain only what is supported by the dashboard context provided by the application.
 The dashboard prototype may use historical data, so never describe it as live unless the context explicitly says so.
@@ -201,17 +195,34 @@ Keep responses concise and practical. If asked about something outside the dashb
             f"User question:\n{message}"
         )
 
-        completion = client.chat.completions.create(
-            model=os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.2,
-            max_tokens=500,
+        model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+        groq_response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": 0.2,
+                "max_completion_tokens": 500,
+            },
+            timeout=30,
         )
 
-        answer = completion.choices[0].message.content.strip()
+        if not groq_response.ok:
+            try:
+                details = groq_response.json().get("error", {}).get("message", groq_response.text)
+            except Exception:
+                details = groq_response.text
+            return error_response(f"Groq API error: {details}", 502)
+
+        completion = groq_response.json()
+        answer = completion["choices"][0]["message"]["content"].strip()
         return no_store_json({"success": True, "answer": answer})
     except Exception as exc:
         return error_response(f"Assistant request failed: {exc}", 502)
