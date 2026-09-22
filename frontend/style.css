@@ -154,3 +154,6 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
   .station-focus-grid .station-focus-stat:first-child{grid-column:auto}
   .map-risk-legend{left:8px;bottom:8px}
 }
+
+/* Backend health checks remain active; hide their panel from the prototype UI. */
+.system-health { display: none !important; }
