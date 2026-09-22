@@ -463,3 +463,20 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
   .brand-logo{width:48px;height:48px}
   .brand-wordmark{font-size:22px}
 }
+
+.ai-main-logo{
+  width:78px;
+  height:78px;
+  object-fit:contain;
+  display:block;
+  border-radius:18px;
+  filter:drop-shadow(0 8px 16px rgba(25,127,137,.18));
+  animation:aiLogoFloat 4.5s ease-in-out infinite;
+}
+@keyframes aiLogoFloat{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-3px) scale(1.02)}
+}
+@media (prefers-reduced-motion: reduce){
+  .ai-main-logo{animation:none}
+}
