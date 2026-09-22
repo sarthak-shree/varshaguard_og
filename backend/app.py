@@ -3,7 +3,10 @@ from datetime import datetime, timezone
 
 from flask import Flask, jsonify, request, send_from_directory, make_response
 from flask_cors import CORS
-from groq import Groq
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
 
 try:
     from .model import load_model
