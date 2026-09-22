@@ -1,3 +1,94 @@
+
+let latestAssistantContext = {};
+
+function appendAssistantMessage(textValue, role = "bot") {
+    const container = document.getElementById("assistantMessages");
+    if (!container) return;
+    const item = document.createElement("div");
+    item.className = "assistant-message " + (role === "user" ? "assistant-user" : role === "error" ? "assistant-error" : "assistant-bot");
+    item.textContent = textValue;
+    container.appendChild(item);
+    container.scrollTop = container.scrollHeight;
+}
+
+function buildAssistantContext() {
+    return {
+        region: document.getElementById("currentRegion")?.textContent || "—",
+        station: document.getElementById("selectedStationName")?.textContent || "—",
+        risk_level: document.getElementById("riskLevel")?.textContent || "—",
+        flood_probability: document.getElementById("probabilityValue")?.textContent || "—",
+        forecast_window_hours: document.getElementById("horizon")?.textContent || "—",
+        warning: document.getElementById("warning")?.textContent || "—",
+        rain_rate_1h: document.getElementById("rainRateMetric")?.textContent || "—",
+        rainfall_24h: document.getElementById("rain24Metric")?.textContent || "—",
+        river_level: document.getElementById("riverLevelMetric")?.textContent || "—",
+        river_threshold: document.getElementById("riverThresholdText")?.textContent || "—",
+        prediction_timestamp: document.getElementById("stationFocusTime")?.textContent || "—",
+        model_features: latestAssistantContext.features || {},
+        data_note: "Prototype uses historical data; it is not a live monitoring feed."
+    };
+}
+
+function setupAssistant() {
+    const modal = document.getElementById("assistantModal");
+    const openButton = document.getElementById("assistantOpenButton");
+    const closeButton = document.getElementById("assistantCloseButton");
+    const form = document.getElementById("assistantForm");
+    const input = document.getElementById("assistantInput");
+    const sendButton = document.getElementById("assistantSendButton");
+
+    if (!modal || !openButton || !closeButton || !form || !input || !sendButton) return;
+
+    const open = () => {
+        latestAssistantContext = buildAssistantContext();
+        modal.classList.remove("hidden");
+        input.focus();
+    };
+    const close = () => modal.classList.add("hidden");
+
+    openButton.addEventListener("click", open);
+    closeButton.addEventListener("click", close);
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) close();
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") close();
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const question = input.value.trim();
+        if (!question) return;
+
+        appendAssistantMessage(question, "user");
+        input.value = "";
+        input.disabled = true;
+        sendButton.disabled = true;
+        sendButton.textContent = "Thinking…";
+
+        try {
+            const context = buildAssistantContext();
+            const response = await fetch("/api/assistant", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: question, context }),
+            });
+            const data = await response.json();
+            if (!response.ok || data.success === false) {
+                throw new Error(data.error || "Assistant request failed");
+            }
+            appendAssistantMessage(data.answer || "No answer returned.");
+        } catch (error) {
+            appendAssistantMessage(error.message, "error");
+        } finally {
+            input.disabled = false;
+            sendButton.disabled = false;
+            sendButton.textContent = "Send";
+            input.focus();
+        }
+    });
+}
+
 const API_BASE = "";
 
 let map;
@@ -134,6 +225,7 @@ function featureImportanceValue(name, value) {
 }
 
 function updateFeatures(features) {
+    latestAssistantContext.features = features || {};
     const featureList = document.getElementById("featureList");
     const drivers = document.getElementById("riskDrivers");
     featureList.innerHTML = "";
@@ -456,6 +548,7 @@ async function loadRegion(region) {
 document.addEventListener("DOMContentLoaded", async () => {
     setupMap();
     setupChart();
+    setupAssistant();
 
     const regionSelect = document.getElementById("regionSelect");
     const stationSelect = document.getElementById("stationSelect");
