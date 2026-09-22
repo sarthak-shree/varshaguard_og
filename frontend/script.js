@@ -86,17 +86,6 @@ function getLatestRow(rows = []) {
     return rows.length ? rows[rows.length - 1] : null;
 }
 
-function updateFreshness(timestamp) {
-    const formatted = formatTimestamp(timestamp);
-    const elements = [
-        document.getElementById("lastUpdated"),
-        document.getElementById("freshnessMetric"),
-    ];
-    elements.forEach((el) => {
-        if (el) el.textContent = formatted;
-    });
-}
-
 function updateRiskCard(data, latestRow = null) {
     const card = document.getElementById("riskCard");
     const risk = String(data.risk || "LOW").toUpperCase();
@@ -120,7 +109,6 @@ function updateRiskCard(data, latestRow = null) {
 
     const timestamp = data.data_timestamp || latestRow?.timestamp || "";
     document.getElementById("stationFocusTime").textContent = formatTimestamp(timestamp);
-    updateFreshness(timestamp);
 }
 
 function humanizeFeature(name) {
@@ -329,8 +317,6 @@ function updateMetrics(risk, rows) {
         ? `Danger level ${formatNumber(threshold, 2)} m`
         : "Threshold unavailable";
 
-    const timestamp = risk?.data_timestamp || latest?.timestamp;
-    document.getElementById("freshnessMetric").textContent = formatTimestamp(timestamp);
 }
 
 function updateHealthUi(data) {
