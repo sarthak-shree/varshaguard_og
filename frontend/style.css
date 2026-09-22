@@ -390,10 +390,8 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
 }
 
 .ai-main-logo{
-  position:relative;
-  z-index:2;
-  width:78px;
-  height:78px;
+  width:92px;
+  height:92px;
   object-fit:contain;
   display:block;
   border-radius:0;
@@ -402,22 +400,11 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
   transform:none !important;
 }
 @keyframes aiLogoFloat{
-  0%,100%{transform:translateY(0) scale(1)}
-  50%{transform:translateY(-3px) scale(1.02)}
+  0%,100%{transform:none}
+  50%{transform:none}
 }
-@media (prefers-reduced-motion: reduce){
-  .ai-main-logo{
-  position:relative;
-  z-index:2;
-  width:78px;
-  height:78px;
-  object-fit:contain;
-  display:block;
-  border-radius:0;
-  filter:drop-shadow(0 7px 14px rgba(25,127,137,.14));
-  animation:none !important;
-  transform:none !important;
-}
+@media(max-width:520px){
+  .ai-main-logo{width:64px;height:64px}
 }
 
 .brand-wordmark .brand-varsha{color:#102f52}
