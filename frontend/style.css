@@ -38,7 +38,7 @@ button{cursor:pointer}
 .prototype-menu small{display:block;margin:0 12px 6px;color:#7a8794;font-size:11px;font-weight:600}
 
 .layout{max-width:1320px;margin:auto;padding:22px;display:flex;flex-direction:column;gap:18px}
-.dashboard-header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+.dashboard-header{display:flex;align-items:center;justify-content:space-between;gap:26px}
 .eyebrow{font-size:10px;font-weight:800;letter-spacing:1.1px;color:var(--cyan)}
 .dashboard-header h2{margin:5px 0 2px;font-size:28px;line-height:1.15}
 .dashboard-header p{margin:0;color:var(--muted);font-size:13px}
@@ -46,6 +46,97 @@ button{cursor:pointer}
 .freshness-card{min-width:170px;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
 .freshness-label{display:block;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.75px}
 .freshness-card strong{display:block;margin-top:3px;font:700 13px var(--mono);color:var(--cyan)}
+
+.ai-hero-card{
+  position:relative;
+  isolation:isolate;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex:1 1 620px;
+  min-height:138px;
+  padding:23px 26px;
+  border:1px solid #8fcbd1;
+  border-radius:18px;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 12% 50%,rgba(25,127,137,.12),transparent 35%),
+    linear-gradient(135deg,#fbffff 0%,#eefafb 50%,#f8fcfd 100%);
+  box-shadow:0 12px 34px rgba(25,127,137,.13);
+}
+.ai-hero-card::before,
+.ai-hero-card::after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  border:1px solid rgba(25,127,137,.15);
+  border-radius:50%;
+  pointer-events:none;
+}
+.ai-hero-card::before{
+  width:220px;height:220px;
+  right:28%;
+  top:-85px;
+  animation:aiOrbit 9s linear infinite;
+}
+.ai-hero-card::after{
+  width:130px;height:130px;
+  right:10%;
+  bottom:-70px;
+  animation:aiOrbitReverse 7s linear infinite;
+}
+.ai-pulse{
+  position:absolute;
+  width:9px;height:9px;
+  left:25px;top:21px;
+  border-radius:50%;
+  background:var(--cyan);
+  box-shadow:0 0 0 0 rgba(25,127,137,.35);
+  animation:aiPulse 2s ease-out infinite;
+}
+.ai-hero-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ai-hero-kicker{color:var(--cyan);font:800 9px var(--mono);letter-spacing:1.2px}
+.ai-hero-copy strong{font-size:24px;line-height:1.15;letter-spacing:-.35px}
+.ai-hero-copy>span:last-child{color:var(--muted);font-size:12px}
+.ai-feature-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.ai-feature-chip{padding:5px 8px;border:1px solid #c5e0e4;border-radius:999px;background:rgba(255,255,255,.72);color:var(--cyan);font-size:9px;font-weight:800}
+.assistant-top-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:13px;
+  flex:0 0 auto;
+  min-width:220px;
+  min-height:54px;
+  padding:14px 18px;
+  border:1px solid rgba(255,255,255,.38);
+  border-radius:10px;
+  background:var(--cyan);
+  color:#fff;
+  font-size:13px;
+  font-weight:850;
+  box-shadow:0 10px 22px rgba(25,127,137,.27);
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.assistant-top-btn b{font-size:18px;line-height:1;font-weight:500}
+.assistant-top-btn:hover{background:#126c75;transform:translateY(-2px);box-shadow:0 14px 28px rgba(25,127,137,.34)}
+.assistant-top-btn:active{transform:translateY(0)}
+@keyframes aiPulse{
+  0%{box-shadow:0 0 0 0 rgba(25,127,137,.38)}
+  70%{box-shadow:0 0 0 10px rgba(25,127,137,0)}
+  100%{box-shadow:0 0 0 0 rgba(25,127,137,0)}
+}
+@keyframes aiOrbit{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+@keyframes aiOrbitReverse{
+  from{transform:rotate(360deg)}
+  to{transform:rotate(0deg)}
+}
+@media(prefers-reduced-motion:reduce){
+  .ai-hero-card::before,.ai-hero-card::after,.ai-pulse{animation:none}
+}
 
 .overview-grid{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:stretch}
 .left-column,.right-column{display:flex;flex-direction:column;gap:18px}
@@ -140,11 +231,12 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
 @media(max-width:780px){
   .topbar{align-items:flex-start;flex-direction:column}
   .topbar-actions{width:100%;justify-content:flex-start;flex-wrap:wrap}
-  .dashboard-header{align-items:flex-start;flex-direction:column}
+  .dashboard-header{align-items:stretch;flex-direction:column}
   .freshness-card{width:100%}
   .left-column{display:flex}
   .two-column{grid-template-columns:1fr}
   .station-focus-grid{grid-template-columns:1fr 1fr}
+  .ai-hero-card{min-height:150px;padding:20px}
 }
 @media(max-width:640px){
   .layout{padding:14px}
@@ -154,10 +246,10 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
   .station-focus-grid .station-focus-stat:first-child{grid-column:auto}
   .map-risk-legend{left:8px;bottom:8px}
 }
-
-/* Backend health checks remain active; hide their panel from the prototype UI. */
-.system-health { display: none !important; }
-
+@media(max-width:520px){
+  .ai-hero-card{align-items:stretch;flex-direction:column;gap:16px;min-height:0;padding:19px}
+  .assistant-top-btn{width:100%;min-width:0}
+}
 
 .risk-explanation-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 .assistant-open-btn{flex:0 0 auto;padding:8px 11px;border:1px solid #a8c7cc;border-radius:6px;background:#eef8f9;color:var(--cyan);font-size:10px;font-weight:800;white-space:nowrap}
@@ -165,7 +257,7 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
 .assistant-modal{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(17,27,38,.38)}
 .assistant-modal.hidden{display:none}
 .assistant-dialog{width:min(680px,100%);max-height:min(760px,90vh);display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 20px 60px rgba(20,30,45,.22);overflow:hidden}
-.assistant-dialog-header{display:flex;justify-content:space-between;gap:18px;padding:18px;border-bottom:1px solid var(--line)}
+.assistant-dialog-header{display:flex;justify-content:space-between;gap:18px;padding:18px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,#ffffff,#f2fafb)}
 .assistant-dialog-header h3{margin:3px 0 2px;font-size:18px}
 .assistant-dialog-header p{margin:0;color:var(--muted);font-size:11px;max-width:520px}
 .assistant-kicker{display:block;color:var(--cyan);font:800 9px var(--mono);letter-spacing:.8px}
@@ -188,48 +280,5 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
   .assistant-dialog{max-height:94vh}
 }
 
-
-/* AI is the signature feature: make the assistant prominent without overpowering the dashboard. */
-.dashboard-header{align-items:center}
-.ai-hero-card{
-  display:flex;
-  align-items:center;
-  gap:16px;
-  min-width:min(470px,100%);
-  padding:11px 12px 11px 15px;
-  border:1px solid #9dcfd4;
-  border-radius:10px;
-  background:linear-gradient(135deg,#f7ffff 0%,#eef8f9 55%,#f7fbfc 100%);
-  box-shadow:0 8px 24px rgba(25,127,137,.10);
-}
-.ai-hero-copy{display:flex;flex-direction:column;gap:1px;min-width:0}
-.ai-hero-kicker{color:var(--cyan);font:800 8px var(--mono);letter-spacing:1px}
-.ai-hero-copy strong{font-size:15px;line-height:1.25}
-.ai-hero-copy>span:last-child{color:var(--muted);font-size:10px}
-.assistant-top-btn{
-  display:inline-flex;
-  align-items:center;
-  gap:11px;
-  flex:0 0 auto;
-  padding:10px 13px;
-  border:0;
-  border-radius:7px;
-  background:var(--cyan);
-  color:#fff;
-  font-size:11px;
-  font-weight:800;
-  box-shadow:0 5px 14px rgba(25,127,137,.20);
-  transition:transform .15s ease,box-shadow .15s ease,background .15s ease;
-}
-.assistant-top-btn b{font-size:15px;line-height:1;font-weight:500}
-.assistant-top-btn:hover{background:#126c75;transform:translateY(-1px);box-shadow:0 8px 18px rgba(25,127,137,.25)}
-.assistant-top-btn:active{transform:translateY(0)}
-.assistant-dialog-header{background:linear-gradient(135deg,#ffffff,#f2fafb)}
-@media(max-width:780px){
-  .dashboard-header{align-items:stretch}
-  .ai-hero-card{min-width:0;justify-content:space-between}
-}
-@media(max-width:520px){
-  .ai-hero-card{align-items:stretch;flex-direction:column;gap:10px}
-  .assistant-top-btn{width:100%;justify-content:center}
-}
+/* Backend health checks remain active; hide their panel from the prototype UI. */
+.system-health { display: none !important; }
