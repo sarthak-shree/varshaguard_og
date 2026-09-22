@@ -31,13 +31,16 @@ function buildAssistantContext() {
 
 function setupAssistant() {
     const modal = document.getElementById("assistantModal");
-    const openButton = document.getElementById("assistantOpenButton");
+    const openButtons = [
+        document.getElementById("assistantOpenButton"),
+        document.getElementById("assistantTopButton"),
+    ].filter(Boolean);
     const closeButton = document.getElementById("assistantCloseButton");
     const form = document.getElementById("assistantForm");
     const input = document.getElementById("assistantInput");
     const sendButton = document.getElementById("assistantSendButton");
 
-    if (!modal || !openButton || !closeButton || !form || !input || !sendButton) return;
+    if (!modal || !openButtons.length || !closeButton || !form || !input || !sendButton) return;
 
     const open = () => {
         latestAssistantContext = buildAssistantContext();
@@ -46,7 +49,7 @@ function setupAssistant() {
     };
     const close = () => modal.classList.add("hidden");
 
-    openButton.addEventListener("click", open);
+    openButtons.forEach((button) => button.addEventListener("click", open));
     closeButton.addEventListener("click", close);
     modal.addEventListener("click", (event) => {
         if (event.target === modal) close();
