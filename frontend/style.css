@@ -410,3 +410,6 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
 @media (prefers-reduced-motion: reduce){
   .ai-main-logo{animation:none}
 }
+
+.brand-wordmark .brand-varsha{color:#102f52}
+.brand-wordmark .brand-guard{color:#08a9b5}
