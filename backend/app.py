@@ -16,6 +16,7 @@ try:
         predict_probability,
     )
     from .risk import get_risk, get_warning
+    from .bihar_live.api import bp as bihar_live_bp
 except ImportError:
     from model import load_model
     from prediction import (
@@ -27,6 +28,7 @@ except ImportError:
         predict_probability,
     )
     from risk import get_risk, get_warning
+    from bihar_live.api import bp as bihar_live_bp
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
@@ -34,6 +36,7 @@ DATA_PATH = os.path.join(BASE_DIR, "data", "processed", "flood_warning_ml_ready_
 
 app = Flask(__name__)
 CORS(app)
+app.register_blueprint(bihar_live_bp)
 
 
 def now_iso():
