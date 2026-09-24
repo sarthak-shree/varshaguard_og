@@ -1,0 +1,8 @@
+body{margin:0;background:#071018;color:#e8f0f5;font-family:system-ui,sans-serif}
+header{display:flex;gap:18px;align-items:center;padding:14px 18px;background:#0c1721;position:sticky;top:0}
+header span:last-child{margin-left:auto;padding:6px 10px;border:1px solid #2a5363;border-radius:999px}
+main{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 58px)}
+section{padding:24px;background:#0a141e}
+#map{min-height:calc(100vh - 58px)}
+#sources{margin-top:18px;line-height:1.9}
+@media(max-width:800px){main{grid-template-columns:1fr}#map{min-height:55vh}}
