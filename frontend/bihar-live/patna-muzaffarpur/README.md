@@ -1,18 +1,20 @@
-# Patna and Muzaffarpur Live Dashboard
+# Bihar Live — Patna and Muzaffarpur
 
-This is a separate entry for the Patna and Muzaffarpur focused VarshaGuard project. It is kept in its own folder so it does not overwrite or alter the existing Bihar Live implementation.
+The Bihar Live entry opens the Patna and Muzaffarpur VarshaGuard project at [varshaguardoff.vercel.app](https://varshaguardoff.vercel.app).
 
-- **Open the live dashboard:** [varshaguardoff.vercel.app](https://varshaguardoff.vercel.app)
-- **Project source repository:** [sarthak-shree/VarshaGuard](https://github.com/sarthak-shree/VarshaGuard)
-- **Coverage:** Patna and Muzaffarpur, Bihar
-- **Map:** location-aware grid cells for exploring local conditions
+The WIP switcher points to `/bihar-live.html`, which forwards visitors to this dashboard. The main VarshaGuard dashboard remains unchanged.
+
+## Coverage
+
+- Patna and Muzaffarpur, Bihar
+- Location-aware grid cells
 
 ## Status and use
 
-The dashboard is a prototype. Live public weather observations may be available, but that does not make its flood predictions operationally validated. Treat any demonstration risk screen as informational only; follow official IMD, CWC, and local disaster-management alerts for safety decisions.
+This dashboard is a prototype. Live public weather observations do not make flood predictions operationally validated. Treat any demonstration risk screen as informational only; follow official IMD, CWC, and local disaster-management alerts for safety decisions.
 
-The dashboard can request browser location permission to center the view on the user's current position. Location sharing is optional.
+Browser location access is optional. The dashboard can use it to center the map on the user's current position.
 
-## Run from the source repository
+## Source and setup
 
-See the source repository README for setup instructions and prerequisites. Do not copy API keys into this repository or commit local `.env` files.
+The application source and setup instructions are in [sarthak-shree/VarshaGuard](https://github.com/sarthak-shree/VarshaGuard). Keep API keys in local environment variables; do not commit `.env` files.
