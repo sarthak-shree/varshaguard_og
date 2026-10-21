@@ -20,13 +20,14 @@
             <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
         </div>
         <div class="topbar-actions">
-            <div class="prototype-switch">
-                <button id="prototypeMenuButton" class="prototype-badge" type="button" aria-haspopup="true" aria-expanded="false">Prototype WIP (0.2.1) ▾</button>
-                <div id="prototypeMenu" class="prototype-menu" hidden>
-                    <small>SWITCH PROTOTYPE</small>
-                    <a href="/bihar-live.html">Bihar Live — Patna &amp; Muzaffarpur →</a>
-                </div>
-            </div>
+            <a class="bihar-live-cta" href="/bihar-live.html" aria-label="Open Bihar Live for Patna and Muzaffarpur">
+                <span class="bihar-live-cta-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+                </span>
+                <span class="bihar-live-cta-copy"><strong>Bihar Live</strong><small>Patna &amp; Muzaffarpur</small></span>
+                <span class="bihar-live-cta-arrow" aria-hidden="true">→</span>
+            </a>
+            <span class="prototype-badge">Prototype WIP (0.2.1)</span>
         </div>
     </header>
 
@@ -277,24 +278,6 @@
     <div id="message" class="message hidden"></div>
     <footer></footer>
 
-    <script>
-        (() => {
-            const button = document.getElementById('prototypeMenuButton');
-            const menu = document.getElementById('prototypeMenu');
-            if (!button || !menu) return;
-            button.addEventListener('click', (event) => {
-                event.stopPropagation();
-                const open = menu.hidden;
-                menu.hidden = !open;
-                button.setAttribute('aria-expanded', String(open));
-            });
-            document.addEventListener('click', () => {
-                menu.hidden = true;
-                button.setAttribute('aria-expanded', 'false');
-            });
-            menu.addEventListener('click', (event) => event.stopPropagation());
-        })();
-    </script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
