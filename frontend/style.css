@@ -29,13 +29,17 @@ button{cursor:pointer}
 .topbar-actions{display:flex;align-items:center;gap:12px}
 .live-state{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid #cfe0d8;border-radius:999px;background:#f5fbf8;color:var(--low);font-size:11px;font-weight:800;letter-spacing:.55px}
 .live-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--low);box-shadow:0 0 0 3px rgba(46,139,104,.12)}
-.prototype-switch{position:relative;display:inline-block}
-.prototype-badge{padding:8px 12px;border:1px solid var(--line);border-radius:7px;color:var(--muted);background:var(--panel2);font-size:12px;white-space:nowrap}
-.prototype-menu{position:absolute;top:calc(100% + 8px);right:0;min-width:220px;padding:8px;background:#fff;border:1px solid #dfe5ec;border-radius:10px;box-shadow:0 12px 30px rgba(20,30,45,.14);z-index:1000}
-.prototype-menu[hidden]{display:none}
-.prototype-menu a{display:block;padding:11px 12px;color:var(--text);text-decoration:none;border-radius:7px;font-weight:700;font-size:13px}
-.prototype-menu a:hover{background:#f3f6f9;color:var(--accent)}
-.prototype-menu small{display:block;margin:0 12px 6px;color:#7a8794;font-size:11px;font-weight:600}
+.bihar-live-cta{display:inline-flex;align-items:center;gap:10px;min-height:56px;padding:8px 13px;border:1px solid rgba(255,255,255,.35);border-radius:11px;background:linear-gradient(135deg,#197f89,#116c75);color:#fff;text-decoration:none;box-shadow:0 8px 18px rgba(25,127,137,.2);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+.bihar-live-cta:hover{transform:translateY(-2px);background:linear-gradient(135deg,#168d97,#0e6871);box-shadow:0 12px 22px rgba(25,127,137,.28)}
+.bihar-live-cta:active{transform:translateY(0)}
+.bihar-live-cta:focus-visible{outline:3px solid #f59e0b;outline-offset:3px}
+.bihar-live-cta-icon{width:36px;height:36px;display:grid;place-items:center;flex:0 0 36px;border-radius:9px;background:rgba(255,255,255,.15)}
+.bihar-live-cta-icon svg{display:block;width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.bihar-live-cta-copy{display:flex;flex-direction:column;gap:1px;line-height:1.2}
+.bihar-live-cta-copy strong{font-size:13px;font-weight:850;letter-spacing:.1px}
+.bihar-live-cta-copy small{color:rgba(255,255,255,.82);font-size:10px;font-weight:600;white-space:nowrap}
+.bihar-live-cta-arrow{padding-left:2px;font-size:19px;line-height:1}
+.prototype-badge{display:inline-flex;align-items:center;min-height:34px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;color:var(--muted);background:var(--panel2);font-size:11px;white-space:nowrap}
 
 .layout{max-width:1320px;margin:auto;padding:22px;display:flex;flex-direction:column;gap:18px}
 .dashboard-header{display:flex;align-items:center;justify-content:space-between;gap:26px}
