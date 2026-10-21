@@ -1,98 +1,263 @@
-const {useEffect,useRef,useState}=React;
-const h=React.createElement;
-const API="/api/bihar-live";
+(() => {
+  "use strict";
 
-function Dashboard(){
-  const [health,setHealth]=useState(null);
-  const [fusion,setFusion]=useState(null);
-  const [evaluation,setEvaluation]=useState(null);
-  const [sources,setSources]=useState([]);
-  const [district,setDistrict]=useState("patna");
-  const [lead,setLead]=useState(3);
-  const [error,setError]=useState("");
-  const mapRef=useRef(null), mapObj=useRef(null), chartRef=useRef(null), chartObj=useRef(null);
+  const API = "/api/bihar-live";
+  const DISTRICTS = {
+    patna: { name: "Patna", center: [25.5941, 85.1376] },
+    muzaffarpur: { name: "Muzaffarpur", center: [26.1209, 85.3647] }
+  };
+  const $ = (id) => document.getElementById(id);
+  let map = null;
+  let districtLayer = null;
+  let userMarker = null;
+  let currentData = {};
+  let refreshTimer = null;
+  let leadTimer = null;
 
-  async function load(){
-    try{
-      setError("");
-      const responses=await Promise.all([
-        fetch(API+"/health",{cache:"no-store"}),
-        fetch(API+"/fusion?lead="+lead,{cache:"no-store"}),
-        fetch(API+"/model/evaluation",{cache:"no-store"}),
-        fetch(API+"/sources",{cache:"no-store"})
-      ]);
-      const data=await Promise.all(responses.map(r=>r.json()));
-      if(responses.some(r=>!r.ok)) throw new Error(data.find(x=>x.error)?.error||"JalDrishti API request failed");
-      setHealth(data[0]);setFusion(data[1]);setEvaluation(data[2]);setSources(data[3].sources||[]);
-    }catch(err){setError(err.message);setHealth(null)}
+  async function getJson(path, options = {}) {
+    const response = await fetch(path, { cache: "no-store", ...options });
+    let data;
+    try { data = await response.json(); }
+    catch { throw new Error("The service returned an unreadable response."); }
+    if (!response.ok || data.success === false) {
+      throw new Error(data.error || "The Bihar Live service could not be reached.");
+    }
+    return data;
   }
 
-  useEffect(()=>{load();const timer=setInterval(load,15000);return()=>clearInterval(timer)},[lead]);
+  function showError(message) {
+    const box = $("message");
+    box.textContent = message;
+    box.classList.remove("hidden");
+  }
 
-  useEffect(()=>{
-    if(!mapRef.current||mapObj.current||!window.L)return;
-    mapObj.current=L.map(mapRef.current).setView([25.85,85.25],8);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap contributors"}).addTo(mapObj.current);
-    [[25.5941,85.1376,"Patna"],[26.1209,85.3647,"Muzaffarpur"]].forEach(([lat,lon,name])=>{
-      L.circleMarker([lat,lon],{radius:8,weight:2,fillOpacity:.85}).addTo(mapObj.current).bindPopup("<b>"+name+"</b><br>JalDrishti monitoring point");
+  function clearError() {
+    $("message").classList.add("hidden");
+    $("message").textContent = "";
+  }
+
+  function setText(id, value) {
+    const node = $(id);
+    if (node) node.textContent = value;
+  }
+
+  function formatNumber(value, digits = 1) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(digits) : "—";
+  }
+
+  function friendlyStatus(value) {
+    const status = String(value || "unknown").replaceAll("_", " ");
+    return status;
+  }
+
+  function updateDashboard(health, fusion, evaluation, sources) {
+    currentData = { health, fusion, evaluation, sources };
+    const synthetic = String(health.mode || "").toLowerCase() === "synthetic";
+    const modeLabel = health.badge || (synthetic ? "Synthetic demo data" : "Real data");
+    setText("dataMode", synthetic ? "Demo only" : modeLabel);
+    setText("dataBadge", modeLabel);
+    setText("fusionMode", synthetic ? "Synthetic demo" : modeLabel);
+    setText("statusNote", synthetic
+      ? "This screen is using clearly labelled demo inputs. It is not a live flood warning."
+      : "Provider status is shown below. This prototype is not an official flood warning.");
+    setText("horizonValue", health.horizon_hours || 72);
+    setText("serviceName", health.project || "Bihar Live prototype");
+    setText("lastUpdated", new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" }));
+
+    const estimate = fusion.estimate_mm;
+    setText("rainEstimate", Number.isFinite(Number(estimate)) ? formatNumber(estimate, 1) + " mm" : "—");
+    setText("rainEstimateNote", synthetic ? "Synthetic fusion estimate" : "Fusion output");
+    setText("leadValue", fusion.lead_hours || $("leadSelect").value);
+    setText("leadMetric", fusion.lead_hours || $("leadSelect").value);
+    setText("maeMetric", formatNumber(evaluation.mae, 2));
+    setText("rmseMetric", formatNumber(evaluation.rmse, 2));
+    setText("sourceSubtitle", sources.mode === "synthetic" ? "Demo mode is active" : "Provider readiness");
+    setText("sourceCount", (sources.sources || []).length + " SOURCES");
+
+    const weightRoot = $("signalWeights");
+    weightRoot.replaceChildren();
+    Object.entries(fusion.weights || {}).forEach(([name, value]) => {
+      const item = document.createElement("div");
+      item.className = "bihar-signal-item";
+      const label = document.createElement("span");
+      label.textContent = name + " signal";
+      const amount = document.createElement("strong");
+      amount.textContent = Math.round(Number(value) * 100) + "%";
+      item.append(label, amount);
+      weightRoot.appendChild(item);
     });
-  },[]);
 
-  useEffect(()=>{
-    if(!chartRef.current||!window.Chart||!evaluation)return;
-    if(chartObj.current)chartObj.current.destroy();
-    chartObj.current=new Chart(chartRef.current,{type:"bar",data:{
-      labels:["MAE","RMSE"],datasets:[{label:"Synthetic test error",data:[evaluation.mae,evaluation.rmse],borderWidth:1}]
-    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#8ca7af"},grid:{color:"#18343f"}},y:{beginAtZero:true,ticks:{color:"#8ca7af"},grid:{color:"#18343f"}}}}});
-  },[evaluation]);
+    const sourceRoot = $("sourceList");
+    sourceRoot.replaceChildren();
+    (sources.sources || []).forEach((source) => {
+      const item = document.createElement("div");
+      item.className = "bihar-source-item";
+      const label = document.createElement("span");
+      label.textContent = source.name;
+      const status = document.createElement("strong");
+      status.textContent = friendlyStatus(source.status);
+      status.dataset.state = source.status || "unknown";
+      item.append(label, status);
+      sourceRoot.appendChild(item);
+    });
 
-  const weights=(fusion&&fusion.weights)||{};
-  return h("div",{className:"jl-app"},
-    h("header",{className:"jl-header"},
-      h("div",null,h("strong",null,"JalDrishti"),h("span",null," Bihar Integrated Early Warning")),
-      h("div",{id:"data-badge",className:"jl-badge"},health?health.badge:"System unavailable")
-    ),
-    h("main",{className:"jl-main"},
-      h("div",{className:"jl-toolbar"},
-        h("div",null,
-          h("button",{className:district==="patna"?"active":"",onClick:()=>setDistrict("patna")},"Patna"),
-          h("button",{className:district==="muzaffarpur"?"active":"",onClick:()=>setDistrict("muzaffarpur")},"Muzaffarpur")
-        ),
-        h("span",{className:"jl-muted"},health?"Auto-refresh 15s":"API unavailable")
-      ),
-      h("h1",null,district==="patna"?"Patna":"Muzaffarpur"),
-      h("p",{className:"jl-muted"},"72-hour rainfall and inundation decision-support prototype."),
-      error&&h("div",{className:"jl-error"},"API error: "+error),
-      h("section",{className:"jl-grid"},
-        h("article",{className:"jl-card"},
-          h("h2",null,"MULTI-SOURCE RAINFALL FUSION"),
-          h("div",{className:"jl-metric"},fusion?fusion.estimate_mm+" mm":"—"),
-          h("p",{className:"jl-muted"},"Fused rainfall estimate · lead "+lead+"h"),
-          h("div",{className:"jl-leadrow"},h("span",null,"Forecast lead"),h("b",null,lead+"h")),
-          h("input",{className:"jl-slider",type:"range",min:"1",max:"72",value:lead,onChange:e=>setLead(Number(e.target.value))}),
-          h("div",{className:"jl-weights"},Object.entries(weights).map(([name,value])=>
-            h("div",{key:name},h("small",null,name),h("b",null,Math.round(value*100)+"%"))
-          ))
-        ),
-        h("article",{className:"jl-card"},
-          h("h2",null,"BASELINE EVALUATION"),
-          h("div",{className:"jl-stats"},
-            h("div",null,h("b",null,evaluation?evaluation.mae.toFixed(2):"—"),h("small",null,"MAE")),
-            h("div",null,h("b",null,evaluation?evaluation.rmse.toFixed(2):"—"),h("small",null,"RMSE"))
-          ),
-          h("p",{className:"jl-muted"},evaluation?"Chronological split · "+evaluation.data_mode+" · "+evaluation.backend:"Waiting for API"),
-          h("div",{className:"jl-chart"},h("canvas",{ref:chartRef}))
-        )
-      ),
-      h("section",{className:"jl-map"},h("div",{ref:mapRef})),
-      h("section",{className:"jl-card jl-source-card"},
-        h("h2",null,"DATA SOURCES"),
-        h("div",{className:"jl-sources"},sources.map(source=>
-          h("div",{key:source.name},h("span",null,source.name),h("b",null,source.status))
-        ))
-      ),
-      h("p",{className:"jl-foot"},"Synthetic demo data is explicitly labeled. Fusion weights are an engineering baseline, not learned accuracy weights. Real mode fails closed when provider data is unavailable.")
-    )
-  );
-}
-ReactDOM.createRoot(document.getElementById("root")).render(h(Dashboard));
+    setText("selectedDistrict", DISTRICTS[$("districtSelect").value].name);
+    setText("leadMetric", $("leadSelect").value);
+    clearError();
+  }
+
+  async function loadDashboard() {
+    try {
+      const lead = Number($("leadSelect").value);
+      const responses = await Promise.all([
+        getJson(API + "/health"),
+        getJson(API + "/fusion?lead=" + encodeURIComponent(lead)),
+        getJson(API + "/model/evaluation"),
+        getJson(API + "/sources")
+      ]);
+      updateDashboard(...responses);
+    } catch (error) {
+      showError(error.message);
+      setText("dataMode", "Unavailable");
+      setText("dataBadge", "Service unavailable");
+      setText("statusNote", "The Bihar Live API could not be reached. No current estimate is shown.");
+    }
+  }
+
+  function setupMap() {
+    if (!window.L || !$("map")) return;
+    map = L.map("map").setView([25.86, 85.24], 8);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: "© OpenStreetMap contributors"
+    }).addTo(map);
+    districtLayer = L.layerGroup().addTo(map);
+    Object.entries(DISTRICTS).forEach(([key, district]) => {
+      const color = key === "patna" ? "#34D399" : "#FBBF24";
+      L.circleMarker(district.center, {
+        radius: 9, color: "#fff", weight: 3, fillColor: color, fillOpacity: 1
+      }).addTo(districtLayer).bindPopup("<strong>" + district.name + "</strong><br>District map point");
+    });
+  }
+
+  function selectDistrict() {
+    const key = $("districtSelect").value;
+    const district = DISTRICTS[key];
+    setText("selectedDistrict", district.name);
+    if (map) map.setView(district.center, 9, { animate: true });
+    $("assistantInput").placeholder = "Ask about " + district.name + " and this dashboard";
+  }
+
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      showError("Location access is not available in this browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const point = [position.coords.latitude, position.coords.longitude];
+        if (!userMarker) {
+          userMarker = L.circleMarker(point, {
+            radius: 8, color: "#fff", weight: 3, fillColor: "#F87171", fillOpacity: 1
+          }).addTo(map);
+        } else {
+          userMarker.setLatLng(point);
+        }
+        userMarker.bindPopup("Your current location").openPopup();
+        $("userLocationLegend").hidden = false;
+        map.setView(point, 11, { animate: true });
+        clearError();
+      },
+      () => showError("Location permission was not granted. You can still use the district map."),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+    );
+  }
+
+  function buildAssistantContext() {
+    const selected = DISTRICTS[$("districtSelect").value];
+    return {
+      dashboard: "Bihar Live VarshaGuard prototype",
+      district: selected.name,
+      data_mode: currentData.health?.mode || "unknown",
+      status: currentData.health?.badge || "unknown",
+      rainfall_fusion_estimate_mm: currentData.fusion?.estimate_mm ?? "unavailable",
+      forecast_lead_hours: currentData.fusion?.lead_hours ?? $("leadSelect").value,
+      fusion_weights: currentData.fusion?.weights || {},
+      baseline_evaluation: currentData.evaluation
+        ? { mae: currentData.evaluation.mae, rmse: currentData.evaluation.rmse, data_mode: currentData.evaluation.data_mode }
+        : "unavailable",
+      data_sources: (currentData.sources?.sources || []).map((source) => ({
+        name: source.name, status: source.status
+      })),
+      limitation: "Prototype only. Rainfall fusion output is not a flood probability or official alert. Do not invent missing observations or forecasts."
+    };
+  }
+
+  function appendAssistantMessage(text, role = "bot") {
+    const item = document.createElement("div");
+    item.className = "assistant-message " + (role === "user" ? "assistant-user" : role === "error" ? "assistant-error" : "assistant-bot");
+    item.textContent = text;
+    $("assistantMessages").appendChild(item);
+    $("assistantMessages").scrollTop = $("assistantMessages").scrollHeight;
+  }
+
+  function setupAssistant() {
+    const modal = $("assistantModal");
+    const input = $("assistantInput");
+    const form = $("assistantForm");
+    const send = $("assistantSendButton");
+    const open = () => { modal.classList.remove("hidden"); input.focus(); };
+    const close = () => modal.classList.add("hidden");
+    $("assistantTopButton").addEventListener("click", open);
+    $("assistantOpenButton").addEventListener("click", open);
+    $("assistantCloseButton").addEventListener("click", close);
+    modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const question = input.value.trim();
+      if (!question) return;
+      appendAssistantMessage(question, "user");
+      input.value = "";
+      input.disabled = true;
+      send.disabled = true;
+      send.textContent = "Thinking…";
+      try {
+        const response = await fetch("/api/assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: question, context: buildAssistantContext() })
+        });
+        const data = await response.json();
+        if (!response.ok || data.success === false) throw new Error(data.error || "Assistant request failed.");
+        appendAssistantMessage(data.answer || "No answer returned.");
+      } catch (error) {
+        appendAssistantMessage(error.message, "error");
+      } finally {
+        input.disabled = false;
+        send.disabled = false;
+        send.textContent = "Send";
+        input.focus();
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    setupMap();
+    setupAssistant();
+    $("districtSelect").addEventListener("change", selectDistrict);
+    $("leadSelect").addEventListener("input", () => {
+      setText("leadValue", $("leadSelect").value);
+      setText("leadMetric", $("leadSelect").value);
+      window.clearTimeout(leadTimer);
+      leadTimer = window.setTimeout(loadDashboard, 250);
+    });
+    $("locateButton").addEventListener("click", useMyLocation);
+    $("mapRefreshButton").addEventListener("click", () => selectDistrict());
+    selectDistrict();
+    loadDashboard();
+    refreshTimer = window.setInterval(loadDashboard, 60000);
+    window.addEventListener("beforeunload", () => window.clearInterval(refreshTimer), { once: true });
+  });
+})();
