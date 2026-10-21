@@ -4,15 +4,208 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="VarshaGuard Bihar Live dashboard for Patna and Muzaffarpur.">
-  <meta http-equiv="refresh" content="0;url=https://varshaguardoff.vercel.app/">
   <title>VarshaGuard Bihar Live — Patna and Muzaffarpur</title>
-  <script>window.location.replace("https://varshaguardoff.vercel.app/");</script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/bihar-live.css">
 </head>
 <body>
-  <main>
-    <h1>Bihar Live — Patna and Muzaffarpur</h1>
-    <p>Opening the Patna and Muzaffarpur VarshaGuard dashboard…</p>
-    <p><a href="https://varshaguardoff.vercel.app/">Open the Bihar Live dashboard</a></p>
+  <header class="topbar">
+    <div>
+      <h1 class="brand-lockup">
+        <a href="/" aria-label="VarshaGuard main dashboard">
+          <img class="brand-logo" src="/assets/ChatGPT%20Image%20Sep%2022%2C%202026%2C%2009_03_22%20PM.png" alt="VarshaGuard logo">
+          <span class="brand-wordmark"><span class="brand-varsha">VARSHA</span><span class="brand-guard">GUARD &#8623;</span></span>
+        </a>
+      </h1>
+      <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
+    </div>
+    <div class="topbar-actions">
+      <div class="prototype-switch">
+        <button id="prototypeMenuButton" class="prototype-badge" type="button" aria-haspopup="true" aria-expanded="false">Prototype WIP (Bihar Live) ▾</button>
+        <div id="prototypeMenu" class="prototype-menu" hidden>
+          <small>SWITCH DASHBOARD</small>
+          <a href="/">Main dashboard →</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="dashboard-header">
+      <div class="region-title-card">
+        <div class="eyebrow">REGIONAL FLOOD INTELLIGENCE</div>
+        <div class="region-title-row">
+          <h2><span>Bihar</span></h2>
+          <span class="status-chip">PROTOTYPE</span>
+        </div>
+        <p>Patna and Muzaffarpur rainfall and river context.</p>
+        <div class="region-card-meta">
+          <span class="region-meta-pill">Patna</span>
+          <span class="region-meta-pill">Muzaffarpur</span>
+          <span class="region-meta-pill">Location-aware map</span>
+        </div>
+      </div>
+      <div class="ai-hero-card">
+        <div class="ai-orb" aria-hidden="true">
+          <img class="ai-main-logo" src="/assets/ChatGPT%20Image%20Sep%2022%2C%202026%2C%2009_03_22%20PM.png" alt="">
+        </div>
+        <div class="ai-hero-copy">
+          <span class="ai-hero-kicker">✦ CORE INTELLIGENCE</span>
+          <strong>VarshaGuard AI</strong>
+          <span>Ask the dashboard. Understand the risk.</span>
+          <div class="ai-feature-row">
+            <span class="ai-feature-chip">Risk explained</span>
+            <span class="ai-feature-chip">Rainfall analyzed</span>
+            <span class="ai-feature-chip">Model context ready</span>
+          </div>
+        </div>
+        <button id="assistantTopButton" class="assistant-top-btn" type="button">
+          <span>Ask VarshaGuard AI</span>
+          <b>→</b>
+        </button>
+      </div>
+    </section>
+
+    <section class="overview-grid bihar-overview">
+      <div class="left-column">
+        <section class="panel selector-panel">
+          <div class="field">
+            <label for="districtSelect">District</label>
+            <select id="districtSelect">
+              <option value="patna">Patna</option>
+              <option value="muzaffarpur">Muzaffarpur</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="leadSelect">Forecast lead</label>
+            <div class="bihar-lead-row">
+              <input id="leadSelect" type="range" min="1" max="72" value="3">
+              <strong><span id="leadValue">3</span> h</strong>
+            </div>
+          </div>
+          <button id="locateButton" class="assistant-open-btn bihar-locate" type="button">Use my location</button>
+        </section>
+
+        <section class="risk-card risk-low bihar-status-card">
+          <div class="risk-card-topline">
+            <div>
+              <p class="small-title">Current data mode</p>
+              <h2 id="dataMode">Checking…</h2>
+            </div>
+            <div id="dataBadge" class="risk-trend">Loading</div>
+          </div>
+          <p id="statusNote">Checking the latest Bihar Live inputs.</p>
+          <div class="risk-meta">
+            <div><span>Forecast window</span><strong><span id="horizonValue">72</span> hours</strong></div>
+            <div><span>District</span><strong id="selectedDistrict">Patna</strong></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="right-column">
+        <section class="panel map-panel">
+          <div class="panel-heading-row">
+            <div>
+              <h3>Patna and Muzaffarpur map</h3>
+              <span>District context and selected location</span>
+            </div>
+            <button id="mapRefreshButton" class="assistant-open-btn" type="button">Reset map</button>
+          </div>
+          <div class="map-wrap bihar-map-wrap">
+            <div id="map" role="application" aria-label="Map of Bihar focused on Patna and Muzaffarpur"></div>
+            <div class="map-risk-legend" aria-label="Map markers">
+              <div class="map-risk-legend-title">Map points</div>
+              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-low"></span>Patna</div>
+              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-medium"></span>Muzaffarpur</div>
+              <div class="map-risk-legend-item" id="userLocationLegend" hidden><span class="map-risk-dot map-risk-high"></span>Your location</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="metrics-strip">
+      <div class="metric-card"><span>RAINFALL ESTIMATE</span><strong id="rainEstimate">—</strong><small id="rainEstimateNote">Fusion output</small></div>
+      <div class="metric-card"><span>FORECAST LEAD</span><strong><span id="leadMetric">3</span> h</strong><small>Selected lead time</small></div>
+      <div class="metric-card"><span>BASELINE MAE</span><strong id="maeMetric">—</strong><small>Prototype evaluation</small></div>
+      <div class="metric-card"><span>BASELINE RMSE</span><strong id="rmseMetric">—</strong><small>Prototype evaluation</small></div>
+    </section>
+
+    <section class="two-column">
+      <section class="panel">
+        <div class="panel-heading-row">
+          <div><h3>Rainfall signal mix</h3><span>Input weights used by the demonstration fusion</span></div>
+          <span id="fusionMode" class="map-updated">Prototype</span>
+        </div>
+        <div class="bihar-signal-grid" id="signalWeights" aria-live="polite"></div>
+        <p class="plain-text bihar-note">These are engineering baseline weights, not learned accuracy scores or flood probabilities.</p>
+      </section>
+      <section class="panel">
+        <div class="panel-heading-row">
+          <div><h3>Data sources</h3><span id="sourceSubtitle">Checking provider readiness</span></div>
+          <span id="sourceCount" class="health-badge">—</span>
+        </div>
+        <div class="bihar-sources" id="sourceList" aria-live="polite"></div>
+        <p class="plain-text bihar-note">Unavailable providers are shown as unavailable. Synthetic demo values are labelled clearly.</p>
+      </section>
+    </section>
+
+    <section class="panel station-focus">
+      <div class="panel-heading-row">
+        <div><h3>About this view</h3><span>What the dashboard can and cannot tell you</span></div>
+        <button id="assistantOpenButton" class="assistant-open-btn" type="button">Ask VarshaGuard AI</button>
+      </div>
+      <div class="bihar-about-grid">
+        <div class="station-focus-stat"><span>Area</span><strong>Patna and Muzaffarpur, Bihar</strong></div>
+        <div class="station-focus-stat"><span>System</span><strong id="serviceName">Bihar Live prototype</strong></div>
+        <div class="station-focus-stat"><span>Last refresh</span><strong id="lastUpdated">Waiting for data</strong></div>
+      </div>
+      <p class="plain-text bihar-note">Prototype decision support only. It is not an official flood warning, and its rainfall estimate is not a flood probability. For safety, follow official IMD, CWC, and local disaster-management guidance.</p>
+    </section>
   </main>
+
+  <div id="assistantModal" class="assistant-modal hidden" role="dialog" aria-modal="true" aria-labelledby="assistantTitle">
+    <div class="assistant-dialog">
+      <div class="assistant-dialog-header">
+        <div>
+          <span class="assistant-kicker">GROQ-POWERED</span>
+          <h3 id="assistantTitle">VarshaGuard AI</h3>
+          <p>Ask about this dashboard, rainfall inputs, data sources, or what the prototype can tell you.</p>
+        </div>
+        <button id="assistantCloseButton" class="assistant-close-btn" type="button" aria-label="Close assistant">&times;</button>
+      </div>
+      <div id="assistantMessages" class="assistant-messages" aria-live="polite">
+        <div class="assistant-message assistant-bot">Hi. Ask me to explain the Bihar Live dashboard and its current data.</div>
+      </div>
+      <form id="assistantForm" class="assistant-form">
+        <input id="assistantInput" type="text" autocomplete="off" placeholder="Ask: What does the rainfall estimate mean?" maxlength="500" required>
+        <button id="assistantSendButton" type="submit">Send</button>
+      </form>
+      <div class="assistant-disclaimer">Uses this dashboard's current context. Prototype data is not an official alert or verified flood prediction.</div>
+    </div>
+  </div>
+
+  <div id="message" class="message hidden" role="status"></div>
+  <script>
+    (() => {
+      const button = document.getElementById("prototypeMenuButton");
+      const menu = document.getElementById("prototypeMenu");
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const open = menu.hidden;
+        menu.hidden = !open;
+        button.setAttribute("aria-expanded", String(open));
+      });
+      document.addEventListener("click", () => {
+        menu.hidden = true;
+        button.setAttribute("aria-expanded", "false");
+      });
+      menu.addEventListener("click", (event) => event.stopPropagation());
+    })();
+  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+  <script src="/bihar-live.js"></script>
 </body>
 </html>
