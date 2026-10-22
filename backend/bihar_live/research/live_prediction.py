@@ -9,6 +9,7 @@ import copy
 import json
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -26,7 +27,7 @@ CWC_ENDPOINT = "https://ffs.india-water.gov.in/iam/api/new-entry-data/specificat
 IST = timezone(timedelta(hours=5, minutes=30))
 CACHE_SECONDS = 300
 FAILURE_CACHE_SECONDS = 30
-REQUEST_TIMEOUT_SECONDS = 14
+REQUEST_TIMEOUT_SECONDS = 8
 STALE_AFTER_HOURS = 24
 
 FOCUS_STATIONS = {
@@ -99,9 +100,12 @@ def _fetch_type(datatype: str, station_codes: list[str], now_ist: datetime) -> l
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
         response.raise_for_status()
+    except requests.RequestException as exc:
+        raise LiveFeedUnavailable(f"CWC {datatype} feed is unreachable ({type(exc).__name__}).") from exc
+    try:
         rows = response.json()
-    except (requests.RequestException, ValueError) as exc:
-        raise LiveFeedUnavailable(f"CWC {datatype} observations could not be fetched: {exc}") from exc
+    except ValueError as exc:
+        raise LiveFeedUnavailable(f"CWC {datatype} feed returned invalid JSON.") from exc
     if not isinstance(rows, list):
         raise LiveFeedUnavailable(f"CWC {datatype} response had an unexpected format.")
     return rows
@@ -318,8 +322,17 @@ def _build_payload() -> dict:
     if not station_codes:
         raise LiveFeedUnavailable("CWC station metadata is missing from the research model.")
     now_ist = datetime.now(timezone.utc).astimezone(IST)
-    stage_rows = _fetch_type("HHS", station_codes, now_ist)
-    rain_rows = _fetch_type("MPS", station_codes, now_ist)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        stage_future = executor.submit(_fetch_type, "HHS", station_codes, now_ist)
+        rain_future = executor.submit(_fetch_type, "MPS", station_codes, now_ist)
+        stage_rows = stage_future.result()
+        rainfall_error = None
+        try:
+            rain_rows = rain_future.result()
+        except LiveFeedUnavailable as exc:
+            # Stage is essential to this model; missing rainfall is median-imputed and disclosed.
+            rainfall_error = str(exc)
+            rain_rows = []
     stages = _aggregate_stage(stage_rows, station_meta)
     rains = _aggregate_rain(rain_rows, set(station_codes))
     predictions = [
@@ -371,9 +384,11 @@ def _build_payload() -> dict:
             "stations_with_recent_stage": stage_count,
             "stations_with_recent_rainfall": rain_count,
             "stations_in_model": len(station_codes),
+            "rainfall_status": "available" if rainfall_error is None else "unavailable",
+            "rainfall_error": rainfall_error,
             "latest_stage_at_ist": latest_stage.isoformat(timespec="minutes") if latest_stage is not None else None,
             "latest_rainfall_at_ist": latest_rain.isoformat(timespec="minutes") if latest_rain is not None else None,
-            "status": "available",
+            "status": "available" if rainfall_error is None else "partial",
         },
         "validation": {
             "research_only": True,
@@ -388,7 +403,7 @@ def _build_payload() -> dict:
             "It uses live CWC stage and rainfall observations; it does not ingest IMD radar, satellite rainfall, or numerical weather predictions.",
             "The current calendar day's live aggregates can be incomplete. Missing model inputs are median-imputed, so feature coverage is shown.",
             "This experimental output is not an official alert. Follow CWC, IMD, and local disaster-management guidance.",
-        ],
+        ] + (["CWC rainfall data could not be loaded; missing rainfall inputs were median-imputed."] if rainfall_error else []),
         "predictions": predictions,
     }
 
@@ -404,13 +419,29 @@ def get_live_predictions(force_refresh: bool = False) -> dict:
             return cached
         try:
             payload = _build_payload()
-        except Exception as exc:
+        except LiveFeedUnavailable as exc:
+            error_message = str(exc)
             payload = {
                 "success": True,
                 "available": False,
                 "mode": "unavailable",
                 "generated_at_ist": datetime.now(timezone.utc).astimezone(IST).isoformat(timespec="seconds"),
-                "error": str(exc),
+                "error": error_message,
+                "source": {
+                    "name": "Central Water Commission Flood Forecasting System",
+                    "url": "https://ffs.india-water.gov.in/",
+                    "status": "unavailable",
+                },
+                "predictions": [],
+                "limitations": ["No current model signal is shown because live source data or model inputs are unavailable."],
+            }
+        except Exception:
+            payload = {
+                "success": True,
+                "available": False,
+                "mode": "unavailable",
+                "generated_at_ist": datetime.now(timezone.utc).astimezone(IST).isoformat(timespec="seconds"),
+                "error": "The live CWC model request failed. Please try again shortly.",
                 "source": {
                     "name": "Central Water Commission Flood Forecasting System",
                     "url": "https://ffs.india-water.gov.in/",
