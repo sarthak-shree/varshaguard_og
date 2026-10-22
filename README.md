@@ -95,6 +95,10 @@ The current model was trained offline from the supplied `bihar_historical_rainfa
 
 Because the available historical labels are event-inventory records rather than a dense operational flood-observation series, validation metrics should be treated as prototype research diagnostics, not evidence of operational accuracy.
 
+## CWC next-day gauge threshold research experiment
+
+An additional offline model estimates next-calendar-day first crossings of published danger levels at 13 Bihar CWC gauges. It includes Gandhighat (Patna) and Sikandarpur (Muzaffarpur), but it is not a flood-inundation forecast and is not loaded by the Bihar Live dashboard or API. On the 2020+ held-out data, precision was 19.3% at 73.8% recall, with 578 false alarms and 49 missed crossings. Muzaffarpur Sikandarpur had only four positive test cases, so its local result is uncertain. Read the [research notes](docs/bihar_live/cwc-stage-research.md) before interpreting these numbers.
+
 ## SIH26071 expansion path
 
 The problem statement calls for integration of satellite, radar, observational weather and numerical weather prediction inputs. The current repository does not contain sufficient live/training assets for all of those channels. The architecture is therefore prepared for additional feature groups without fabricating them.

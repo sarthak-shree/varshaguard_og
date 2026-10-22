@@ -1,0 +1,324 @@
+{
+  "model_name": "VarshaGuard Bihar CWC first-crossing next-day gauge research model",
+  "trained_at_utc": "2026-10-22T21:16:41+05:30",
+  "training_source": "cwc_bihar_gauge_history.csv",
+  "source_sha256": "a7677f1655711f40933a81262c44fd3372ee084ca3dc185bd6b211839ce9aaa4",
+  "source_upstream": "CWC Flood Forecast System observations mirrored as Parquet by diagram-chasing/cwc-flood-forecasts",
+  "source_urls": [
+    "https://ffs.india-water.gov.in/",
+    "https://github.com/diagram-chasing/cwc-flood-forecasts",
+    "https://diagram-chasing.github.io/cwc-flood-forecasts/daily.parquet"
+  ],
+  "source_license_note": "Mirror states Open Database License and requests CWC attribution; verify terms before redistribution.",
+  "target_column": "first_danger_crossing_next_day",
+  "target_definition": "For an observed gauge-day still below danger, predict whether the next observed calendar day's maximum stage reaches the published danger level.",
+  "forecast_horizon": "Next calendar day; source timestamps do not establish an exact rolling 24-hour issue time.",
+  "geographic_resolution": "Pooled model for 13 nearby Bihar CWC gauges; focus outputs include Gandhighat (Patna) and Sikandarpur (Muzaffarpur). Same-day readings across the local gauge network are predictors.",
+  "features": [
+    "target_stage_mean_margin_m",
+    "target_stage_max_margin_m",
+    "target_stage_change_24h_m",
+    "target_stage_change_72h_m",
+    "target_stage_change_168h_m",
+    "target_stage_3day_mean_margin_m",
+    "target_stage_n_obs",
+    "target_rainfall_24h_mm",
+    "target_rainfall_72h_mm",
+    "target_rainfall_168h_mm",
+    "target_month_sin",
+    "target_month_cos",
+    "network_stage_margin_002-MGD5PTN",
+    "network_stage_margin_003-MGD5PTN",
+    "network_stage_margin_004-MGD4PTN",
+    "network_stage_margin_005-MGD5PTN",
+    "network_stage_margin_009-MGD5PTN",
+    "network_stage_margin_011-MGD5PTN",
+    "network_stage_margin_016-MGD4PTN",
+    "network_stage_margin_017-MGD4PTN",
+    "network_stage_margin_021-MGD5PTN",
+    "network_stage_margin_026-MGD5PTN",
+    "network_stage_margin_027-MGD5PTN",
+    "network_stage_margin_032-MGD4PTN",
+    "network_stage_margin_033-MGD4PTN",
+    "network_rainfall_mm_002-MGD5PTN",
+    "network_rainfall_mm_003-MGD5PTN",
+    "network_rainfall_mm_004-MGD4PTN",
+    "network_rainfall_mm_005-MGD5PTN",
+    "network_rainfall_mm_009-MGD5PTN",
+    "network_rainfall_mm_011-MGD5PTN",
+    "network_rainfall_mm_016-MGD4PTN",
+    "network_rainfall_mm_017-MGD4PTN",
+    "network_rainfall_mm_021-MGD5PTN",
+    "network_rainfall_mm_026-MGD5PTN",
+    "network_rainfall_mm_027-MGD5PTN",
+    "network_rainfall_mm_032-MGD4PTN",
+    "network_rainfall_mm_033-MGD4PTN",
+    "target_station"
+  ],
+  "data_quality": {
+    "quality": {
+      "stage_code": "HHS",
+      "rainfall_code": "MPS",
+      "raw_stage_rows": 169736,
+      "quality_stage_rows": 160472,
+      "rejected_stage_rows": 9264,
+      "raw_rainfall_rows": 71348,
+      "quality_rainfall_rows": 71344,
+      "rejected_rainfall_rows": 4,
+      "stage_filter": "At least 3 readings/day; daily min >= danger-25m; mean and max in [danger-20m, published highest+2m]; max >= mean and min.",
+      "rainfall_filter": "MPS daily sum 0-500mm and at least one reported reading.",
+      "target_rule": "Only days still below danger are eligible; positive if the next observed calendar day's maximum reaches danger. Days already at/above danger are excluded.",
+      "missing_days_are_not_filled_or_labeled_negative": true,
+      "stations_used_as_targets": 13,
+      "neighbor_gauges_used_as_same_day_context": 13
+    },
+    "stations": {
+      "002-MGD5PTN": {
+        "name": "Dighaghat",
+        "lat": 25.647777777777776,
+        "lon": 85.06527777777778,
+        "warning_level_m": 49.45,
+        "danger_level_m": 50.45,
+        "published_highest_flow_level_m": 52.52,
+        "quality_screened_stage_days": 9339,
+        "at_risk_observed_day_pairs": 8726
+      },
+      "003-MGD5PTN": {
+        "name": "Gandhighat",
+        "lat": 25.62333333333333,
+        "lon": 85.17111111111112,
+        "warning_level_m": 47.6,
+        "danger_level_m": 48.6,
+        "published_highest_flow_level_m": 50.52,
+        "quality_screened_stage_days": 19174,
+        "at_risk_observed_day_pairs": 18040
+      },
+      "004-MGD4PTN": {
+        "name": "Sikandarpur (Muzzafarpur)",
+        "lat": 26.142777777777777,
+        "lon": 85.3761111111111,
+        "warning_level_m": 51.53,
+        "danger_level_m": 52.53,
+        "published_highest_flow_level_m": 54.29,
+        "quality_screened_stage_days": 22122,
+        "at_risk_observed_day_pairs": 20789
+      },
+      "005-MGD5PTN": {
+        "name": "Munger",
+        "lat": 25.37777777777778,
+        "lon": 86.4625,
+        "warning_level_m": 38.33,
+        "danger_level_m": 39.33,
+        "published_highest_flow_level_m": 40.99,
+        "quality_screened_stage_days": 9989,
+        "at_risk_observed_day_pairs": 9578
+      },
+      "009-MGD5PTN": {
+        "name": "Rewaghat",
+        "lat": 25.993333333333336,
+        "lon": 85.04972222222221,
+        "warning_level_m": 53.41,
+        "danger_level_m": 54.41,
+        "published_highest_flow_level_m": 55.46,
+        "quality_screened_stage_days": 9526,
+        "at_risk_observed_day_pairs": 9178
+      },
+      "011-MGD5PTN": {
+        "name": "Hajipur",
+        "lat": 25.689722222222223,
+        "lon": 85.19611111111111,
+        "warning_level_m": 49.32,
+        "danger_level_m": 50.32,
+        "published_highest_flow_level_m": 50.93,
+        "quality_screened_stage_days": 9062,
+        "at_risk_observed_day_pairs": 8871
+      },
+      "016-MGD4PTN": {
+        "name": "Runisaidpur",
+        "lat": 26.34611111111111,
+        "lon": 85.48583333333333,
+        "warning_level_m": 54.0,
+        "danger_level_m": 55.0,
+        "published_highest_flow_level_m": 58.34,
+        "quality_screened_stage_days": 14228,
+        "at_risk_observed_day_pairs": 12781
+      },
+      "017-MGD4PTN": {
+        "name": "Benibad",
+        "lat": 26.14472222222222,
+        "lon": 85.69250000000001,
+        "warning_level_m": 47.68,
+        "danger_level_m": 48.68,
+        "published_highest_flow_level_m": 50.12,
+        "quality_screened_stage_days": 14543,
+        "at_risk_observed_day_pairs": 12012
+      },
+      "021-MGD5PTN": {
+        "name": "Sripalpur",
+        "lat": 25.50138888888889,
+        "lon": 85.12083333333332,
+        "warning_level_m": 49.6,
+        "danger_level_m": 50.6,
+        "published_highest_flow_level_m": 53.91,
+        "quality_screened_stage_days": 18768,
+        "at_risk_observed_day_pairs": 17062
+      },
+      "026-MGD5PTN": {
+        "name": "Koelwar",
+        "lat": 25.57138888888889,
+        "lon": 84.79777777777778,
+        "warning_level_m": 54.52,
+        "danger_level_m": 55.52,
+        "published_highest_flow_level_m": 58.88,
+        "quality_screened_stage_days": 18709,
+        "at_risk_observed_day_pairs": 17828
+      },
+      "027-MGD5PTN": {
+        "name": "Maner",
+        "lat": 25.72722222222222,
+        "lon": 84.86805555555554,
+        "warning_level_m": 51.0,
+        "danger_level_m": 52.0,
+        "published_highest_flow_level_m": 53.79,
+        "quality_screened_stage_days": 7941,
+        "at_risk_observed_day_pairs": 7278
+      },
+      "032-MGD4PTN": {
+        "name": "Kanti",
+        "lat": 26.27361111111111,
+        "lon": 85.30027777777778,
+        "warning_level_m": 53.09,
+        "danger_level_m": 54.09,
+        "published_highest_flow_level_m": 56.45,
+        "quality_screened_stage_days": 3435,
+        "at_risk_observed_day_pairs": 3179
+      },
+      "033-MGD4PTN": {
+        "name": "Sakra",
+        "lat": 26.04055555555556,
+        "lon": 85.55499999999999,
+        "warning_level_m": 49.58,
+        "danger_level_m": 50.58,
+        "published_highest_flow_level_m": 51.47,
+        "quality_screened_stage_days": 3636,
+        "at_risk_observed_day_pairs": 3443
+      }
+    }
+  },
+  "split": {
+    "training_target_years": "through 2015",
+    "validation_target_years": "2016-2019",
+    "untouched_test_target_years": "2020 through latest observed target day",
+    "training_rows": 105885,
+    "training_first_crossings": 619,
+    "validation_rows": 15985,
+    "validation_first_crossings": 83,
+    "test_rows": 26895,
+    "test_first_crossings": 187
+  },
+  "candidate_validation_metrics": {
+    "logistic_regression": {
+      "average_precision": 0.309669,
+      "validation_prevalence": 0.005192,
+      "brier_score": 0.004371,
+      "train_prevalence_baseline_brier": 0.005166
+    },
+    "random_forest": {
+      "average_precision": 0.403643,
+      "validation_prevalence": 0.005192,
+      "brier_score": 0.004163,
+      "train_prevalence_baseline_brier": 0.005166
+    },
+    "hist_gradient_boosting": {
+      "average_precision": 0.393803,
+      "validation_prevalence": 0.005192,
+      "brier_score": 0.003954,
+      "train_prevalence_baseline_brier": 0.005166
+    }
+  },
+  "selected_model": "random_forest",
+  "threshold_selection": "F2 maximized on 2016-2019 validation data",
+  "decision_threshold": 0.057717,
+  "test_metrics": {
+    "rows": 26895,
+    "positive_rows": 187,
+    "positive_fraction": 0.006953,
+    "threshold": 0.057717,
+    "accuracy": 0.976687,
+    "precision": 0.192737,
+    "recall": 0.737968,
+    "average_precision": 0.393417,
+    "prevalence_baseline_average_precision": 0.006953,
+    "roc_auc": 0.976537,
+    "brier_score": 0.005457,
+    "train_prevalence_baseline_brier": 0.006906,
+    "confusion_matrix_labels_0_1": [
+      [
+        26130,
+        578
+      ],
+      [
+        49,
+        138
+      ]
+    ]
+  },
+  "focus_gauge_test_metrics": {
+    "003-MGD5PTN": {
+      "label": "Patna: Gandhighat",
+      "rows": 2139,
+      "positive_rows": 14,
+      "positive_fraction": 0.006545,
+      "threshold": 0.057717,
+      "accuracy": 0.971482,
+      "precision": 0.15942,
+      "recall": 0.785714,
+      "average_precision": 0.450266,
+      "prevalence_baseline_average_precision": 0.006545,
+      "roc_auc": 0.952067,
+      "brier_score": 0.004911,
+      "train_prevalence_baseline_brier": 0.006506,
+      "confusion_matrix_labels_0_1": [
+        [
+          2067,
+          58
+        ],
+        [
+          3,
+          11
+        ]
+      ]
+    },
+    "004-MGD4PTN": {
+      "label": "Muzaffarpur: Sikandarpur",
+      "rows": 2128,
+      "positive_rows": 4,
+      "positive_fraction": 0.00188,
+      "threshold": 0.057717,
+      "accuracy": 0.986372,
+      "precision": 0.121212,
+      "recall": 1.0,
+      "average_precision": 0.761111,
+      "prevalence_baseline_average_precision": 0.00188,
+      "roc_auc": 0.999176,
+      "brier_score": 0.001281,
+      "train_prevalence_baseline_brier": 0.001876,
+      "confusion_matrix_labels_0_1": [
+        [
+          2095,
+          29
+        ],
+        [
+          0,
+          4
+        ]
+      ]
+    }
+  },
+  "operational_eligible": false,
+  "loaded_by_dashboard_server": false,
+  "warning": "Research-only gauge threshold experiment. It does not predict grid-cell inundation, extent, or depth. It uses daily observations and historical rainfall, not archived operational forecasts. Review gauge datum, source quality, local performance, and live feature availability before operational use.",
+  "artifact_path": "models/research/cwc_bihar_gauge_24h_stage_research.joblib",
+  "holdout_predictions_path": "data/bihar_live/research/cwc_bihar_gauge_24h_stage_research_holdout_predictions.csv"
+}
+
