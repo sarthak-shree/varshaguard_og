@@ -316,9 +316,9 @@
     }
   },
   "operational_eligible": false,
-  "loaded_by_dashboard_server": false,
-  "warning": "Research-only gauge threshold experiment. It does not predict grid-cell inundation, extent, or depth. It uses daily observations and historical rainfall, not archived operational forecasts. Review gauge datum, source quality, local performance, and live feature availability before operational use.",
+  "loaded_by_dashboard_server": true,
+  "warning": "Research-only gauge threshold estimate exposed in Bihar Live using current CWC stage and rainfall observations. It does not predict grid-cell inundation, extent, or depth. Live feature coverage, probability calibration, gauge datums, and local performance require expert validation before any public-safety use.",
   "artifact_path": "models/research/cwc_bihar_gauge_24h_stage_research.joblib",
-  "holdout_predictions_path": "data/bihar_live/research/cwc_bihar_gauge_24h_stage_research_holdout_predictions.csv"
+  "holdout_predictions_path": "data/bihar_live/research/cwc_bihar_gauge_24h_stage_research_holdout_predictions.csv",
+  "runtime_sklearn_version": "1.9.0"
 }
-

@@ -1,4 +1,4 @@
-"""Phase 3 API for fusion and synthetic model evaluation."""
+"""Bihar Live API for gauge data, research inference, and prototype baselines."""
 from flask import Blueprint, jsonify
 from .config import DATA_MODE, PREDICTION_HORIZON_HOURS, SUPPORTED_DISTRICTS
 from .adapters.sources import build_adapters
@@ -28,6 +28,12 @@ def fusion():
     values={"radar":20.0,"satellite":18.0,"observations":16.0,"nwp":14.0}
     return jsonify({"success":True,"mode":DATA_MODE,"badge":"Synthetic demo data" if DATA_MODE=="synthetic" else "Real data",
                     "lead_hours":lead,**fuse(values,lead)})
+
+@bp.get("/model/live")
+def live_model():
+    # Load the CWC connection only when this live endpoint is requested.
+    from .research.live_prediction import get_live_predictions
+    return jsonify(get_live_predictions())
 
 @bp.get("/model/evaluation")
 def evaluation():

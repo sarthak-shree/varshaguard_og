@@ -1,10 +1,18 @@
-# CWC gauge threshold crossing: research model
+# CWC gauge threshold crossing: research model and live display
 
-This is an offline research artifact for Bihar Live. It estimates whether a selected CWC gauge that is below its published danger level on one observation day crosses that level on the next observed calendar day. It is not a grid-cell inundation model, and the daily observation convention does not establish an exact rolling 24-hour forecast.
+The saved model estimates whether a selected CWC gauge that is below its published danger level on one observation day reaches that level on the next observed calendar day. The Bihar Live dashboard loads this model for Gandhighat (Patna) and Sikandarpur (Muzaffarpur) and fetches current CWC gauge inputs. It is not a grid-cell inundation model, and the daily observation convention does not establish an exact rolling 24-hour forecast.
+
+## Live integration
+
+The dashboard calls `GET /api/bihar-live/model/live`. The service reads the model artifact and metadata from `models/research/`, then queries the public CWC Flood Forecast System for `HHS` stage observations and `MPS` rainfall observations across the 13 model gauges. It aggregates readings by India-local calendar day and applies the stage/rain quality checks described below. The response includes the latest observation times, whether the current day is incomplete, per-target feature coverage, the historical test metrics, and limitations. Data is cached in each server process for five minutes.
+
+The CWC FFS endpoint used by the application is on the official CWC domain, but the specific query route is not a documented stable API contract. If it changes or is unavailable, the dashboard hides model estimates and reports the feed unavailable. Vercel bundles the model artifact and its metadata with the Flask function.
+
+The returned probability is an experimental estimate of a CWC gauge reaching its published danger stage on the next calendar day. It is not a flood probability, an inundation estimate, or an official warning. Only live CWC stage and rainfall observations are used; the system does not ingest IMD radar, satellite rainfall, or numerical weather predictions. Current-day rainfall and stage summaries may be incomplete, and missing inputs are median-imputed. The dashboard shows feature coverage so missing data is visible.
 
 ## Source and reproduction
 
-The observations come from the Central Water Commission Flood Forecast System, retrieved through the `diagram-chasing/cwc-flood-forecasts` Parquet mirror. The mirror releases its dataset under the Open Database License and requests attribution to CWC. Do not redistribute the source CSV; the fetch script downloads the selected station rows when needed.
+Historical training observations come from the Central Water Commission Flood Forecast System, retrieved through the `diagram-chasing/cwc-flood-forecasts` Parquet mirror. The mirror releases its dataset under the Open Database License and requests attribution to CWC. Do not redistribute the source CSV; the fetch script downloads the selected station rows when needed.
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -13,7 +21,7 @@ python backend/bihar_live/research/fetch_cwc_bihar_history.py
 python backend/bihar_live/research/train_cwc_gauge_nextday.py
 ```
 
-The scripts write the downloaded source and holdout predictions to `data/bihar_live/research/`. The trained joblib artifact and its metadata are in `models/research/`. The artifact is committed for reproducibility, but it is not loaded by the dashboard or live API.
+The scripts write the downloaded source and holdout predictions to `data/bihar_live/research/`. The trained joblib artifact and its metadata are in `models/research/`.
 
 Sources:
 
@@ -36,5 +44,4 @@ Patna Gandhighat had 14 positive test days and Muzaffarpur Sikandarpur had 4; th
 
 ## Limits
 
-This model forecasts a gauge threshold crossing from daily observations and historical rainfall. It does not ingest archived weather forecasts, satellite or radar forecasts, and it does not estimate flood extent or depth. CWC gauge datums and reporting windows need expert verification. The model has not been connected to the application, validated for operational use, or approved for public warning decisions. The existing Bihar Live dashboard and APIs are unchanged by this experiment.
-
+This model forecasts a gauge threshold crossing from daily observations and historical rainfall. It does not ingest archived weather forecasts, satellite or radar forecasts, and it does not estimate flood extent or depth. CWC gauge datums and reporting windows need expert verification. Live feature coverage, probability calibration, and district-level usefulness have not been validated for operational use. The model is not approved for public warning decisions.

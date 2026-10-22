@@ -95,9 +95,13 @@ The current model was trained offline from the supplied `bihar_historical_rainfa
 
 Because the available historical labels are event-inventory records rather than a dense operational flood-observation series, validation metrics should be treated as prototype research diagnostics, not evidence of operational accuracy.
 
-## CWC next-day gauge threshold research experiment
+## CWC live gauge model (research)
 
-An additional offline model estimates next-calendar-day first crossings of published danger levels at 13 Bihar CWC gauges. It includes Gandhighat (Patna) and Sikandarpur (Muzaffarpur), but it is not a flood-inundation forecast and is not loaded by the Bihar Live dashboard or API. On the 2020+ held-out data, precision was 19.3% at 73.8% recall, with 578 false alarms and 49 missed crossings. Muzaffarpur Sikandarpur had only four positive test cases, so its local result is uncertain. Read the [research notes](docs/bihar_live/cwc-stage-research.md) before interpreting these numbers.
+The Bihar Live dashboard now reads current stage (`HHS`) and rainfall (`MPS`) observations from the Central Water Commission Flood Forecast System for 13 nearby Bihar gauges. The live API loads the saved research model at `GET /api/bihar-live/model/live` and shows next-calendar-day gauge threshold estimates for Patna Gandhighat and Muzaffarpur Sikandarpur. The dashboard refreshes every five minutes; each server process caches the CWC response briefly to avoid repeated upstream requests.
+
+This is a research connection to a public CWC endpoint. It has not been operationally approved. It estimates the chance that a gauge's daily maximum reaches its published danger level on the next calendar day. It does not forecast flood probability for a neighborhood, inundation extent, or depth. Current-day aggregates may be incomplete; the dashboard shows reading freshness and input coverage. The model uses median imputation for missing features and has not been calibrated against live operational forecasts.
+
+On untouched 2020+ historical data, precision was 19.3% at 73.8% recall (578 false alarms and 49 missed crossings across 26,895 eligible gauge-days). Patna Gandhighat had 14 positive test days and Muzaffarpur Sikandarpur had 4, so local performance remains uncertain. Read the [research and live-integration notes](docs/bihar_live/cwc-stage-research.md) before interpreting these outputs. Follow official CWC, IMD, and local disaster-management guidance.
 
 ## SIH26071 expansion path
 

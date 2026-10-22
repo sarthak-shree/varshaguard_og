@@ -7,7 +7,7 @@ dependencies = [
     "Flask",
     "flask-cors",
     "pandas",
-    "scikit-learn",
+    "scikit-learn==1.9.0",
     "joblib",
     "requests>=2.32,<3",
 ]

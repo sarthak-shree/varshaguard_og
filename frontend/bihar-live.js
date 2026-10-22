@@ -1,24 +1,24 @@
 (() => {
   "use strict";
 
-  const API = "/api/bihar-live";
+  const API = "/api/bihar-live/model/live";
   const DISTRICTS = {
-    patna: { name: "Patna", center: [25.5941, 85.1376] },
-    muzaffarpur: { name: "Muzaffarpur", center: [26.1209, 85.3647] }
+    patna: { name: "Patna", center: [25.5941, 85.1376], prefix: "patna" },
+    muzaffarpur: { name: "Muzaffarpur", center: [26.1209, 85.3647], prefix: "muzaffarpur" }
   };
+  const REFRESH_MS = 5 * 60 * 1000;
   const $ = (id) => document.getElementById(id);
   let map = null;
-  let districtLayer = null;
+  let stationLayer = null;
   let userMarker = null;
   let currentData = {};
   let refreshTimer = null;
-  let leadTimer = null;
 
-  async function getJson(path, options = {}) {
-    const response = await fetch(path, { cache: "no-store", ...options });
+  async function getJson(path) {
+    const response = await fetch(path, { cache: "no-store" });
     let data;
     try { data = await response.json(); }
-    catch { throw new Error("The service returned an unreadable response."); }
+    catch { throw new Error("The Bihar Live service returned an unreadable response."); }
     if (!response.ok || data.success === false) {
       throw new Error(data.error || "The Bihar Live service could not be reached.");
     }
@@ -38,90 +38,213 @@
 
   function setText(id, value) {
     const node = $(id);
-    if (node) node.textContent = value;
+    if (node) node.textContent = value == null ? "—" : String(value);
   }
 
-  function formatNumber(value, digits = 1) {
-    const number = Number(value);
-    return Number.isFinite(number) ? number.toFixed(digits) : "—";
+  function finiteNumber(value) {
+    return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
   }
 
-  function friendlyStatus(value) {
-    const status = String(value || "unknown").replaceAll("_", " ");
-    return status;
-  }
-
-  function updateDashboard(health, fusion, evaluation, sources) {
-    currentData = { health, fusion, evaluation, sources };
-    const synthetic = String(health.mode || "").toLowerCase() === "synthetic";
-    const modeLabel = health.badge || (synthetic ? "Synthetic demo data" : "Real data");
-    setText("dataMode", synthetic ? "Demo only" : modeLabel);
-    setText("dataBadge", modeLabel);
-    setText("fusionMode", synthetic ? "Synthetic demo" : modeLabel);
-    setText("statusNote", synthetic
-      ? "This screen is using clearly labelled demo inputs. It is not a live flood warning."
-      : "Provider status is shown below. This prototype is not an official flood warning.");
-    setText("horizonValue", health.horizon_hours || 72);
-    setText("serviceName", health.project || "Bihar Live prototype");
-    setText("lastUpdated", new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" }));
-
-    const estimate = fusion.estimate_mm;
-    setText("rainEstimate", Number.isFinite(Number(estimate)) ? formatNumber(estimate, 1) + " mm" : "—");
-    setText("rainEstimateNote", synthetic ? "Synthetic fusion estimate" : "Fusion output");
-    setText("leadValue", fusion.lead_hours || $("leadSelect").value);
-    setText("leadMetric", fusion.lead_hours || $("leadSelect").value);
-    setText("maeMetric", formatNumber(evaluation.mae, 2));
-    setText("rmseMetric", formatNumber(evaluation.rmse, 2));
-    setText("sourceSubtitle", sources.mode === "synthetic" ? "Demo mode is active" : "Provider readiness");
-    setText("sourceCount", (sources.sources || []).length + " SOURCES");
-
-    const weightRoot = $("signalWeights");
-    weightRoot.replaceChildren();
-    Object.entries(fusion.weights || {}).forEach(([name, value]) => {
-      const item = document.createElement("div");
-      item.className = "bihar-signal-item";
-      const label = document.createElement("span");
-      label.textContent = name + " signal";
-      const amount = document.createElement("strong");
-      amount.textContent = Math.round(Number(value) * 100) + "%";
-      item.append(label, amount);
-      weightRoot.appendChild(item);
+  function formatDate(value) {
+    if (!value) return "—";
+    const date = new Date(value.length === 10 ? value + "T00:00:00+05:30" : value);
+    return Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString("en-IN", {
+      day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata"
     });
+  }
 
-    const sourceRoot = $("sourceList");
-    sourceRoot.replaceChildren();
-    (sources.sources || []).forEach((source) => {
+  function formatTime(value) {
+    if (!value) return "—";
+    const date = new Date(value.includes("+") || value.endsWith("Z") ? value : value + "+05:30");
+    return Number.isNaN(date.valueOf()) ? value : date.toLocaleString("en-IN", {
+      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata"
+    }) + " IST";
+  }
+
+  function hoursAgo(value) {
+    const hours = Number(value);
+    if (!finiteNumber(value)) return "age unknown";
+    if (hours < 1) return "less than 1 hour ago";
+    return Math.round(hours) + " hour" + (Math.round(hours) === 1 ? "" : "s") + " ago";
+  }
+
+  function signalState(prediction) {
+    if (!prediction || prediction.status === "stale" || prediction.status === "unavailable") return "stale";
+    if (prediction.status === "danger_level_reached") return "danger";
+    if (!finiteNumber(prediction.model_probability) || !finiteNumber(prediction.decision_threshold)) return "stale";
+    return Number(prediction.model_probability) >= Number(prediction.decision_threshold) ? "elevated" : "lower";
+  }
+
+  function updateCard(districtKey, prediction) {
+    const district = DISTRICTS[districtKey];
+    const prefix = district.prefix;
+    const signal = $(prefix + "Signal");
+    const state = signalState(prediction);
+    const label = prediction?.status === "danger_level_reached"
+      ? "Danger level reached"
+      : prediction?.status === "stale"
+        ? "Reading is old"
+        : prediction?.status === "unavailable"
+          ? "No live reading"
+          : state === "elevated" ? "Elevated model signal" : "Lower model signal";
+
+    signal.textContent = label;
+    signal.dataset.state = state;
+    $(prefix + "Card").dataset.state = districtKey === $("districtSelect").value ? "selected" : "";
+    setText(prefix + "Stage", finiteNumber(prediction?.current_stage_m) ? Number(prediction.current_stage_m).toFixed(2) + " m" : "—");
+    setText(prefix + "Danger", finiteNumber(prediction?.danger_level_m) ? Number(prediction.danger_level_m).toFixed(2) + " m" : "—");
+    setText(prefix + "Time", formatTime(prediction?.observed_at_ist));
+    setText(prefix + "Rain", finiteNumber(prediction?.rainfall_today_mm) ? Number(prediction.rainfall_today_mm).toFixed(1) + " mm" : "—");
+
+    const probabilityLabel = $(prefix + "Probability");
+    const probabilityCaption = $(prefix + "ProbabilityLabel");
+    if (prediction?.status === "danger_level_reached") {
+      probabilityLabel.textContent = "Observed";
+      probabilityCaption.textContent = "CWC gauge reading has reached danger level";
+      setText(prefix + "ForecastText", "The latest observed river level is at or above the CWC danger level.");
+    } else if (prediction?.status === "predicted" && finiteNumber(prediction.model_probability)) {
+      probabilityLabel.textContent = (Number(prediction.model_probability) * 100).toFixed(1) + "%";
+      probabilityCaption.textContent = "model-estimated chance of reaching danger stage";
+      setText(prefix + "ForecastText", "For " + formatDate(prediction.forecast_date) + ": experimental estimate that this gauge may reach its CWC danger level.");
+    } else {
+      probabilityLabel.textContent = "—";
+      probabilityCaption.textContent = "No model estimate shown";
+      setText(prefix + "ForecastText", prediction?.message || "Waiting for recent, quality-checked CWC readings.");
+    }
+
+    const coverage = prediction?.feature_coverage;
+    const coverageText = coverage ? "Model inputs available: " + coverage.available + " of " + coverage.total + ". " : "";
+    const countText = finiteNumber(prediction?.observations_today)
+      ? Number(prediction.observations_today) + " stage readings in today's summary. " : "";
+    const partialText = prediction?.daily_summary_partial ? "Today's summary may be incomplete. " : "";
+    const ageText = finiteNumber(prediction?.data_age_hours) ? "Latest reading " + hoursAgo(prediction.data_age_hours) + ". " : "";
+    const maxText = finiteNumber(prediction?.daily_max_stage_m)
+      ? "Today's highest stage was " + Number(prediction.daily_max_stage_m).toFixed(2) + " m. " : "";
+    setText(prefix + "Quality", coverageText + countText + maxText + ageText + partialText + (prediction?.message && prediction.status !== "predicted" ? prediction.message : ""));
+  }
+
+  function makePopup(prediction) {
+    const root = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = prediction.district + " · " + prediction.station_name;
+    const reading = document.createElement("div");
+    reading.textContent = finiteNumber(prediction.current_stage_m)
+      ? "Latest level: " + Number(prediction.current_stage_m).toFixed(2) + " m"
+      : "Latest level unavailable";
+    const signal = document.createElement("div");
+    if (prediction.status === "predicted") {
+      signal.textContent = "Next-day gauge estimate: " + (Number(prediction.model_probability) * 100).toFixed(1) + "%";
+    } else {
+      signal.textContent = prediction.signal || prediction.message || "No current model estimate";
+    }
+    root.append(title, reading, signal);
+    return root;
+  }
+
+  function markerColor(prediction) {
+    const state = signalState(prediction);
+    if (state === "danger") return "#F87171";
+    if (state === "elevated") return "#FBBF24";
+    if (state === "lower") return "#34D399";
+    return "#94A3B8";
+  }
+
+  function renderMap(predictions) {
+    if (!map || !stationLayer) return;
+    stationLayer.clearLayers();
+    (predictions || []).forEach((prediction) => {
+      const lat = Number(prediction.latitude);
+      const lon = Number(prediction.longitude);
+      if (!finiteNumber(prediction.latitude) || !finiteNumber(prediction.longitude)) return;
+      L.circleMarker([lat, lon], {
+        radius: 10, color: "#fff", weight: 3,
+        fillColor: markerColor(prediction), fillOpacity: 1
+      }).addTo(stationLayer).bindPopup(makePopup(prediction));
+    });
+  }
+
+  function renderSources(data) {
+    const source = data.source || {};
+    const root = $("sourceList");
+    root.replaceChildren();
+    const total = Number(source.stations_in_model) || 13;
+    const entries = [
+      { name: "CWC river stage (HHS)", count: source.stations_with_recent_stage, rows: source.stage_rows_received },
+      { name: "CWC rainfall (MPS)", count: source.stations_with_recent_rainfall, rows: source.rainfall_rows_received }
+    ];
+    entries.forEach((entry) => {
       const item = document.createElement("div");
       item.className = "bihar-source-item";
       const label = document.createElement("span");
-      label.textContent = source.name;
+      label.textContent = entry.name;
       const status = document.createElement("strong");
-      status.textContent = friendlyStatus(source.status);
-      status.dataset.state = source.status || "unknown";
+      const count = Number(entry.count);
+      status.textContent = finiteNumber(entry.count) ? count + "/" + total + " gauges" : "unavailable";
+      status.dataset.state = finiteNumber(entry.count) && count > 0 ? (count === total ? "ready" : "partial") : "unavailable";
       item.append(label, status);
-      sourceRoot.appendChild(item);
+      root.appendChild(item);
     });
+    setText("sourceSubtitle", data.available ? "Connected to the CWC Flood Forecast System" : "CWC readings are not available right now");
+    setText("sourceCount", data.available ? "LIVE SOURCE" : "OFFLINE");
+  }
 
+  function updateDashboard(data) {
+    currentData.live = data;
+    const predictions = data.predictions || [];
+    const byDistrict = Object.fromEntries(predictions.map((prediction) => [
+      prediction.district?.toLowerCase(), prediction
+    ]));
+    updateCard("patna", byDistrict.patna);
+    updateCard("muzaffarpur", byDistrict.muzaffarpur);
+    renderMap(predictions);
+    renderSources(data);
+
+    const card = $("connectionCard");
+    if (!data.available) {
+      card.dataset.state = "unavailable";
+      setText("dataMode", "No live readings");
+      setText("dataBadge", "CWC unavailable");
+      setText("statusNote", data.error || "No current estimate is shown because live gauge data could not be loaded.");
+      setText("stationCount", "0 of 2");
+      setText("forecastBadge", "Waiting for CWC");
+    } else {
+      const current = predictions.filter((item) => finiteNumber(item.data_age_hours));
+      const freshestAge = current.length ? Math.min(...current.map((item) => Number(item.data_age_hours))) : Infinity;
+      const hasPrediction = predictions.some((item) => item.status === "predicted" || item.status === "danger_level_reached");
+      const state = freshestAge <= 6 ? "live" : "delayed";
+      card.dataset.state = state;
+      setText("dataMode", state === "live" ? "Live CWC readings" : "CWC update delayed");
+      setText("dataBadge", freshestAge <= 6 ? "Updating" : "Check reading time");
+      setText("statusNote", hasPrediction
+        ? "The gauge readings below come from CWC. The model gives an experimental next-calendar-day estimate."
+        : "CWC connected, but recent quality-checked data is not available for the focus gauges.");
+      const usable = predictions.filter((item) => item.status === "predicted" || item.status === "danger_level_reached").length;
+      setText("stationCount", usable + " of 2");
+      setText("forecastBadge", hasPrediction ? "CWC data connected" : "No current estimate");
+    }
+    setText("lastUpdated", formatTime(data.source?.latest_stage_at_ist || data.generated_at_ist));
     setText("selectedDistrict", DISTRICTS[$("districtSelect").value].name);
-    setText("leadMetric", $("leadSelect").value);
     clearError();
+    selectDistrict(false);
   }
 
   async function loadDashboard() {
     try {
-      const lead = Number($("leadSelect").value);
-      const responses = await Promise.all([
-        getJson(API + "/health"),
-        getJson(API + "/fusion?lead=" + encodeURIComponent(lead)),
-        getJson(API + "/model/evaluation"),
-        getJson(API + "/sources")
-      ]);
-      updateDashboard(...responses);
+      const data = await getJson(API);
+      updateDashboard(data);
+      if (!data.available) showError(data.error || "CWC live data is currently unavailable.");
     } catch (error) {
       showError(error.message);
-      setText("dataMode", "Unavailable");
-      setText("dataBadge", "Service unavailable");
-      setText("statusNote", "The Bihar Live API could not be reached. No current estimate is shown.");
+      updateCard("patna", { status: "unavailable", message: "No current estimate is shown because the service could not be reached." });
+      updateCard("muzaffarpur", { status: "unavailable", message: "No current estimate is shown because the service could not be reached." });
+      renderMap([]);
+      $("connectionCard").dataset.state = "unavailable";
+      setText("dataMode", "Service unavailable");
+      setText("dataBadge", "No current estimate");
+      setText("statusNote", "The Bihar Live service could not be reached. No current estimate is shown.");
+      setText("forecastBadge", "Service unavailable");
+      setText("patnaSignal", "No live reading");
+      setText("muzaffarpurSignal", "No live reading");
     }
   }
 
@@ -132,21 +255,22 @@
       maxZoom: 18,
       attribution: "© OpenStreetMap contributors"
     }).addTo(map);
-    districtLayer = L.layerGroup().addTo(map);
-    Object.entries(DISTRICTS).forEach(([key, district]) => {
-      const color = key === "patna" ? "#34D399" : "#FBBF24";
-      L.circleMarker(district.center, {
-        radius: 9, color: "#fff", weight: 3, fillColor: color, fillOpacity: 1
-      }).addTo(districtLayer).bindPopup("<strong>" + district.name + "</strong><br>District map point");
-    });
+    stationLayer = L.layerGroup().addTo(map);
   }
 
-  function selectDistrict() {
-    const key = $("districtSelect").value;
-    const district = DISTRICTS[key];
+  function selectDistrict(moveMap = true) {
+    const district = DISTRICTS[$("districtSelect").value];
     setText("selectedDistrict", district.name);
-    if (map) map.setView(district.center, 9, { animate: true });
-    $("assistantInput").placeholder = "Ask about " + district.name + " and this dashboard";
+    Object.entries(DISTRICTS).forEach(([key, item]) => {
+      const card = $(item.prefix + "Card");
+      if (card) card.dataset.state = key === $("districtSelect").value ? "selected" : "";
+    });
+    if (!map || !moveMap) return;
+    const prediction = (currentData.live?.predictions || []).find((item) => item.district?.toLowerCase() === district.name.toLowerCase());
+    const center = prediction && Number.isFinite(Number(prediction.latitude))
+      ? [Number(prediction.latitude), Number(prediction.longitude)] : district.center;
+    map.setView(center, 10, { animate: true });
+    $("assistantInput").placeholder = "Ask about " + district.name + " river readings";
   }
 
   function useMyLocation() {
@@ -169,28 +293,24 @@
         map.setView(point, 11, { animate: true });
         clearError();
       },
-      () => showError("Location permission was not granted. You can still use the district map."),
+      () => showError("Location permission was not granted. You can still choose Patna or Muzaffarpur."),
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
   }
 
   function buildAssistantContext() {
     const selected = DISTRICTS[$("districtSelect").value];
+    const predictions = currentData.live?.predictions || [];
     return {
-      dashboard: "Bihar Live VarshaGuard prototype",
+      dashboard: "VarshaGuard Bihar Live",
       district: selected.name,
-      data_mode: currentData.health?.mode || "unknown",
-      status: currentData.health?.badge || "unknown",
-      rainfall_fusion_estimate_mm: currentData.fusion?.estimate_mm ?? "unavailable",
-      forecast_lead_hours: currentData.fusion?.lead_hours ?? $("leadSelect").value,
-      fusion_weights: currentData.fusion?.weights || {},
-      baseline_evaluation: currentData.evaluation
-        ? { mae: currentData.evaluation.mae, rmse: currentData.evaluation.rmse, data_mode: currentData.evaluation.data_mode }
-        : "unavailable",
-      data_sources: (currentData.sources?.sources || []).map((source) => ({
-        name: source.name, status: source.status
-      })),
-      limitation: "Prototype only. Rainfall fusion output is not a flood probability or official alert. Do not invent missing observations or forecasts."
+      source: currentData.live?.source?.name || "unavailable",
+      generated_at_ist: currentData.live?.generated_at_ist || "unavailable",
+      selected_gauge: predictions.find((item) => item.district?.toLowerCase() === selected.name.toLowerCase()) || "unavailable",
+      all_gauges: predictions,
+      model_scope: currentData.live?.target_definition || "unavailable",
+      limitations: currentData.live?.limitations || ["No current data is available."],
+      instruction: "Explain only these readings. This is a research estimate for gauge danger-stage crossing by the next calendar day, not a flood probability, inundation map, or official warning."
     };
   }
 
@@ -246,18 +366,12 @@
   document.addEventListener("DOMContentLoaded", () => {
     setupMap();
     setupAssistant();
-    $("districtSelect").addEventListener("change", selectDistrict);
-    $("leadSelect").addEventListener("input", () => {
-      setText("leadValue", $("leadSelect").value);
-      setText("leadMetric", $("leadSelect").value);
-      window.clearTimeout(leadTimer);
-      leadTimer = window.setTimeout(loadDashboard, 250);
-    });
+    $("districtSelect").addEventListener("change", () => selectDistrict());
     $("locateButton").addEventListener("click", useMyLocation);
     $("mapRefreshButton").addEventListener("click", () => selectDistrict());
-    selectDistrict();
+    selectDistrict(false);
     loadDashboard();
-    refreshTimer = window.setInterval(loadDashboard, 60000);
+    refreshTimer = window.setInterval(loadDashboard, REFRESH_MS);
     window.addEventListener("beforeunload", () => window.clearInterval(refreshTimer), { once: true });
   });
 })();

@@ -168,6 +168,7 @@ def main():
     if not path.is_file(): parser.error(f"CWC input CSV not found: {path}")
     try:
         import joblib
+        import sklearn
         from sklearn.metrics import average_precision_score,brier_score_loss
     except ImportError as e:
         print("Install backend/requirements.txt first.",file=sys.stderr); raise SystemExit(2) from e
@@ -220,6 +221,7 @@ def main():
         "forecast_horizon":"Next calendar day; source timestamps do not establish an exact rolling 24-hour issue time.",
         "geographic_resolution":"Pooled model for 13 nearby Bihar CWC gauges; focus outputs include Gandhighat (Patna) and Sikandarpur (Muzaffarpur). Same-day readings across the local gauge network are predictors.",
         "features":cols,"data_quality":source_meta,
+        "runtime_sklearn_version":sklearn.__version__,
         "split":{"training_target_years":"through 2015","validation_target_years":"2016-2019","untouched_test_target_years":"2020 through latest observed target day",
             "training_rows":int(len(train)),"training_first_crossings":int(train[TARGET].sum()),
             "validation_rows":int(len(val)),"validation_first_crossings":int(val[TARGET].sum()),
@@ -227,8 +229,8 @@ def main():
         "candidate_validation_metrics":val_metrics,"selected_model":selected,
         "threshold_selection":"F2 maximized on 2016-2019 validation data","decision_threshold":round(float(threshold),6),
         "test_metrics":metrics,"focus_gauge_test_metrics":focus,
-        "operational_eligible":False,"loaded_by_dashboard_server":False,
-        "warning":"Research-only gauge threshold experiment. It does not predict grid-cell inundation, extent, or depth. It uses daily observations and historical rainfall, not archived operational forecasts. Review gauge datum, source quality, local performance, and live feature availability before operational use.",
+        "operational_eligible":False,"loaded_by_dashboard_server":True,
+        "warning":"Research-only gauge threshold estimate exposed in Bihar Live using current CWC stage and rainfall observations. It does not predict grid-cell inundation, extent, or depth. Live feature coverage, probability calibration, gauge datums, and local performance require expert validation before any public-safety use.",
         "artifact_path":str(artifact.relative_to(ROOT)),"holdout_predictions_path":str(PREDICTIONS.relative_to(ROOT))}
     meta_path.write_text(json.dumps(metadata,indent=2),encoding="utf-8")
     print(json.dumps({"selected_model":selected,"training_rows":len(train),"training_first_crossings":int(train[TARGET].sum()),
