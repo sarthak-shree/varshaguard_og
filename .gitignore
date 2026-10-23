@@ -4,3 +4,8 @@ __pycache__/
 venv/
 .env
 .DS_Store
+
+# Downloaded CWC research inputs and generated holdout predictions
+data/bihar_live/research/cwc_bihar_gauge_hourly.csv
+data/bihar_live/research/cwc_bihar_gauge_hourly.metadata.json
+data/bihar_live/research/cwc_bihar_gauge_24h_stage_research_holdout_predictions.csv

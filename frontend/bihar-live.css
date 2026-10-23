@@ -41,7 +41,7 @@
 .live-risk-meter span{display:block;width:0;height:100%;border-radius:inherit;background:#229976;transition:width .35s ease,background .2s ease}
 .live-gauge-card[data-risk="medium"] .live-risk-meter span{background:#d79a21}
 .live-gauge-card[data-risk="high"] .live-risk-meter span{background:#df5d54}
-.live-gauge-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.live-gauge-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 .live-gauge-stats>div{padding:9px;background:var(--panel);border:1px solid var(--line);border-radius:7px;min-width:0}
 .live-gauge-stats span{display:block;color:var(--muted);font-size:9px;line-height:1.4}
 .live-gauge-stats strong{display:block;margin-top:5px;color:var(--text);font-size:11px;overflow-wrap:anywhere}

@@ -111,7 +111,7 @@
               <div class="map-risk-legend-title">Gauge signal</div>
               <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-low"></span>Low model risk</div>
               <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-medium"></span>Medium model risk</div>
-              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-high"></span>High / danger reached</div>
+              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-high"></span>High / warning observed</div>
               <div class="map-risk-legend-item" id="userLocationLegend" hidden><span class="map-risk-dot map-risk-high"></span>Your location</div>
             </div>
           </div>
@@ -122,8 +122,8 @@
     <section class="panel forecast-panel">
       <div class="panel-heading-row">
         <div>
-          <h3>River danger-level risk for the next day</h3>
-          <span>Experimental model estimate for the next calendar day</span>
+          <h3>24-hour river warning risk</h3>
+          <span>Rolling outlook from the latest CWC river reading</span>
         </div>
         <span id="forecastBadge" class="health-badge">Waiting for CWC</span>
       </div>
@@ -136,13 +136,14 @@
           <p id="patnaForecastText" class="live-forecast-text">Waiting for river readings…</p>
           <div class="live-probability-row">
             <strong id="patnaProbability">—</strong>
-            <span id="patnaProbabilityLabel">Estimated chance of reaching the CWC danger level</span>
+            <span id="patnaProbabilityLabel">Chance of reaching the CWC warning level in the next 24 hours</span>
           </div>
           <div id="patnaRiskMeter" class="live-risk-meter" role="meter" aria-label="Patna risk percentage" aria-valuemin="0" aria-valuemax="100" hidden><span id="patnaRiskFill"></span></div>
           <div class="live-gauge-stats">
             <div><span>Latest river level</span><strong id="patnaStage">—</strong></div>
+            <div><span>CWC warning level</span><strong id="patnaWarning">—</strong></div>
             <div><span>CWC danger level</span><strong id="patnaDanger">—</strong></div>
-            <div><span>Rain today</span><strong id="patnaRain">—</strong></div>
+            <div><span>Rain (24 hours)</span><strong id="patnaRain">—</strong></div>
             <div><span>Reading time</span><strong id="patnaTime">—</strong></div>
           </div>
           <small id="patnaQuality" class="live-quality">Waiting for data quality details</small>
@@ -156,19 +157,20 @@
           <p id="muzaffarpurForecastText" class="live-forecast-text">Waiting for river readings…</p>
           <div class="live-probability-row">
             <strong id="muzaffarpurProbability">—</strong>
-            <span id="muzaffarpurProbabilityLabel">Estimated chance of reaching the CWC danger level</span>
+            <span id="muzaffarpurProbabilityLabel">Chance of reaching the CWC warning level in the next 24 hours</span>
           </div>
           <div id="muzaffarpurRiskMeter" class="live-risk-meter" role="meter" aria-label="Muzaffarpur risk percentage" aria-valuemin="0" aria-valuemax="100" hidden><span id="muzaffarpurRiskFill"></span></div>
           <div class="live-gauge-stats">
             <div><span>Latest river level</span><strong id="muzaffarpurStage">—</strong></div>
+            <div><span>CWC warning level</span><strong id="muzaffarpurWarning">—</strong></div>
             <div><span>CWC danger level</span><strong id="muzaffarpurDanger">—</strong></div>
-            <div><span>Rain today</span><strong id="muzaffarpurRain">—</strong></div>
+            <div><span>Rain (24 hours)</span><strong id="muzaffarpurRain">—</strong></div>
             <div><span>Reading time</span><strong id="muzaffarpurTime">—</strong></div>
           </div>
           <small id="muzaffarpurQuality" class="live-quality">Waiting for data quality details</small>
         </article>
       </div>
-      <p id="riskBandGuide" class="plain-text bihar-note">Low is below the model trigger; Medium is above it; High is 50% or more. If danger is already observed, the card shows High / 100% observed. This is a research estimate for a river gauge, not a street or block flood probability.</p>
+      <p id="riskBandGuide" class="plain-text bihar-note">The percentage is an experimental estimate that the river gauge may reach its CWC warning level within 24 hours. If the warning or danger level is already observed, the card marks it as observed. It is not a street or block flood probability.</p>
     </section>
 
     <section class="two-column">
@@ -185,8 +187,8 @@
           <div><h3>About this estimate</h3><span>What this screen can and cannot tell you</span></div>
           <button id="assistantOpenButton" class="assistant-open-btn" type="button">Ask VarshaGuard AI</button>
         </div>
-        <p class="plain-text">The model looks for a river gauge reaching its published danger level on the next calendar day. It uses recent CWC gauge and rainfall readings plus historical data.</p>
-        <p class="plain-text bihar-note">It does not predict inundation depth or flooded grid cells, and it has not been approved for official warnings. For safety, follow CWC, IMD, and local disaster-management guidance.</p>
+        <p class="plain-text">The model uses recent CWC river-level and rainfall readings to estimate whether a gauge may reach its published warning level during the 24 hours after the latest reading.</p>
+        <p class="plain-text bihar-note">This is a research estimate. Muzaffarpur has too few historical warning events to measure local accuracy. The model does not predict flooded streets, blocks, or grid cells and is not an official warning. Follow CWC, IMD, and local disaster-management guidance.</p>
       </section>
     </section>
   </main>

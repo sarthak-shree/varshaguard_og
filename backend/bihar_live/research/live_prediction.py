@@ -80,7 +80,7 @@ def _parse_local_timestamp(value) -> pd.Timestamp:
 
 def _fetch_type(datatype: str, station_codes: list[str], now_ist: datetime) -> list[dict]:
     start = (now_ist - timedelta(days=9)).strftime("%Y-%m-%dT%H:%M:%S")
-    end = (now_ist + timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M:%S")
+    end = now_ist.strftime("%Y-%m-%dT%H:%M:%S")
     specification = {
         "where": {
             "where": _expression("id.stationCode", "in", ",".join(station_codes)),
@@ -131,48 +131,23 @@ def _aggregate_stage(rows: list[dict], stations: dict) -> dict[str, pd.DataFrame
     if frame.empty:
         return {}
     frame = frame[frame["station_code"].isin(stations)]
-    frame = frame[frame["value"].between(-20, 100, inclusive="both")]
-    daily = (
-        frame.groupby(["station_code", "date"], as_index=False)
-        .agg(
-            minimum=("value", "min"),
-            mean=("value", "mean"),
-            maximum=("value", "max"),
-            n_obs=("value", "size"),
-            latest_timestamp=("timestamp", "max"),
-        )
-    )
-    latest = (
-        frame.sort_values("timestamp")
-        .groupby(["station_code", "date"], as_index=False)
-        .tail(1)[["station_code", "date", "value"]]
-        .rename(columns={"value": "latest_value"})
-    )
-    daily = daily.merge(latest, on=["station_code", "date"], how="left")
     accepted = []
-    for row in daily.to_dict("records"):
+    for row in frame.to_dict("records"):
         station = stations.get(row["station_code"], {})
         danger = float(station.get("danger_level_m", np.nan))
-        highest = float(station.get("published_highest_flow_level_m", np.nan))
-        good = (
-            row["n_obs"] >= 3
-            and np.isfinite(danger)
-            and np.isfinite(highest)
-            and row["minimum"] >= danger - 25
-            and danger - 20 <= row["mean"] <= highest + 2
-            and danger - 20 <= row["maximum"] <= highest + 2
-            and row["maximum"] >= row["mean"] >= row["minimum"]
-        )
-        if good:
-            row["danger_level_m"] = danger
-            row["stage_mean_margin_m"] = row["mean"] - danger
-            row["stage_max_margin_m"] = row["maximum"] - danger
+        highest = float(station.get("highest_flow_level_m", station.get("published_highest_flow_level_m", np.nan)))
+        if np.isfinite(danger) and np.isfinite(highest) and danger - 25 <= row["value"] <= highest + 2:
             accepted.append(row)
     if not accepted:
         return {}
     clean = pd.DataFrame(accepted)
+    clean = (
+        clean.groupby(["station_code", "timestamp"], as_index=False)
+        .agg(value=("value", "median"))
+        .sort_values(["station_code", "timestamp"])
+    )
     return {
-        code: values.set_index("date").sort_index()
+        code: values.set_index("timestamp").sort_index()
         for code, values in clean.groupby("station_code")
     }
 
@@ -184,61 +159,74 @@ def _aggregate_rain(rows: list[dict], station_codes: set[str]) -> dict[str, pd.D
     frame = frame[frame["station_code"].isin(station_codes) & frame["value"].between(0, 500)]
     if frame.empty:
         return {}
-    daily = (
-        frame.groupby(["station_code", "date"], as_index=False)
-        .agg(total_mm=("value", "sum"), n_obs=("value", "size"), latest_timestamp=("timestamp", "max"))
+    hourly = (
+        frame.groupby(["station_code", "timestamp"], as_index=False)
+        .agg(value=("value", "sum"))
+        .sort_values(["station_code", "timestamp"])
     )
-    daily = daily[daily["total_mm"].between(0, 500) & daily["n_obs"].ge(1)]
     return {
-        code: values.set_index("date").sort_index()
-        for code, values in daily.groupby("station_code")
+        code: values.set_index("timestamp").sort_index()
+        for code, values in hourly.groupby("station_code")
     }
 
 
-def _at(data: dict[str, pd.DataFrame], code: str, day: date, column: str):
+def _latest_value(data: dict[str, pd.DataFrame], code: str, at: pd.Timestamp, max_age_hours: int = 3):
     station = data.get(code)
-    if station is None or day not in station.index:
+    if station is None or station.empty:
+        return np.nan, np.nan, None
+    position = int(station.index.searchsorted(at, side="right") - 1)
+    if position < 0:
+        return np.nan, np.nan, None
+    timestamp = pd.Timestamp(station.index[position])
+    age_hours = max(0.0, (at - timestamp).total_seconds() / 3600)
+    if age_hours > max_age_hours:
+        return np.nan, age_hours, timestamp
+    return float(station.iloc[position]["value"]), age_hours, timestamp
+
+
+def _rain_window(data: dict[str, pd.DataFrame], code: str, issue_time: pd.Timestamp, hours: int, minimum_observations: int) -> float:
+    station = data.get(code)
+    if station is None or station.empty:
         return np.nan
-    return station.at[day, column]
+    window = station.loc[(station.index > issue_time - pd.Timedelta(hours=hours)) & (station.index <= issue_time), "value"]
+    if len(window) < minimum_observations:
+        return np.nan
+    return float(window.sum())
 
 
-def _window_sum(data: dict[str, pd.DataFrame], code: str, end_day: date, days: int) -> float:
-    values = [_at(data, code, end_day - timedelta(days=offset), "total_mm") for offset in reversed(range(days))]
-    return float(np.sum(values)) if all(np.isfinite(value) for value in values) else np.nan
-
-
-def _make_features(code: str, day: date, station_codes: list[str], stages: dict, rains: dict) -> tuple[pd.DataFrame, int, int]:
+def _make_features(code: str, issue_time: pd.Timestamp, station_codes: list[str], stages: dict, rains: dict,
+                   model, metadata: dict) -> tuple[pd.DataFrame, int, int]:
     station = stages[code]
-    current = station.loc[day]
-    level = float(current["maximum"])
-    danger = float(current["danger_level_m"])
-    d1 = _at(stages, code, day - timedelta(days=1), "maximum")
-    d3 = _at(stages, code, day - timedelta(days=3), "maximum")
-    d7 = _at(stages, code, day - timedelta(days=7), "maximum")
-    recent_levels = [_at(stages, code, day - timedelta(days=offset), "maximum") for offset in (2, 1, 0)]
-    rain_3d = _window_sum(rains, code, day, 3)
-    rain_7d = _window_sum(rains, code, day, 7)
-    target_day = day + timedelta(days=1)
-    annual_phase = target_day.timetuple().tm_yday / 365.2425 * 2 * np.pi
+    current_level, _, _ = _latest_value(stages, code, issue_time, max_age_hours=3)
+    station_meta = metadata["data_quality"]["stations"][code]
+    warning = float(station_meta["warning_level_m"])
+    danger = float(station_meta["danger_level_m"])
     values = {
-        "target_stage_mean_margin_m": float(current["stage_mean_margin_m"]),
-        "target_stage_max_margin_m": float(current["stage_max_margin_m"]),
-        "target_stage_change_24h_m": level - float(d1) if np.isfinite(d1) else np.nan,
-        "target_stage_change_72h_m": level - float(d3) if np.isfinite(d3) else np.nan,
-        "target_stage_change_168h_m": level - float(d7) if np.isfinite(d7) else np.nan,
-        "target_stage_3day_mean_margin_m": float(np.mean(recent_levels) - danger) if all(np.isfinite(v) for v in recent_levels) else np.nan,
-        "target_stage_n_obs": int(current["n_obs"]),
-        "target_rainfall_24h_mm": _at(rains, code, day, "total_mm"),
-        "target_rainfall_72h_mm": rain_3d,
-        "target_rainfall_168h_mm": rain_7d,
-        "target_month_sin": float(np.sin(annual_phase)),
-        "target_month_cos": float(np.cos(annual_phase)),
+        "target_stage_margin_warning_m": current_level - warning,
+        "target_stage_margin_danger_m": current_level - danger,
+        "target_stage_value_m": current_level,
+        "target_hour_sin": float(np.sin(issue_time.hour / 24 * 2 * np.pi)),
+        "target_hour_cos": float(np.cos(issue_time.hour / 24 * 2 * np.pi)),
+        "target_month_sin": float(np.sin(issue_time.dayofyear / 365.2425 * 2 * np.pi)),
+        "target_month_cos": float(np.cos(issue_time.dayofyear / 365.2425 * 2 * np.pi)),
+        "target_rainfall_24h_mm": _rain_window(rains, code, issue_time, 24, 2),
+        "target_rainfall_72h_mm": _rain_window(rains, code, issue_time, 72, 4),
+        "target_rainfall_24h_observations": int(len(rains.get(code, pd.DataFrame()).loc[
+            (rains[code].index > issue_time - pd.Timedelta(hours=24)) & (rains[code].index <= issue_time)
+        ])) if code in rains else 0,
         "target_station": code,
     }
+    for lag in (6, 12, 24, 48, 72):
+        past_level, _, _ = _latest_value(stages, code, issue_time - pd.Timedelta(hours=lag), max_age_hours=3)
+        values[f"target_stage_change_{lag}h_m"] = current_level - past_level if np.isfinite(past_level) else np.nan
+    prior_day = station.loc[(station.index > issue_time - pd.Timedelta(hours=24)) & (station.index <= issue_time), "value"]
+    values["target_stage_mean_24h_m"] = float(prior_day.mean()) if len(prior_day) >= 12 else np.nan
+    values["target_stage_max_24h_m"] = float(prior_day.max()) if len(prior_day) >= 12 else np.nan
     for network_code in station_codes:
-        values[f"network_stage_margin_{network_code}"] = _at(stages, network_code, day, "stage_mean_margin_m")
-        values[f"network_rainfall_mm_{network_code}"] = _at(rains, network_code, day, "total_mm")
-    model, metadata = _load_bundle()
+        network_level, age_hours, _ = _latest_value(stages, network_code, issue_time, max_age_hours=3)
+        network_meta = metadata["data_quality"]["stations"][network_code]
+        values[f"network_warning_margin_{network_code}_m"] = network_level - float(network_meta["warning_level_m"]) if np.isfinite(network_level) else np.nan
+        values[f"network_stage_age_{network_code}_h"] = age_hours
     columns = metadata.get("features", [])
     if not columns:
         raise LiveFeedUnavailable("The CWC model feature list is missing.")
@@ -251,12 +239,7 @@ def _make_features(code: str, day: date, station_codes: list[str], stages: dict,
 
 
 def _risk_level(probability: float, decision_threshold: float) -> str:
-    """Map the research model probability to clear dashboard bands.
-
-    The low/medium cutoff is the threshold selected on validation data for the
-    model's high-recall alert rule. High starts at a majority probability.
-    These are presentation bands, not official warning levels.
-    """
+    """Map the estimated chance to dashboard bands, not official alert levels."""
     if probability >= 0.5:
         return "high"
     if probability >= decision_threshold:
@@ -277,11 +260,14 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
             "latitude": station_meta["lat"],
             "longitude": station_meta["lon"],
         }
-    observed_day = max(stage.index)
-    current = stage.loc[observed_day]
-    last_observation = pd.Timestamp(current["latest_timestamp"])
+    last_observation = pd.Timestamp(stage.index.max())
+    observed_day = last_observation.date()
+    current_stage = float(stage.loc[last_observation, "value"])
     age_hours = max(0.0, (pd.Timestamp(now_ist.replace(tzinfo=None)) - last_observation).total_seconds() / 3600)
-    rainfall_today = _at(rains, code, observed_day, "total_mm")
+    today = stage.loc[stage.index.date == observed_day, "value"]
+    rainfall_24h = _rain_window(rains, code, last_observation, 24, 2)
+    warning_level = float(station_meta["warning_level_m"])
+    danger_level = float(station_meta["danger_level_m"])
     result = {
         "station_code": code,
         "station_name": station_meta["name"],
@@ -289,15 +275,19 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
         "status": "available",
         "observed_date": observed_day.isoformat(),
         "observed_at_ist": last_observation.isoformat(timespec="minutes"),
+        "forecast_start_ist": last_observation.isoformat(timespec="minutes"),
+        "forecast_end_ist": (last_observation + pd.Timedelta(hours=24)).isoformat(timespec="minutes"),
+        "forecast_horizon_hours": 24,
         "data_age_hours": round(age_hours, 1),
-        "observations_today": int(current["n_obs"]),
+        "observations_today": int(len(today)),
         "daily_summary_partial": last_observation.hour < 23,
-        "current_stage_m": round(float(current["latest_value"]), 2),
-        "daily_max_stage_m": round(float(current["maximum"]), 2),
-        "danger_level_m": round(float(current["danger_level_m"]), 2),
-        "warning_level_m": round(float(station_meta["warning_level_m"]), 2),
-        "margin_to_danger_m": round(float(current["danger_level_m"] - current["latest_value"]), 2),
-        "rainfall_today_mm": round(float(rainfall_today), 2) if np.isfinite(rainfall_today) else None,
+        "current_stage_m": round(current_stage, 2),
+        "daily_max_stage_m": round(float(today.max()), 2) if not today.empty else round(current_stage, 2),
+        "danger_level_m": round(danger_level, 2),
+        "warning_level_m": round(warning_level, 2),
+        "margin_to_warning_m": round(warning_level - current_stage, 2),
+        "margin_to_danger_m": round(danger_level - current_stage, 2),
+        "rainfall_24h_mm": round(float(rainfall_24h), 2) if np.isfinite(rainfall_24h) else None,
         "latitude": station_meta["lat"],
         "longitude": station_meta["lon"],
         "source": "Central Water Commission Flood Forecasting System (CWC FFS)",
@@ -311,7 +301,7 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
             "message": "The latest quality-checked river reading is over 24 hours old; no model signal is shown.",
         })
         return result
-    if float(current["maximum"]) >= float(current["danger_level_m"]):
+    if current_stage >= danger_level:
         result.update({
             "status": "danger_level_reached",
             "risk_level": "high",
@@ -319,14 +309,38 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
             "risk_basis": "observed",
             "signal": "Danger threshold reached in observed data",
             "message": "Today's observed maximum has reached or passed the published danger level. Follow official CWC and local authority updates.",
-            "forecast_date": (observed_day + timedelta(days=1)).isoformat(),
+            "forecast_date": (last_observation + pd.Timedelta(hours=24)).date().isoformat(),
             "model_probability": None,
         })
         return result
-    row, available, total = _make_features(code, observed_day, station_codes, stages, rains)
+    if current_stage >= warning_level:
+        result.update({
+            "status": "warning_level_reached",
+            "risk_level": "high",
+            "risk_percentage": 100.0,
+            "risk_basis": "observed",
+            "signal": "CWC warning threshold reached in observed data",
+            "message": "The latest CWC river reading has reached the published warning level. This is an observation, not a 24-hour prediction.",
+            "forecast_date": (last_observation + pd.Timedelta(hours=24)).date().isoformat(),
+            "model_probability": None,
+        })
+        return result
+    row, available, total = _make_features(code, last_observation, station_codes, stages, rains, model, metadata)
+    if total and available < max(8, int(total * 0.35)):
+        result.update({
+            "status": "insufficient_inputs",
+            "risk_level": None,
+            "risk_percentage": None,
+            "risk_basis": "unavailable",
+            "message": "Too few recent river and rainfall inputs are available for a 24-hour estimate.",
+            "feature_coverage": {"available": available, "total": total},
+        })
+        return result
     probability = float(model.predict_proba(row)[0][1])
     threshold = float(metadata["decision_threshold"])
     risk_level = _risk_level(probability, threshold)
+    forecast_end = last_observation + pd.Timedelta(hours=24)
+    focus_metrics = metadata.get("focus_gauge_test_metrics", {}).get(code, {})
     result.update({
         "status": "predicted",
         "risk_level": risk_level,
@@ -335,9 +349,10 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
         "signal": f"{risk_level.title()} model risk",
         "model_probability": round(probability, 6),
         "decision_threshold": round(threshold, 6),
-        "forecast_date": (observed_day + timedelta(days=1)).isoformat(),
+        "forecast_date": forecast_end.date().isoformat(),
         "feature_coverage": {"available": available, "total": total},
-        "message": "Experimental model estimate for the gauge reaching CWC danger stage on the next calendar day. It is not a flood or inundation probability.",
+        "message": "Experimental estimate that this gauge may reach its CWC warning level in the 24 hours after the latest river reading. It is not a street or block flood probability.",
+        "local_validation_note": focus_metrics.get("note"),
     })
     return result
 
@@ -373,7 +388,7 @@ def _build_payload() -> dict:
         for frame in data.values():
             if frame.empty:
                 continue
-            latest = pd.Timestamp(frame["latest_timestamp"].max())
+            latest = pd.Timestamp(frame.index.max())
             age = (now_naive - latest).total_seconds() / 3600
             if -1 <= age <= max_age_hours:
                 count += 1
@@ -382,14 +397,14 @@ def _build_payload() -> dict:
     stage_count = stations_updated_within(stages)
     rain_count = stations_updated_within(rains)
     latest_stage = max(
-        (pd.Timestamp(row["latest_timestamp"]) for frame in stages.values() for _, row in frame.iterrows()),
+        (pd.Timestamp(frame.index.max()) for frame in stages.values() if not frame.empty),
         default=None,
     )
     latest_rain = max(
-        (pd.Timestamp(row["latest_timestamp"]) for frame in rains.values() for _, row in frame.iterrows()),
+        (pd.Timestamp(frame.index.max()) for frame in rains.values() if not frame.empty),
         default=None,
     )
-    available = any(item["status"] in {"predicted", "danger_level_reached"} for item in predictions)
+    available = any(item["status"] in {"predicted", "warning_level_reached", "danger_level_reached", "insufficient_inputs"} for item in predictions)
     if not available:
         raise LiveFeedUnavailable("CWC returned data, but neither target gauge has a recent quality-checked reading.")
     generated_at = now_ist.isoformat(timespec="seconds")
@@ -399,12 +414,12 @@ def _build_payload() -> dict:
         "mode": "live_cwc_research",
         "model_name": metadata.get("model_name"),
         "model_type": metadata.get("selected_model"),
-        "target_definition": "Next calendar day: whether the gauge's daily maximum stage reaches the published CWC danger level.",
+        "target_definition": "Rolling 24 hours after the latest accepted CWC stage reading: estimated chance the gauge reaches the published CWC warning level.",
         "risk_bands": {
             "low_max_exclusive_probability": float(metadata["decision_threshold"]),
             "medium_min_inclusive_probability": float(metadata["decision_threshold"]),
             "high_min_inclusive_probability": 0.5,
-            "note": "Low is below the validation-selected model trigger; Medium is at or above that trigger but below 50%; High is 50% or more. A danger-stage crossing already observed is shown as High / 100% observed.",
+            "note": "Low is below the validation-selected model trigger; Medium is at or above that trigger but below 50%; High is 50% or more. An observed CWC warning or danger threshold is shown separately as observed, not forecast.",
         },
         "generated_at_ist": generated_at,
         "source": {
@@ -429,12 +444,14 @@ def _build_payload() -> dict:
             "test_average_precision": metadata.get("test_metrics", {}).get("average_precision"),
             "test_precision_at_threshold": metadata.get("test_metrics", {}).get("precision"),
             "test_recall_at_threshold": metadata.get("test_metrics", {}).get("recall"),
-            "note": "Historical evaluation only. Live feature coverage and calibration have not been operationally validated.",
+            "focus_gauge_test_metrics": metadata.get("focus_gauge_test_metrics", {}),
+            "note": "Historical 2026 holdout evaluation only. The Muzaffarpur focus gauge had no positive warning crossings in the holdout, so local performance could not be estimated.",
         },
         "limitations": [
-            "This predicts a gauge danger-stage crossing by the next calendar day, not flooding, inundation extent, or depth in a block or grid cell.",
-            "It uses live CWC stage and rainfall observations; it does not ingest IMD radar, satellite rainfall, or numerical weather predictions.",
-            "The current calendar day's live aggregates can be incomplete. Missing model inputs are median-imputed, so feature coverage is shown.",
+            "This estimates a gauge reaching its published CWC warning level within the next rolling 24 hours; it does not predict inundation extent or depth in a block or grid cell.",
+            "It uses live CWC river-level and rainfall observations; it does not ingest IMD radar, satellite rainfall, or numerical weather forecasts.",
+            "Historical hourly records cover only a few flood seasons. Muzaffarpur had no positive warning crossing in the 2026 holdout, so its local accuracy is unknown; the percentage is pooled from the Bihar gauge network.",
+            "Missing model inputs are median-imputed; feature coverage is shown with each estimate.",
             "This experimental output is not an official alert. Follow CWC, IMD, and local disaster-management guidance.",
         ] + (["CWC rainfall data could not be loaded; missing rainfall inputs were median-imputed."] if rainfall_error else []),
         "predictions": predictions,

@@ -70,7 +70,7 @@
 
   function signalState(prediction) {
     if (!prediction || prediction.status === "stale" || prediction.status === "unavailable") return "stale";
-    if (prediction.status === "danger_level_reached") return "high";
+    if (["danger_level_reached", "warning_level_reached"].includes(prediction.status)) return "high";
     if (["low", "medium", "high"].includes(prediction.risk_level)) return prediction.risk_level;
     if (!finiteNumber(prediction.model_probability) || !finiteNumber(prediction.decision_threshold)) return "stale";
     const probability = Number(prediction.model_probability);
@@ -84,12 +84,14 @@
     const signal = $(prefix + "Signal");
     const state = signalState(prediction);
     const label = prediction?.status === "danger_level_reached"
-      ? "HIGH · observed"
-      : prediction?.status === "stale"
-        ? "No fresh estimate"
-        : prediction?.status === "unavailable"
-          ? "No live reading"
-          : state === "high" ? "HIGH RISK" : state === "medium" ? "MEDIUM RISK" : state === "low" ? "LOW RISK" : "No estimate";
+      ? "HIGH · danger observed"
+      : prediction?.status === "warning_level_reached"
+        ? "HIGH · warning observed"
+        : prediction?.status === "stale"
+          ? "No fresh estimate"
+          : prediction?.status === "unavailable"
+            ? "No live reading"
+            : state === "high" ? "HIGH RISK" : state === "medium" ? "MEDIUM RISK" : state === "low" ? "LOW RISK" : "No estimate";
 
     signal.textContent = label;
     signal.dataset.state = state;
@@ -97,25 +99,30 @@
     gaugeCard.dataset.state = districtKey === $("districtSelect").value ? "selected" : "";
     gaugeCard.dataset.risk = state;
     setText(prefix + "Stage", finiteNumber(prediction?.current_stage_m) ? Number(prediction.current_stage_m).toFixed(2) + " m" : "—");
+    setText(prefix + "Warning", finiteNumber(prediction?.warning_level_m) ? Number(prediction.warning_level_m).toFixed(2) + " m" : "—");
     setText(prefix + "Danger", finiteNumber(prediction?.danger_level_m) ? Number(prediction.danger_level_m).toFixed(2) + " m" : "—");
     setText(prefix + "Time", formatTime(prediction?.observed_at_ist));
-    setText(prefix + "Rain", finiteNumber(prediction?.rainfall_today_mm) ? Number(prediction.rainfall_today_mm).toFixed(1) + " mm" : "—");
+    setText(prefix + "Rain", finiteNumber(prediction?.rainfall_24h_mm) ? Number(prediction.rainfall_24h_mm).toFixed(1) + " mm" : "—");
 
     const probabilityLabel = $(prefix + "Probability");
     const probabilityCaption = $(prefix + "ProbabilityLabel");
     let riskPercent = null;
-    if (prediction?.status === "danger_level_reached") {
+    if (["danger_level_reached", "warning_level_reached"].includes(prediction?.status)) {
       riskPercent = 100;
       probabilityLabel.textContent = "100%";
-      probabilityCaption.textContent = "Danger level is already reached in CWC observations (not a forecast)";
-      setText(prefix + "ForecastText", "CWC's observed daily maximum reached the danger level. This is an observation, not a prediction.");
+      probabilityCaption.textContent = prediction.status === "danger_level_reached"
+        ? "CWC danger level already reached (observed, not forecast)"
+        : "CWC warning level already reached (observed, not forecast)";
+      setText(prefix + "ForecastText", prediction.status === "danger_level_reached"
+        ? "The latest CWC reading has reached the danger level. This is an observation, not a prediction."
+        : "The latest CWC reading has reached the warning level. This is an observation, not a prediction.");
     } else if (prediction?.status === "predicted" && finiteNumber(prediction.model_probability)) {
       riskPercent = finiteNumber(prediction.risk_percentage)
         ? Number(prediction.risk_percentage)
         : Number(prediction.model_probability) * 100;
       probabilityLabel.textContent = riskPercent.toFixed(1) + "%";
-      probabilityCaption.textContent = "Estimated chance of this gauge reaching danger level by " + formatDate(prediction.forecast_date);
-      setText(prefix + "ForecastText", "For " + formatDate(prediction.forecast_date) + ": experimental estimate that this gauge may reach its CWC danger level.");
+      probabilityCaption.textContent = "Chance of reaching the CWC warning level in the next 24 hours";
+      setText(prefix + "ForecastText", "From " + formatTime(prediction.forecast_start_ist) + " to " + formatTime(prediction.forecast_end_ist) + ": experimental estimate that this gauge may reach its CWC warning level.");
     } else {
       probabilityLabel.textContent = "—";
       probabilityCaption.textContent = "No model estimate shown";
@@ -145,7 +152,8 @@
     const ageText = finiteNumber(prediction?.data_age_hours) ? "Latest reading " + hoursAgo(prediction.data_age_hours) + ". " : "";
     const maxText = finiteNumber(prediction?.daily_max_stage_m)
       ? "Today's highest stage was " + Number(prediction.daily_max_stage_m).toFixed(2) + " m. " : "";
-    setText(prefix + "Quality", coverageText + countText + maxText + ageText + partialText + (prediction?.message && prediction.status !== "predicted" ? prediction.message : ""));
+    const validationText = prediction?.local_validation_note ? prediction.local_validation_note + " " : "";
+    setText(prefix + "Quality", coverageText + countText + maxText + ageText + partialText + validationText + (prediction?.message && prediction.status !== "predicted" ? prediction.message : ""));
   }
 
   function makePopup(prediction) {
@@ -162,9 +170,11 @@
         ? Number(prediction.risk_percentage)
         : Number(prediction.model_probability) * 100;
       const riskLabel = (prediction.risk_level || "model").toUpperCase();
-      signal.textContent = riskLabel + " risk · " + percent.toFixed(1) + "% chance of danger-stage crossing";
+      signal.textContent = riskLabel + " risk · " + percent.toFixed(1) + "% chance of warning-level crossing in 24h";
     } else if (prediction.status === "danger_level_reached") {
-      signal.textContent = "HIGH risk · 100% observed: danger level reached";
+      signal.textContent = "HIGH · 100% observed: danger level reached";
+    } else if (prediction.status === "warning_level_reached") {
+      signal.textContent = "HIGH · 100% observed: warning level reached";
     } else {
       signal.textContent = prediction.signal || prediction.message || "No current model estimate";
     }
@@ -230,7 +240,7 @@
     const lowMediumBoundary = Number(data.risk_bands?.medium_min_inclusive_probability);
     if (Number.isFinite(lowMediumBoundary)) {
       const boundaryPercent = (lowMediumBoundary * 100).toFixed(1);
-      setText("riskBandGuide", "LOW: under " + boundaryPercent + "%. MEDIUM: " + boundaryPercent + "% to under 50%. HIGH: 50% or more, or the danger level is already observed. Percent is the experimental chance of a gauge crossing its CWC danger level by the next calendar day—not the chance that a street or block floods.");
+      setText("riskBandGuide", "LOW: under " + boundaryPercent + "%. MEDIUM: " + boundaryPercent + "% to under 50%. HIGH: 50% or more, or a CWC warning/danger level is already observed. Percent is the experimental chance of a gauge reaching its CWC warning level during the 24 hours after the latest reading—not a street or block flood probability.");
     }
     renderMap(predictions);
     renderSources(data);
@@ -246,15 +256,18 @@
     } else {
       const current = predictions.filter((item) => finiteNumber(item.data_age_hours));
       const freshestAge = current.length ? Math.min(...current.map((item) => Number(item.data_age_hours))) : Infinity;
-      const hasPrediction = predictions.some((item) => item.status === "predicted" || item.status === "danger_level_reached");
+      const hasPrediction = predictions.some((item) => ["predicted", "danger_level_reached", "warning_level_reached"].includes(item.status));
       const state = freshestAge <= 6 ? "live" : "delayed";
       card.dataset.state = state;
       setText("dataMode", state === "live" ? "Live CWC readings" : "CWC update delayed");
       setText("dataBadge", freshestAge <= 6 ? "Updating" : "Check reading time");
+      const insufficient = predictions.some((item) => item.status === "insufficient_inputs");
       setText("statusNote", hasPrediction
-        ? "The gauge readings below come from CWC. The model gives an experimental next-calendar-day estimate."
-        : "CWC connected, but recent quality-checked data is not available for the focus gauges.");
-      const usable = predictions.filter((item) => item.status === "predicted" || item.status === "danger_level_reached").length;
+        ? "CWC readings are current. The model estimates warning-level risk during the 24 hours after the latest reading."
+        : insufficient
+          ? "CWC is connected, but not enough recent inputs are available for a 24-hour estimate."
+          : "CWC connected, but recent quality-checked data is not available for the focus gauges.");
+      const usable = predictions.filter((item) => ["predicted", "danger_level_reached", "warning_level_reached"].includes(item.status)).length;
       setText("stationCount", usable + " of 2");
       setText("forecastBadge", hasPrediction ? "CWC data connected" : "No current estimate");
     }
@@ -347,7 +360,7 @@
       model_scope: currentData.live?.target_definition || "unavailable",
       risk_bands: currentData.live?.risk_bands || "unavailable",
       limitations: currentData.live?.limitations || ["No current data is available."],
-      instruction: "Explain only these readings and the provided Low, Medium, or High band. Percentages estimate a gauge reaching its CWC danger level by the next calendar day; they are not neighborhood flood probabilities or official warnings. If readings are stale, say no current estimate is available."
+      instruction: "Explain only these readings and the provided Low, Medium, or High band. Percentages estimate a gauge reaching its published CWC warning level during the 24 hours after the latest reading; they are not neighborhood flood probabilities or official warnings. Muzaffarpur has sparse holdout events, so say local accuracy is unknown. If readings are stale or inputs are insufficient, say no current estimate is available."
     };
   }
 
