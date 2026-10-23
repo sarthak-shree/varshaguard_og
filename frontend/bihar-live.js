@@ -70,9 +70,12 @@
 
   function signalState(prediction) {
     if (!prediction || prediction.status === "stale" || prediction.status === "unavailable") return "stale";
-    if (prediction.status === "danger_level_reached") return "danger";
+    if (prediction.status === "danger_level_reached") return "high";
+    if (["low", "medium", "high"].includes(prediction.risk_level)) return prediction.risk_level;
     if (!finiteNumber(prediction.model_probability) || !finiteNumber(prediction.decision_threshold)) return "stale";
-    return Number(prediction.model_probability) >= Number(prediction.decision_threshold) ? "elevated" : "lower";
+    const probability = Number(prediction.model_probability);
+    if (probability >= 0.5) return "high";
+    return probability >= Number(prediction.decision_threshold) ? "medium" : "low";
   }
 
   function updateCard(districtKey, prediction) {
@@ -81,16 +84,18 @@
     const signal = $(prefix + "Signal");
     const state = signalState(prediction);
     const label = prediction?.status === "danger_level_reached"
-      ? "Danger level reached"
+      ? "HIGH · observed"
       : prediction?.status === "stale"
-        ? "Reading is old"
+        ? "No fresh estimate"
         : prediction?.status === "unavailable"
           ? "No live reading"
-          : state === "elevated" ? "Elevated model signal" : "Lower model signal";
+          : state === "high" ? "HIGH RISK" : state === "medium" ? "MEDIUM RISK" : state === "low" ? "LOW RISK" : "No estimate";
 
     signal.textContent = label;
     signal.dataset.state = state;
-    $(prefix + "Card").dataset.state = districtKey === $("districtSelect").value ? "selected" : "";
+    const gaugeCard = $(prefix + "Card");
+    gaugeCard.dataset.state = districtKey === $("districtSelect").value ? "selected" : "";
+    gaugeCard.dataset.risk = state;
     setText(prefix + "Stage", finiteNumber(prediction?.current_stage_m) ? Number(prediction.current_stage_m).toFixed(2) + " m" : "—");
     setText(prefix + "Danger", finiteNumber(prediction?.danger_level_m) ? Number(prediction.danger_level_m).toFixed(2) + " m" : "—");
     setText(prefix + "Time", formatTime(prediction?.observed_at_ist));
@@ -98,18 +103,38 @@
 
     const probabilityLabel = $(prefix + "Probability");
     const probabilityCaption = $(prefix + "ProbabilityLabel");
+    let riskPercent = null;
     if (prediction?.status === "danger_level_reached") {
-      probabilityLabel.textContent = "Observed";
-      probabilityCaption.textContent = "CWC gauge reading has reached danger level";
-      setText(prefix + "ForecastText", "The latest observed river level is at or above the CWC danger level.");
+      riskPercent = 100;
+      probabilityLabel.textContent = "100%";
+      probabilityCaption.textContent = "Danger level is already reached in CWC observations (not a forecast)";
+      setText(prefix + "ForecastText", "CWC's observed daily maximum reached the danger level. This is an observation, not a prediction.");
     } else if (prediction?.status === "predicted" && finiteNumber(prediction.model_probability)) {
-      probabilityLabel.textContent = (Number(prediction.model_probability) * 100).toFixed(1) + "%";
-      probabilityCaption.textContent = "model-estimated chance of reaching danger stage";
+      riskPercent = finiteNumber(prediction.risk_percentage)
+        ? Number(prediction.risk_percentage)
+        : Number(prediction.model_probability) * 100;
+      probabilityLabel.textContent = riskPercent.toFixed(1) + "%";
+      probabilityCaption.textContent = "Estimated chance of this gauge reaching danger level by " + formatDate(prediction.forecast_date);
       setText(prefix + "ForecastText", "For " + formatDate(prediction.forecast_date) + ": experimental estimate that this gauge may reach its CWC danger level.");
     } else {
       probabilityLabel.textContent = "—";
       probabilityCaption.textContent = "No model estimate shown";
       setText(prefix + "ForecastText", prediction?.message || "Waiting for recent, quality-checked CWC readings.");
+    }
+
+    const meter = $(prefix + "RiskMeter");
+    const fill = $(prefix + "RiskFill");
+    if (finiteNumber(riskPercent)) {
+      const boundedPercent = Math.max(0, Math.min(100, riskPercent));
+      meter.hidden = false;
+      meter.setAttribute("aria-valuenow", boundedPercent.toFixed(1));
+      meter.setAttribute("aria-valuetext", (state === "high" ? "High" : state === "medium" ? "Medium" : "Low") + " risk, " + boundedPercent.toFixed(1) + " percent");
+      fill.style.width = boundedPercent + "%";
+    } else {
+      meter.hidden = true;
+      meter.removeAttribute("aria-valuenow");
+      meter.removeAttribute("aria-valuetext");
+      fill.style.width = "0%";
     }
 
     const coverage = prediction?.feature_coverage;
@@ -133,7 +158,13 @@
       : "Latest level unavailable";
     const signal = document.createElement("div");
     if (prediction.status === "predicted") {
-      signal.textContent = "Next-day gauge estimate: " + (Number(prediction.model_probability) * 100).toFixed(1) + "%";
+      const percent = finiteNumber(prediction.risk_percentage)
+        ? Number(prediction.risk_percentage)
+        : Number(prediction.model_probability) * 100;
+      const riskLabel = (prediction.risk_level || "model").toUpperCase();
+      signal.textContent = riskLabel + " risk · " + percent.toFixed(1) + "% chance of danger-stage crossing";
+    } else if (prediction.status === "danger_level_reached") {
+      signal.textContent = "HIGH risk · 100% observed: danger level reached";
     } else {
       signal.textContent = prediction.signal || prediction.message || "No current model estimate";
     }
@@ -143,9 +174,9 @@
 
   function markerColor(prediction) {
     const state = signalState(prediction);
-    if (state === "danger") return "#F87171";
-    if (state === "elevated") return "#FBBF24";
-    if (state === "lower") return "#34D399";
+    if (state === "high") return "#F87171";
+    if (state === "medium") return "#FBBF24";
+    if (state === "low") return "#34D399";
     return "#94A3B8";
   }
 
@@ -196,6 +227,11 @@
     ]));
     updateCard("patna", byDistrict.patna);
     updateCard("muzaffarpur", byDistrict.muzaffarpur);
+    const lowMediumBoundary = Number(data.risk_bands?.medium_min_inclusive_probability);
+    if (Number.isFinite(lowMediumBoundary)) {
+      const boundaryPercent = (lowMediumBoundary * 100).toFixed(1);
+      setText("riskBandGuide", "LOW: under " + boundaryPercent + "%. MEDIUM: " + boundaryPercent + "% to under 50%. HIGH: 50% or more, or the danger level is already observed. Percent is the experimental chance of a gauge crossing its CWC danger level by the next calendar day—not the chance that a street or block floods.");
+    }
     renderMap(predictions);
     renderSources(data);
 
@@ -309,8 +345,9 @@
       selected_gauge: predictions.find((item) => item.district?.toLowerCase() === selected.name.toLowerCase()) || "unavailable",
       all_gauges: predictions,
       model_scope: currentData.live?.target_definition || "unavailable",
+      risk_bands: currentData.live?.risk_bands || "unavailable",
       limitations: currentData.live?.limitations || ["No current data is available."],
-      instruction: "Explain only these readings. This is a research estimate for gauge danger-stage crossing by the next calendar day, not a flood probability, inundation map, or official warning."
+      instruction: "Explain only these readings and the provided Low, Medium, or High band. Percentages estimate a gauge reaching its CWC danger level by the next calendar day; they are not neighborhood flood probabilities or official warnings. If readings are stale, say no current estimate is available."
     };
   }
 

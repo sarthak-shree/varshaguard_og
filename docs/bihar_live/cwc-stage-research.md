@@ -10,6 +10,8 @@ The CWC FFS endpoint used by the application is on the official CWC domain, but 
 
 The returned probability is an experimental estimate of a CWC gauge reaching its published danger stage on the next calendar day. It is not a flood probability, an inundation estimate, or an official warning. Only live CWC stage and rainfall observations are used; the system does not ingest IMD radar, satellite rainfall, or numerical weather predictions. Current-day rainfall and stage summaries may be incomplete, and missing inputs are median-imputed. The dashboard shows feature coverage so missing data is visible.
 
+The dashboard labels the model percentage **Low** below the validation-selected F2 decision threshold, **Medium** from that threshold up to 50%, and **High** at 50% or above. The threshold currently stored with the model is 5.7717%. A danger-stage crossing that is already present in the latest observations is marked **High / 100% observed**, rather than presented as a future estimate. These are explanatory display bands, not official CWC warning levels; stale and unavailable readings do not receive a risk percentage.
+
 ## Source and reproduction
 
 Historical training observations come from the Central Water Commission Flood Forecast System, retrieved through the `diagram-chasing/cwc-flood-forecasts` Parquet mirror. The mirror releases its dataset under the Open Database License and requests attribution to CWC. Do not redistribute the source CSV; the fetch script downloads the selected station rows when needed.

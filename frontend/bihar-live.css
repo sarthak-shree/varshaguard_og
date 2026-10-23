@@ -28,14 +28,19 @@
 .live-gauge-heading .eyebrow{font-size:9px}
 .live-gauge-heading h4{margin:5px 0 0;color:var(--text);font-size:18px}
 .live-signal{display:inline-flex;align-items:center;min-height:25px;padding:5px 9px;border-radius:20px;background:#eaf0f3;color:#536574;font-size:10px;font-weight:750;white-space:nowrap}
-.live-signal[data-state="lower"]{background:#e1f5ec;color:#187253}
-.live-signal[data-state="elevated"]{background:#fff1d7;color:#8c6110}
-.live-signal[data-state="danger"]{background:#ffe5e2;color:#a33831}
+.live-signal[data-state="low"]{background:#e1f5ec;color:#187253}
+.live-signal[data-state="medium"]{background:#fff1d7;color:#8c6110}
+.live-signal[data-state="high"]{background:#ffe5e2;color:#a33831}
 .live-signal[data-state="stale"]{background:#edf0f2;color:#65717c}
 .live-forecast-text{min-height:38px;margin:13px 0;color:var(--muted);font-size:12px;line-height:1.5}
 .live-probability-row{display:flex;align-items:baseline;gap:10px;margin:3px 0 14px}
 .live-probability-row strong{color:var(--cyan);font:750 32px var(--mono)}
 .live-probability-row span{color:var(--muted);font-size:11px;line-height:1.3}
+.live-risk-meter{height:8px;margin:-7px 0 14px;overflow:hidden;border-radius:999px;background:#e8eef1}
+.live-risk-meter[hidden]{display:none}
+.live-risk-meter span{display:block;width:0;height:100%;border-radius:inherit;background:#229976;transition:width .35s ease,background .2s ease}
+.live-gauge-card[data-risk="medium"] .live-risk-meter span{background:#d79a21}
+.live-gauge-card[data-risk="high"] .live-risk-meter span{background:#df5d54}
 .live-gauge-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .live-gauge-stats>div{padding:9px;background:var(--panel);border:1px solid var(--line);border-radius:7px;min-width:0}
 .live-gauge-stats span{display:block;color:var(--muted);font-size:9px;line-height:1.4}

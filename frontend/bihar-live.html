@@ -39,7 +39,7 @@
           <h2><span>Bihar</span></h2>
           <span class="status-chip">CWC DATA</span>
         </div>
-        <p>See the latest river readings and a research model signal for tomorrow.</p>
+        <p>See live river readings and the model's Low, Medium, or High estimate.</p>
         <div class="region-card-meta">
           <span class="region-meta-pill">Patna</span>
           <span class="region-meta-pill">Muzaffarpur</span>
@@ -109,9 +109,9 @@
             <div id="map" role="application" aria-label="Map showing CWC river gauges in Patna and Muzaffarpur"></div>
             <div class="map-risk-legend" aria-label="Gauge signal key">
               <div class="map-risk-legend-title">Gauge signal</div>
-              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-low"></span>Lower signal</div>
-              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-medium"></span>Elevated signal</div>
-              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-high"></span>Danger level reached</div>
+              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-low"></span>Low model risk</div>
+              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-medium"></span>Medium model risk</div>
+              <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-high"></span>High / danger reached</div>
               <div class="map-risk-legend-item" id="userLocationLegend" hidden><span class="map-risk-dot map-risk-high"></span>Your location</div>
             </div>
           </div>
@@ -122,7 +122,7 @@
     <section class="panel forecast-panel">
       <div class="panel-heading-row">
         <div>
-          <h3>What might happen at the river gauges tomorrow?</h3>
+          <h3>River danger-level risk for the next day</h3>
           <span>Experimental model estimate for the next calendar day</span>
         </div>
         <span id="forecastBadge" class="health-badge">Waiting for CWC</span>
@@ -136,8 +136,9 @@
           <p id="patnaForecastText" class="live-forecast-text">Waiting for river readings…</p>
           <div class="live-probability-row">
             <strong id="patnaProbability">—</strong>
-            <span id="patnaProbabilityLabel">model-estimated chance of reaching danger stage</span>
+            <span id="patnaProbabilityLabel">Estimated chance of reaching the CWC danger level</span>
           </div>
+          <div id="patnaRiskMeter" class="live-risk-meter" role="meter" aria-label="Patna risk percentage" aria-valuemin="0" aria-valuemax="100" hidden><span id="patnaRiskFill"></span></div>
           <div class="live-gauge-stats">
             <div><span>Latest river level</span><strong id="patnaStage">—</strong></div>
             <div><span>CWC danger level</span><strong id="patnaDanger">—</strong></div>
@@ -155,8 +156,9 @@
           <p id="muzaffarpurForecastText" class="live-forecast-text">Waiting for river readings…</p>
           <div class="live-probability-row">
             <strong id="muzaffarpurProbability">—</strong>
-            <span id="muzaffarpurProbabilityLabel">model-estimated chance of reaching danger stage</span>
+            <span id="muzaffarpurProbabilityLabel">Estimated chance of reaching the CWC danger level</span>
           </div>
+          <div id="muzaffarpurRiskMeter" class="live-risk-meter" role="meter" aria-label="Muzaffarpur risk percentage" aria-valuemin="0" aria-valuemax="100" hidden><span id="muzaffarpurRiskFill"></span></div>
           <div class="live-gauge-stats">
             <div><span>Latest river level</span><strong id="muzaffarpurStage">—</strong></div>
             <div><span>CWC danger level</span><strong id="muzaffarpurDanger">—</strong></div>
@@ -166,7 +168,7 @@
           <small id="muzaffarpurQuality" class="live-quality">Waiting for data quality details</small>
         </article>
       </div>
-      <p class="plain-text bihar-note">This is a gauge-level research signal, not a flood warning or a map of which streets or blocks will flood. Model inputs may be incomplete.</p>
+      <p id="riskBandGuide" class="plain-text bihar-note">Low is below the model trigger; Medium is above it; High is 50% or more. If danger is already observed, the card shows High / 100% observed. This is a research estimate for a river gauge, not a street or block flood probability.</p>
     </section>
 
     <section class="two-column">

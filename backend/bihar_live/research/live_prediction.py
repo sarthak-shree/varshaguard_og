@@ -250,6 +250,20 @@ def _make_features(code: str, day: date, station_codes: list[str], stages: dict,
     return row, available_features, numeric_feature_count
 
 
+def _risk_level(probability: float, decision_threshold: float) -> str:
+    """Map the research model probability to clear dashboard bands.
+
+    The low/medium cutoff is the threshold selected on validation data for the
+    model's high-recall alert rule. High starts at a majority probability.
+    These are presentation bands, not official warning levels.
+    """
+    if probability >= 0.5:
+        return "high"
+    if probability >= decision_threshold:
+        return "medium"
+    return "low"
+
+
 def _make_prediction(code: str, district: str, stages: dict, rains: dict, station_codes: list[str], model, metadata: dict, now_ist: datetime) -> dict:
     stage = stages.get(code)
     station_meta = metadata["data_quality"]["stations"][code]
@@ -289,11 +303,20 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
         "source": "Central Water Commission Flood Forecasting System (CWC FFS)",
     }
     if age_hours > STALE_AFTER_HOURS:
-        result.update({"status": "stale", "message": "The latest quality-checked river reading is over 24 hours old; no model signal is shown."})
+        result.update({
+            "status": "stale",
+            "risk_level": None,
+            "risk_percentage": None,
+            "risk_basis": "unavailable",
+            "message": "The latest quality-checked river reading is over 24 hours old; no model signal is shown.",
+        })
         return result
     if float(current["maximum"]) >= float(current["danger_level_m"]):
         result.update({
             "status": "danger_level_reached",
+            "risk_level": "high",
+            "risk_percentage": 100.0,
+            "risk_basis": "observed",
             "signal": "Danger threshold reached in observed data",
             "message": "Today's observed maximum has reached or passed the published danger level. Follow official CWC and local authority updates.",
             "forecast_date": (observed_day + timedelta(days=1)).isoformat(),
@@ -303,9 +326,13 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
     row, available, total = _make_features(code, observed_day, station_codes, stages, rains)
     probability = float(model.predict_proba(row)[0][1])
     threshold = float(metadata["decision_threshold"])
+    risk_level = _risk_level(probability, threshold)
     result.update({
         "status": "predicted",
-        "signal": "Elevated model signal" if probability >= threshold else "Lower model signal",
+        "risk_level": risk_level,
+        "risk_percentage": round(probability * 100, 1),
+        "risk_basis": "model_probability",
+        "signal": f"{risk_level.title()} model risk",
         "model_probability": round(probability, 6),
         "decision_threshold": round(threshold, 6),
         "forecast_date": (observed_day + timedelta(days=1)).isoformat(),
@@ -373,6 +400,12 @@ def _build_payload() -> dict:
         "model_name": metadata.get("model_name"),
         "model_type": metadata.get("selected_model"),
         "target_definition": "Next calendar day: whether the gauge's daily maximum stage reaches the published CWC danger level.",
+        "risk_bands": {
+            "low_max_exclusive_probability": float(metadata["decision_threshold"]),
+            "medium_min_inclusive_probability": float(metadata["decision_threshold"]),
+            "high_min_inclusive_probability": 0.5,
+            "note": "Low is below the validation-selected model trigger; Medium is at or above that trigger but below 50%; High is 50% or more. A danger-stage crossing already observed is shown as High / 100% observed.",
+        },
         "generated_at_ist": generated_at,
         "source": {
             "name": "Central Water Commission Flood Forecasting System",
