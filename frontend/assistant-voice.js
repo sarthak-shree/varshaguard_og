@@ -26,8 +26,23 @@
     let discardRecording = false;
 
     function setStatus(message, state) {
+      const currentState = state || "idle";
       status.textContent = message;
-      if (typeof onStateChange === "function") onStateChange(state || "idle", message);
+      if (typeof onStateChange === "function") onStateChange(currentState, message);
+      document.dispatchEvent(new CustomEvent("varshaguard:assistant-state", {
+        detail: { state: currentState, global: true }
+      }));
+      const dialog = document.getElementById("assistantModal");
+      if (dialog) dialog.dataset.assistantState = currentState;
+      const stateLabel = document.getElementById("assistantOrbState");
+      if (stateLabel) {
+        stateLabel.textContent = ({
+          idle: "Ready to help",
+          listening: "Listening to you",
+          thinking: "Thinking through the dashboard",
+          speaking: "Speaking response"
+        })[currentState] || "Ready to help";
+      }
     }
 
     function releaseMicrophone() {
