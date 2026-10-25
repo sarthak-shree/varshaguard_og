@@ -80,7 +80,12 @@ function setupAssistant() {
         window.VarshaGuardOrb?.setState("idle");
         input.focus();
     };
-    const close = () => { voiceControls?.cancel(); modal.classList.add("hidden"); };
+    const close = () => {
+        voiceControls?.cancel();
+        modal.classList.add("hidden");
+        modal.dataset.assistantMode = "text";
+        window.VarshaGuardOrb?.setState("idle");
+    };
 
     openButtons.forEach((button) => button.addEventListener("click", open));
     document.querySelectorAll("[data-assistant-prompt]").forEach((button) => {
@@ -105,6 +110,10 @@ function setupAssistant() {
         sendButton,
         getContext: buildAssistantContext,
         appendMessage: appendAssistantMessage,
+    });
+
+    document.getElementById("assistantNativeOrb")?.addEventListener("click", () => {
+        if (modal.dataset.assistantMode === "voice") voiceControls?.toggle();
     });
 
     form.addEventListener("submit", async (event) => {
