@@ -219,37 +219,56 @@
 }
 
 
-/* The animated assistant is rendered by the dedicated Next.js VoiceOrbs app. */
-.assistant-orb-stage{
-  width:184px;height:184px;flex:0 0 184px;position:relative;overflow:visible;
-  display:flex;align-items:center;justify-content:center;
+
+
+/* gabrstew/Orb native HTML/CSS orb adapted for the VarshaGuard voice panel. */
+.assistant-orb-stage .orb {
+  --orb-glow: rgba(245, 0, 0, .35);
+  width: 160px;
+  height: 160px;
+  flex: 0 0 160px;
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(135deg, #f50000, #f7f8f8, #00000056, #630c0c);
+  border-radius: 50%;
+  box-shadow: 0 0 40px #f9000066, 0 0 90px #e55d5d44;
+  transition: transform .15s ease, background .35s ease, box-shadow .35s ease;
+  animation: varshaOrbMorph 6s ease-in-out infinite;
+  cursor: default;
 }
-.assistant-nebula-frame{
-  display:block;position:relative;width:184px;height:184px;flex:0 0 184px;
-  padding:0;margin:0;border:0;border-radius:50%;background:transparent;
-  overflow:hidden;box-shadow:none;outline:0;
+@keyframes varshaOrbMorph {
+  0%,100% { border-radius:42% 58% 65% 35% / 45% 35% 65% 55%; }
+  25% { border-radius:65% 35% 42% 58% / 35% 60% 40% 65%; }
+  50% { border-radius:35% 65% 55% 45% / 60% 40% 65% 35%; }
+  75% { border-radius:55% 45% 35% 65% / 40% 65% 35% 60%; }
 }
-.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-panel{
-  align-items:center;min-height:184px;gap:14px;
+.assistant-dialog .orb[data-state="disabled"] { filter:saturate(.85); opacity:.85; }
+.assistant-dialog .orb[data-state="idle"],
+.assistant-dialog .orb[data-state="listening"] {
+  background:linear-gradient(135deg,#818cf8,#22d3ee,#f7f8f8,#3730a3);
+  box-shadow:0 0 36px #22d3ee77,0 0 84px #818cf855;
 }
-.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-copy{
-  min-width:0;flex:1 1 180px;
+.assistant-dialog .orb[data-state="thinking"] {
+  background:linear-gradient(135deg,#a78bfa,#4338ca,#e0e7ff,#0f172a);
+  box-shadow:0 0 40px #8b5cf699,0 0 90px #4f46e566;
+  animation-duration:2.3s;
 }
-.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-copy span{
-  display:block;max-width:300px;
+.assistant-dialog .orb[data-state="speaking"] {
+  background:linear-gradient(135deg,#34d399,#22d3ee,#ecfeff,#047857);
+  box-shadow:0 0 42px #34d39999,0 0 90px #22d3ee55;
+  animation-duration:3s;
 }
-@media(max-width:520px){
-  .assistant-dialog[data-assistant-mode="voice"] .assistant-orb-panel{
-    min-height:136px;gap:8px;padding:8px 12px;flex-wrap:nowrap;
-  }
-  .assistant-dialog[data-assistant-mode="voice"] .assistant-orb-stage{
-    width:136px;height:136px;flex:0 0 136px;
-  }
-  .assistant-dialog[data-assistant-mode="voice"] .assistant-nebula-frame{
-    position:absolute;width:184px;height:184px;left:50%;top:50%;
-    transform:translate(-50%,-50%) scale(.72);transform-origin:center;
-  }
-  .assistant-dialog[data-assistant-mode="voice"] .assistant-orb-copy{
-    flex:1 1 auto;font-size:12px;
-  }
+.assistant-dialog .orb[data-state="error"] {
+  background:linear-gradient(135deg,#fb7185,#be123c,#fff1f2,#4c0519);
+  box-shadow:0 0 40px #fb718577,0 0 90px #be123c55;
+}
+.assistant-dialog .assistant-orb-stage { width:176px;height:176px;flex:0 0 176px;display:grid;place-items:center; }
+.assistant-dialog .assistant-orb-copy { min-width:0;flex:1; }
+@media(max-width:520px) {
+ .assistant-dialog[data-assistant-mode="voice"] .assistant-orb-panel { min-height:126px; gap:8px; padding:8px 12px; }
+ .assistant-dialog[data-assistant-mode="voice"] .assistant-orb-stage { width:116px;height:116px;flex:0 0 116px; }
+ .assistant-dialog .orb { width:108px;height:108px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .assistant-dialog .orb { animation:none!important;transition:none!important; }
 }
