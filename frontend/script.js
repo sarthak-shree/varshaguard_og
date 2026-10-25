@@ -58,6 +58,9 @@ function setupAssistant() {
         textModeButton?.setAttribute("aria-pressed", String(!voiceMode));
         voiceModeButton?.setAttribute("aria-pressed", String(voiceMode));
         if (voiceMode) {
+            const orb = document.getElementById("assistantNativeOrb");
+            orb?.setAttribute("aria-label", "Start listening");
+            orb?.setAttribute("aria-pressed", "false");
             window.VarshaGuardOrb?.setState("idle");
             const label = document.getElementById("assistantOrbState");
             if (label) label.textContent = "Ready to listen";
@@ -112,8 +115,15 @@ function setupAssistant() {
         appendMessage: appendAssistantMessage,
     });
 
-    document.getElementById("assistantNativeOrb")?.addEventListener("click", () => {
+    const nativeOrb = document.getElementById("assistantNativeOrb");
+    nativeOrb?.addEventListener("click", () => {
         if (modal.dataset.assistantMode === "voice") voiceControls?.toggle();
+    });
+    document.addEventListener("varshaguard:assistant-state", (event) => {
+        if (!nativeOrb || modal.dataset.assistantMode !== "voice") return;
+        const state = event.detail?.state || "idle";
+        nativeOrb.setAttribute("aria-label", state === "listening" ? "Stop listening and send question" : "Start listening");
+        nativeOrb.setAttribute("aria-pressed", String(state === "listening"));
     });
 
     form.addEventListener("submit", async (event) => {
