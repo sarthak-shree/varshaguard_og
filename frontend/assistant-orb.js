@@ -79,10 +79,18 @@
     });
     canvas.addEventListener("pointerleave", () => { hovered = false; });
     canvas.addEventListener("pointerenter", () => { hovered = true; });
-    canvas.addEventListener("click", () => {
+    const openAssistant = () => {
       const modal = document.getElementById("assistantModal");
       modal?.classList.remove("hidden");
+      window.VarshaGuardOrb?.setState("idle");
       document.getElementById("assistantInput")?.focus();
+    };
+    canvas.addEventListener("click", openAssistant);
+    canvas.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openAssistant();
+      }
     });
     const observer = new IntersectionObserver(entries => { active = entries[0]?.isIntersecting ?? true; });
     observer.observe(canvas);
