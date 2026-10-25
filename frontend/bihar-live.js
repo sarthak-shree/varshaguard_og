@@ -387,6 +387,12 @@
     const close = () => { voiceControls?.cancel(); modal.classList.add("hidden"); };
     $("assistantTopButton").addEventListener("click", open);
     $("assistantOpenButton").addEventListener("click", open);
+    document.querySelectorAll("[data-assistant-prompt]").forEach((button) => {
+      button.addEventListener("click", () => {
+        input.value = button.dataset.assistantPrompt || "";
+        form.requestSubmit();
+      });
+    });
     $("assistantCloseButton").addEventListener("click", close);
     modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
     document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
