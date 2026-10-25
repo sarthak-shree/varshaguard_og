@@ -10,7 +10,13 @@
   };
   const instances = [];
   function mountOrb(canvas) {
-    if (!window.THREE || !canvas || !window.THREE.WebGLRenderer) return null;
+    if (!canvas) return null;
+    if (!window.THREE || !window.THREE.WebGLRenderer) {
+      canvas.hidden = true;
+      const fallback = canvas.parentElement?.querySelector(".orb-fallback");
+      if (fallback) fallback.hidden = false;
+      return null;
+    }
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
