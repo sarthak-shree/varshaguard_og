@@ -61,17 +61,17 @@
   transition:border-color .25s ease,box-shadow .25s ease,transform .25s ease;
 }
 .ai-orb::after{
-  inset:1px;border:1px solid rgba(36,197,210,.22);
-  mask-image:conic-gradient(from 20deg,transparent 0 24deg,#000 50deg 125deg,transparent 155deg 205deg,#000 235deg 300deg,transparent 330deg);
-  animation:assistantRingTurn 12s linear infinite;
+  inset:1px;border:2px dashed rgba(36,197,210,.78);
+  box-shadow:0 0 14px rgba(36,197,210,.12);
+  animation:assistantRingTurn 7s linear infinite;
 }
 .ai-orb:hover::before{transform:scale(1.04);box-shadow:0 0 0 7px rgba(36,197,210,.09),0 0 32px rgba(36,197,210,.32)}
 .ai-orb[data-state="listening"]::before{border-color:#0891b2;box-shadow:0 0 0 7px rgba(8,145,178,.12),0 0 34px rgba(8,145,178,.35)}
 .ai-orb[data-state="thinking"]::before{border-color:#8b5cf6;box-shadow:0 0 0 7px rgba(139,92,246,.11),0 0 34px rgba(139,92,246,.3)}
 .ai-orb[data-state="speaking"]::before{border-color:#10b981;box-shadow:0 0 0 7px rgba(16,185,129,.12),0 0 34px rgba(16,185,129,.3)}
-.ai-orb[data-state="listening"]::after{border-color:rgba(8,145,178,.65);animation-duration:3s}
-.ai-orb[data-state="thinking"]::after{border-color:rgba(139,92,246,.65);animation-duration:2.5s}
-.ai-orb[data-state="speaking"]::after{border-color:rgba(16,185,129,.65);animation-duration:4s}
+.ai-orb[data-state="listening"]::after{border-color:rgba(8,145,178,.95);animation-duration:2.4s}
+.ai-orb[data-state="thinking"]::after{border-color:rgba(139,92,246,.95);animation-duration:1.8s}
+.ai-orb[data-state="speaking"]::after{border-color:rgba(16,185,129,.95);animation-duration:3s}
 @keyframes assistantRingTurn{to{transform:rotate(360deg)}}
 
 /* A more intentional assistant workspace. */
