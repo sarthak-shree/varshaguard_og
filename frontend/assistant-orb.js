@@ -85,13 +85,9 @@
       window.VarshaGuardOrb?.setState("idle");
       document.getElementById("assistantInput")?.focus();
     };
-    canvas.addEventListener("click", openAssistant);
-    canvas.addEventListener("keydown", event => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        openAssistant();
-      }
-    });
+    // The canvas sits inside a real button, so mouse, Enter, and Space share one accessible action.
+    const orbButton = canvas.closest("button.ai-orb");
+    (orbButton || canvas).addEventListener("click", openAssistant);
     const observer = new IntersectionObserver(entries => { active = entries[0]?.isIntersecting ?? true; });
     observer.observe(canvas);
     const frame = now => {
