@@ -378,13 +378,23 @@
     const input = $("assistantInput");
     const form = $("assistantForm");
     const send = $("assistantSendButton");
+    const voiceModeButton = $("assistantVoiceMode");
     let voiceControls = null;
+    const setVoiceMode = (enabled) => {
+      modal.querySelector(".assistant-dialog").dataset.assistantMode = enabled ? "voice" : "text";
+      voiceModeButton?.setAttribute("aria-pressed", String(enabled));
+      voiceModeButton?.classList.toggle("is-active", enabled);
+      window.VarshaGuardOrb?.setState("idle");
+      if (!enabled) input.focus();
+    };
+    voiceModeButton?.addEventListener("click", () => setVoiceMode(modal.querySelector(".assistant-dialog").dataset.assistantMode !== "voice"));
     const open = () => {
       modal.classList.remove("hidden");
+      setVoiceMode(false);
       window.VarshaGuardOrb?.setState("idle");
       input.focus();
     };
-    const close = () => { voiceControls?.cancel(); modal.classList.add("hidden"); };
+    const close = () => { voiceControls?.cancel(); setVoiceMode(false); modal.classList.add("hidden"); };
     $("assistantTopButton").addEventListener("click", open);
     $("assistantOpenButton").addEventListener("click", open);
     document.querySelectorAll("[data-assistant-prompt]").forEach((button) => {
