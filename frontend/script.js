@@ -53,6 +53,12 @@ function setupAssistant() {
     const close = () => { voiceControls?.cancel(); modal.classList.add("hidden"); };
 
     openButtons.forEach((button) => button.addEventListener("click", open));
+    document.querySelectorAll("[data-assistant-prompt]").forEach((button) => {
+        button.addEventListener("click", () => {
+            input.value = button.dataset.assistantPrompt || "";
+            form.requestSubmit();
+        });
+    });
     closeButton.addEventListener("click", close);
     modal.addEventListener("click", (event) => {
         if (event.target === modal) close();
