@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { NebulaOrb } from '@/registry/orbe/nebula-orb/nebula-orb';
-import type { OrbState } from '@/lib/orb-state';
+import type { OrbState } from '@/registry/lib/orb-state';
 const states: OrbState[] = ['idle','listening','thinking','speaking','disabled'];
 export default function Home() {
  const [state,setState] = useState<OrbState>('disabled');
