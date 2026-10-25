@@ -37,9 +37,9 @@
       const stateLabel = document.getElementById("assistantOrbState");
       if (stateLabel) {
         stateLabel.textContent = ({
-          idle: "Ready to help",
+          idle: "Ready to listen",
           listening: "Listening to you",
-          thinking: "Thinking through the dashboard",
+          thinking: "Preparing your answer",
           speaking: "Speaking response"
         })[currentState] || "Ready to help";
       }
@@ -177,7 +177,7 @@
         button.classList.add("is-recording");
         button.setAttribute("aria-pressed", "true");
         button.textContent = "■ Stop";
-        setStatus("Listening… tap Stop when you finish. Max 20 seconds.", "listening");
+        setStatus("Listening… tap the orb again to send your question. Max 20 seconds.", "listening");
         stopTimer = window.setTimeout(() => {
           if (recorder?.state === "recording") {
             setStatus("20-second limit reached. Sending your question…", "thinking");
