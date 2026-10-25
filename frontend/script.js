@@ -204,16 +204,37 @@ function hideMessage() {
 }
 
 async function getJson(url) {
-    const response = await fetch(url);
-    const contentType = response.headers.get("content-type") || "";
-
-    if (!contentType.includes("application/json")) {
-        throw new Error(`Expected JSON from ${url}, but received HTML/text (${response.status}).`);
+    let response;
+    try {
+        response = await fetch(url, {
+            cache: "no-store",
+            headers: { Accept: "application/json" },
+        });
+    } catch {
+        throw new Error("Could not connect to the VarshaGuard API. Check the network connection and deployment.");
     }
 
-    const data = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    const body = await response.text();
+    let data;
+    try {
+        data = body ? JSON.parse(body) : {};
+    } catch {
+        if (response.status === 404) {
+            throw new Error(
+                `API route not found: ${url} (404). The Vercel project must deploy from the repository root so backend/app.py and vercel.json are included.`
+            );
+        }
+        throw new Error(
+            `Expected JSON from ${url}, but the server returned HTML/text (${response.status}). Check the backend deployment and API route configuration.`
+        );
+    }
+
     if (!response.ok || data.success === false) {
-        throw new Error(data.error || "API request failed");
+        throw new Error(data.error || `API request failed (${response.status}).`);
+    }
+    if (!contentType.includes("application/json")) {
+        throw new Error(`API response from ${url} was not served as JSON.`);
     }
     return data;
 }
