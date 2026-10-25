@@ -15,12 +15,33 @@
   let refreshTimer = null;
 
   async function getJson(path) {
-    const response = await fetch(path, { cache: "no-store" });
+    let response;
+    try {
+      response = await fetch(path, {
+        cache: "no-store",
+        headers: { Accept: "application/json" }
+      });
+    } catch {
+      throw new Error("Could not connect to the Bihar Live API. Check the deployment and network connection.");
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    const body = await response.text();
     let data;
-    try { data = await response.json(); }
-    catch { throw new Error("The Bihar Live service returned an unreadable response."); }
+    try {
+      data = body ? JSON.parse(body) : {};
+    } catch {
+      const detail = response.status === 404
+        ? "The API route was not found (404). The backend may not be deployed or the Vercel root directory may be misconfigured."
+        : "The server returned HTML or invalid JSON instead of API data.";
+      throw new Error("Bihar Live API error: " + detail);
+    }
+
     if (!response.ok || data.success === false) {
-      throw new Error(data.error || "The Bihar Live service could not be reached.");
+      throw new Error(data.error || ("Bihar Live API request failed (" + response.status + ")."));
+    }
+    if (!contentType.includes("application/json") && typeof data !== "object") {
+      throw new Error("Bihar Live API returned an unexpected response format.");
     }
     return data;
   }
