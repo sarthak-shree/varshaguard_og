@@ -9,7 +9,7 @@ import {
   type OrbProps,
   type OrbState,
 } from '../../lib/orb-state';
-import { useReducedMotion } from ../../lib/use-reduced-motion;
+import { useReducedMotion } from '../../lib/use-reduced-motion';
 import { useWebGLSupport } from '../../lib/use-webgl-support';
 
 const NebulaScene = dynamic(() => import('./nebula-scene').then((m) => m.NebulaScene), {
