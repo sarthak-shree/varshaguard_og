@@ -46,9 +46,10 @@
                 </div>
             </div>
             <div class="ai-hero-card">
-                <div class="ai-orb" aria-hidden="true">
-                    <img class="ai-main-logo" src="https://raw.githubusercontent.com/sarthak-shree/varshaguard_og/main/frontend/assets/ChatGPT%20Image%20Sep%2022%2C%202026%2C%2009_03_22%20PM.png" alt="">
-                </div>
+                <button class="ai-orb" type="button" aria-label="Open VarshaGuard AI assistant">
+                    <span class="orb-fallback" hidden></span>
+                    <canvas class="ai-orb-canvas" aria-label="Interactive three-dimensional VarshaGuard AI orb" tabindex="0"></canvas>
+                </button>
                 <div class="ai-hero-copy">
                     <span class="ai-hero-kicker">✦ CORE INTELLIGENCE</span>
                     <strong>VarshaGuard AI</strong>
@@ -264,6 +265,12 @@
                 </div>
                 <button id="assistantCloseButton" class="assistant-close-btn" type="button" aria-label="Close assistant">&times;</button>
             </div>
+            <div class="assistant-orb-panel" aria-live="polite">
+                <div class="assistant-orb-stage"><button class="ai-orb" type="button" aria-label="Interact with VarshaGuard AI orb">
+                    <span class="orb-fallback" hidden></span><canvas class="ai-orb-canvas" aria-label="Interactive three-dimensional assistant orb" tabindex="0"></canvas>
+                </button></div>
+                <div class="assistant-orb-copy"><strong id="assistantOrbState">Ready to help</strong><span>Click the orb or use Speak to ask a question.</span></div>
+            </div>
             <div id="assistantMessages" class="assistant-messages">
                 <div class="assistant-message assistant-bot">Hi. Ask me to explain the current flood-risk prediction or any dashboard value.</div>
             </div>
@@ -289,6 +296,8 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="assistant-orb.js"></script>
     <script src="assistant-voice.js"></script>
     <script src="script.js"></script>
 </body>
