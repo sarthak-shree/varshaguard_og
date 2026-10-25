@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="assistant-orb.css">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.min.js"></script>
 </head>
 <body>
     <header class="topbar">
@@ -269,8 +270,15 @@
                 <button id="assistantVoiceMode" class="assistant-mode-btn" type="button" aria-pressed="false">◉ Voice mode</button>
             </div>
             <div id="assistantOrbPanel" class="assistant-orb-panel hidden" aria-live="polite">
-                <div class="assistant-orb-stage"><button class="ai-orb" type="button" aria-label="VarshaGuard AI voice assistant status">
-                </button></div>
+                <div class="assistant-orb-stage">
+                    <div id="assistantNebulaOrb" class="assistant-nebula-orb" role="img" aria-label="VarshaGuard AI animated orb" data-state="disabled">
+                        <div class="nebula-glow nebula-glow-main"></div>
+                        <div class="nebula-glow nebula-glow-error"></div>
+                        <div class="nebula-shadow"></div>
+                        <div class="nebula-core"></div>
+                        <div class="nebula-canvas-host" aria-hidden="true"></div>
+                    </div>
+                </div>
                 <div class="assistant-orb-copy"><strong id="assistantOrbState">Ready to listen</strong><span>Speak naturally. The ring responds while VarshaGuard listens and prepares your answer.</span></div>
             </div>
             <div id="assistantMessages" class="assistant-messages">
