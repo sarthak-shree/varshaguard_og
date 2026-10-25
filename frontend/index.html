@@ -264,10 +264,14 @@
                 </div>
                 <button id="assistantCloseButton" class="assistant-close-btn" type="button" aria-label="Close assistant">&times;</button>
             </div>
-            <div class="assistant-orb-panel" aria-live="polite">
-                <div class="assistant-orb-stage"><button class="ai-orb" type="button" aria-label="Interact with VarshaGuard AI orb">
+            <div class="assistant-mode-switch" role="group" aria-label="Choose assistant mode">
+                <button id="assistantTextMode" class="assistant-mode-btn is-active" type="button" aria-pressed="true">⌨ Text mode</button>
+                <button id="assistantVoiceMode" class="assistant-mode-btn" type="button" aria-pressed="false">◉ Voice mode</button>
+            </div>
+            <div id="assistantOrbPanel" class="assistant-orb-panel hidden" aria-live="polite">
+                <div class="assistant-orb-stage"><button class="ai-orb" type="button" aria-label="VarshaGuard AI voice assistant status">
                 </button></div>
-                <div class="assistant-orb-copy"><strong id="assistantOrbState">Ready to help</strong><span>Click the orb or use Speak to ask a question.</span></div>
+                <div class="assistant-orb-copy"><strong id="assistantOrbState">Ready to listen</strong><span>Speak naturally. The ring responds while VarshaGuard listens and prepares your answer.</span></div>
             </div>
             <div id="assistantMessages" class="assistant-messages">
                 <div class="assistant-message assistant-bot">Hi. Ask me to explain the current flood-risk prediction or any dashboard value.</div>
@@ -281,7 +285,7 @@
                 <input id="assistantInput" type="text" autocomplete="off" placeholder="Ask: Why is the flood risk LOW?" maxlength="500" required>
                 <button id="assistantSendButton" type="submit">Send</button>
             </form>
-            <div class="assistant-voice-row">
+            <div id="assistantVoiceRow" class="assistant-voice-row hidden">
                 <button id="assistantMicButton" class="assistant-mic-btn" type="button" aria-label="Record a voice question" aria-pressed="false">🎙 Speak</button>
                 <label for="assistantVoiceLanguage">Reply in</label>
                 <select id="assistantVoiceLanguage" aria-label="Choose spoken reply language">
