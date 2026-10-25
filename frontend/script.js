@@ -40,13 +40,43 @@ function setupAssistant() {
     const form = document.getElementById("assistantForm");
     const input = document.getElementById("assistantInput");
     const sendButton = document.getElementById("assistantSendButton");
+    const textModeButton = document.getElementById("assistantTextMode");
+    const voiceModeButton = document.getElementById("assistantVoiceMode");
+    const orbPanel = document.getElementById("assistantOrbPanel");
+    const voiceRow = document.getElementById("assistantVoiceRow");
     let voiceControls = null;
 
     if (!modal || !openButtons.length || !closeButton || !form || !input || !sendButton) return;
 
+    const setAssistantMode = (mode) => {
+        const voiceMode = mode === "voice";
+        modal.dataset.assistantMode = voiceMode ? "voice" : "text";
+        orbPanel?.classList.toggle("hidden", !voiceMode);
+        voiceRow?.classList.toggle("hidden", !voiceMode);
+        textModeButton?.classList.toggle("is-active", !voiceMode);
+        voiceModeButton?.classList.toggle("is-active", voiceMode);
+        textModeButton?.setAttribute("aria-pressed", String(!voiceMode));
+        voiceModeButton?.setAttribute("aria-pressed", String(voiceMode));
+        if (voiceMode) {
+            window.VarshaGuardOrb?.setState("idle");
+            const label = document.getElementById("assistantOrbState");
+            if (label) label.textContent = "Ready to listen";
+            const status = document.getElementById("assistantVoiceStatus");
+            if (status) status.textContent = "Tap Speak when you're ready.";
+        } else {
+            voiceControls?.cancel();
+            window.VarshaGuardOrb?.setState("idle");
+            input.focus();
+        }
+    };
+
+    textModeButton?.addEventListener("click", () => setAssistantMode("text"));
+    voiceModeButton?.addEventListener("click", () => setAssistantMode("voice"));
+
     const open = () => {
         latestAssistantContext = buildAssistantContext();
         modal.classList.remove("hidden");
+        setAssistantMode("text");
         window.VarshaGuardOrb?.setState("idle");
         input.focus();
     };
