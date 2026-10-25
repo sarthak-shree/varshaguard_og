@@ -203,6 +203,7 @@
           releaseMicrophone();
         }
       },
+      toggle() { button.click(); },
     };
   }
 
