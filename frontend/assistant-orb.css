@@ -314,3 +314,45 @@
   outline:3px solid #e2e8f0;
   outline-offset:12px;
 }
+
+
+/* Immersive voice mode: let the orb own the viewport and remove surrounding copy. */
+.assistant-modal:has(.assistant-dialog[data-assistant-mode="voice"]){
+  position:fixed!important;inset:0!important;z-index:5000!important;display:grid!important;place-items:stretch!important;
+  padding:0!important;background:radial-gradient(ellipse at 50% 45%,#10263d 0%,#050a13 58%,#02040a 100%)!important;
+  backdrop-filter:none!important;overflow:hidden!important;
+}
+.assistant-modal:has(.assistant-dialog[data-assistant-mode="voice"]).hidden{display:none!important}
+.assistant-dialog[data-assistant-mode="voice"]{
+  width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;background:transparent!important;color:#edfaff!important;
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:center!important;
+}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-dialog-header,
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-copy,
+.assistant-dialog[data-assistant-mode="voice"] #assistantMessages,
+.assistant-dialog[data-assistant-mode="voice"] .assistant-quick-prompts,
+.assistant-dialog[data-assistant-mode="voice"] .assistant-form,
+.assistant-dialog[data-assistant-mode="voice"] .assistant-disclaimer{display:none!important}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-panel{flex:1;min-height:0;width:100%;padding:24px!important;border:0!important;background:transparent!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-stage{width:min(76vw,66vh,520px)!important;height:min(76vw,66vh,520px)!important;flex:0 0 min(76vw,66vh,520px)!important;display:grid;place-items:center}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-stage .orb,
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-stage .ai-orb{width:100%!important;height:100%!important;flex:0 0 100%!important;max-width:520px;max-height:520px;transform-origin:center;filter:drop-shadow(0 0 35px #28d7f077)}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row{position:absolute;bottom:max(22px,env(safe-area-inset-bottom));left:0;right:0;justify-content:center;padding:12px!important;color:#c5dce8!important}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-voice-status{flex:0 1 auto;text-align:center;max-width: min(80vw,520px);font-size:12px}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-mic-btn{border-radius:999px;padding:12px 20px;background:#102f42;border-color:#4ad6e4;color:#e8fcff}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-close-btn{position:absolute;top:max(18px,env(safe-area-inset-top));right:20px;z-index:5;color:#dffaff;background:#102334;border-color:#34566a}
+.assistant-dialog[data-assistant-mode="voice"] .orb{animation:voiceOrbFloat 5.5s ease-in-out infinite,voiceOrbGlow 3s ease-in-out infinite alternate}
+.assistant-dialog[data-assistant-mode="voice"] .ai-orb::before{inset:7%;border-width:3px;box-shadow:0 0 24px #24c5d277,inset 0 0 45px #24c5d222;animation:voiceOrbPulse 2.8s ease-in-out infinite}
+.assistant-dialog[data-assistant-mode="voice"] .ai-orb::after{inset:1%;border-width:2px;animation:assistantRingTurn 11s linear infinite}
+.assistant-dialog[data-assistant-mode="voice"][data-assistant-state="listening"] .orb,
+.assistant-dialog[data-assistant-mode="voice"][data-assistant-state="listening"] .ai-orb{filter:drop-shadow(0 0 45px #31e8a9aa)}
+.assistant-dialog[data-assistant-mode="voice"][data-assistant-state="thinking"] .orb,
+.assistant-dialog[data-assistant-mode="voice"][data-assistant-state="thinking"] .ai-orb{filter:drop-shadow(0 0 50px #9b72ffbb);animation-duration:2s}
+.assistant-dialog[data-assistant-mode="voice"][data-assistant-state="speaking"] .orb,
+.assistant-dialog[data-assistant-mode="voice"][data-assistant-state="speaking"] .ai-orb{filter:drop-shadow(0 0 55px #ff5366bb);animation-duration:1.8s}
+@keyframes voiceOrbFloat{0%,100%{transform:translateY(0) scale(.97) rotate(-2deg)}50%{transform:translateY(-12px) scale(1.025) rotate(2deg)}}
+@keyframes voiceOrbGlow{from{opacity:.84}to{opacity:1}}
+@keyframes voiceOrbPulse{0%,100%{transform:scale(.96);opacity:.78}50%{transform:scale(1.035);opacity:1}}
+@media(max-width:520px){.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-stage{width:min(84vw,55vh)!important;height:min(84vw,55vh)!important;flex-basis:min(84vw,55vh)!important}.assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row{flex-wrap:wrap;gap:10px}}
+@media(prefers-reduced-motion:reduce){.assistant-dialog[data-assistant-mode="voice"] .orb,.assistant-dialog[data-assistant-mode="voice"] .ai-orb::before,.assistant-dialog[data-assistant-mode="voice"] .ai-orb::after{animation:none!important}}
