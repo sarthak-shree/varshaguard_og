@@ -131,3 +131,37 @@
   .assistant-disclaimer{padding:0 15px 14px}
 }
 @media(prefers-reduced-motion:reduce){.ai-orb::after{animation:none!important}.ai-orb::before{transition:none!important}}
+
+
+/* Explicit text/voice mode selection inside the assistant chat. */
+.assistant-mode-switch{
+  display:flex;gap:5px;padding:10px 20px 0;background:#fff;
+}
+.assistant-mode-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:35px;padding:8px 13px;border:1px solid #dce7ea;border-radius:11px;
+  background:#f8fbfc;color:#657580;font-size:11px;font-weight:800;
+  transition:background .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease;
+}
+.assistant-mode-btn:hover{border-color:#a9d9dd;color:#176b74}
+.assistant-mode-btn.is-active{
+  border-color:#197f89;background:#e9f8f9;color:#176b74;
+  box-shadow:inset 0 0 0 1px rgba(25,127,137,.06);
+}
+.assistant-mode-btn:focus-visible{outline:2px solid #39aab5;outline-offset:2px}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-mode-switch{
+  background:#fff;
+}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-panel{
+  display:flex;min-height:112px;
+}
+.assistant-dialog[data-assistant-mode="text"] .assistant-orb-panel,
+.assistant-dialog[data-assistant-mode="text"] .assistant-voice-row{display:none}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row{display:flex}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-stage .ai-orb{
+  cursor:default;pointer-events:none;
+}
+@media(max-width:520px){
+  .assistant-mode-switch{padding:9px 15px 0}
+  .assistant-mode-btn{flex:1;min-height:36px;padding:8px 9px}
+}
