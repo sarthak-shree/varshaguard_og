@@ -275,6 +275,11 @@
             <div id="assistantMessages" class="assistant-messages">
                 <div class="assistant-message assistant-bot">Hi. Ask me to explain the current flood-risk prediction or any dashboard value.</div>
             </div>
+            <div class="assistant-quick-prompts" aria-label="Suggested questions">
+                <button type="button" data-assistant-prompt="Explain the current flood risk in simple terms.">Explain current risk</button>
+                <button type="button" data-assistant-prompt="What rainfall signals matter most here?">Rainfall signals</button>
+                <button type="button" data-assistant-prompt="What are the limitations of this prediction?">Model limitations</button>
+            </div>
             <form id="assistantForm" class="assistant-form">
                 <input id="assistantInput" type="text" autocomplete="off" placeholder="Ask: Why is the flood risk LOW?" maxlength="500" required>
                 <button id="assistantSendButton" type="submit">Send</button>
