@@ -158,6 +158,8 @@
     }
     const dialog = document.querySelector(".assistant-dialog");
     if (dialog) dialog.dataset.assistantState = next;
+    const orb = document.getElementById("assistantNebulaOrb");
+    if (orb) orb.dataset.state = next;
     const label = document.getElementById("assistantOrbState");
     if (label) label.textContent = ({
       idle:"Ready to listen", connecting:"Connecting…", listening:"Listening to you…",
