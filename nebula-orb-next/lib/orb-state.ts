@@ -20,7 +20,7 @@ export function createStateMix(initial: OrbState): StateMix {
     update(state: OrbState, dt: number, snap?: number) {
       const rate = snap ? 1 : Math.min(1, dt * 5);
       for (const key of Object.keys(weights) as OrbState[]) weights[key] += ((key === state ? 1 : 0) - weights[key]) * rate;
-      const sum = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
+      const sum = (Object.keys(weights) as OrbState[]).reduce((total, key) => total + weights[key], 0) || 1;
       for (const key of Object.keys(weights) as OrbState[]) weights[key] /= sum;
       return result;
     },
