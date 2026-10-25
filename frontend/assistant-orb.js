@@ -88,8 +88,10 @@
     // The canvas sits inside a real button, so mouse, Enter, and Space share one accessible action.
     const orbButton = canvas.closest("button.ai-orb");
     (orbButton || canvas).addEventListener("click", openAssistant);
-    const observer = new IntersectionObserver(entries => { active = entries[0]?.isIntersecting ?? true; });
-    observer.observe(canvas);
+    const observer = typeof IntersectionObserver === "function"
+      ? new IntersectionObserver(entries => { active = entries[0]?.isIntersecting ?? true; })
+      : null;
+    observer?.observe(canvas);
     const frame = now => {
       if (active) {
         const t = (now - start) / 1000;
