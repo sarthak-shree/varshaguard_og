@@ -271,7 +271,16 @@
                 <input id="assistantInput" type="text" autocomplete="off" placeholder="Ask: Why is the flood risk LOW?" maxlength="500" required>
                 <button id="assistantSendButton" type="submit">Send</button>
             </form>
-            <div class="assistant-disclaimer">Uses the dashboard's current context. Prototype predictions should not be treated as official alerts.</div>
+            <div class="assistant-voice-row">
+                <button id="assistantMicButton" class="assistant-mic-btn" type="button" aria-label="Record a voice question" aria-pressed="false">🎙 Speak</button>
+                <label for="assistantVoiceLanguage">Reply in</label>
+                <select id="assistantVoiceLanguage" aria-label="Choose spoken reply language">
+                    <option value="en">English</option>
+                    <option value="hi">हिन्दी</option>
+                </select>
+                <span id="assistantVoiceStatus" class="assistant-voice-status" role="status" aria-live="polite">Tap Speak to ask by voice (up to 20 seconds).</span>
+            </div>
+            <div class="assistant-disclaimer">Voice questions are transcribed by Groq and spoken replies use the online Edge TTS service. Do not share sensitive details. Prototype predictions are not official alerts.</div>
         </div>
     </div>
 
@@ -280,6 +289,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="assistant-voice.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

@@ -1,3 +1,6 @@
+import asyncio
+import base64
+import json
 import os
 from datetime import datetime, timezone
 
@@ -36,6 +39,7 @@ DATA_PATH = os.path.join(BASE_DIR, "data", "processed", "flood_warning_ml_ready_
 
 app = Flask(__name__)
 CORS(app)
+app.config["MAX_CONTENT_LENGTH"] = 4_000_000
 app.register_blueprint(bihar_live_bp)
 
 
@@ -55,6 +59,84 @@ def no_store_json(payload):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     return response
+
+
+class AssistantAPIError(Exception):
+    def __init__(self, message, status_code=502):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def request_assistant_answer(message, context, response_language=None):
+    """Get a dashboard-grounded answer from the same Groq model as text chat."""
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise AssistantAPIError("Groq API key is not configured on the backend", 503)
+
+    system_prompt = """You are VarshaGuard Assistant, the explanation layer for a flood-risk monitoring dashboard.
+Explain only what is supported by the dashboard context provided by the application.
+The dashboard prototype may use historical data, so never describe it as live unless the context explicitly says so.
+Help users understand flood probability, risk level, rainfall, river level, model features, forecast horizon, station information, and dashboard sections in clear operational language.
+Do not invent measurements, causes, alerts, locations, or forecasts.
+When discussing a risk prediction, clearly distinguish model output from certainty. This is a prototype and not a substitute for official warnings.
+Keep responses concise and practical. If asked about something outside the dashboard, say that it is outside your available dashboard context."""
+
+    if response_language == "hi":
+        system_prompt += "\nReply in simple Hindi. Keep it to 1-3 short sentences suitable for listening. Avoid markdown, lists, and symbols."
+    elif response_language == "en":
+        system_prompt += "\nReply in simple English. Keep it to 1-3 short sentences suitable for listening. Avoid markdown, lists, and symbols."
+
+    user_prompt = f"Dashboard context:\n{json.dumps(context, ensure_ascii=False)}\n\nUser question:\n{message}"
+    model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+    try:
+        groq_response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": 0.2,
+                "max_completion_tokens": 250 if response_language else 500,
+            },
+            timeout=30,
+        )
+    except requests.RequestException as exc:
+        raise AssistantAPIError("Could not reach the Groq assistant service", 502) from exc
+
+    if not groq_response.ok:
+        try:
+            details = groq_response.json().get("error", {}).get("message", groq_response.text)
+        except Exception:
+            details = groq_response.text
+        raise AssistantAPIError(f"Groq API error: {details}", 502)
+
+    try:
+        answer = groq_response.json()["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, TypeError, AttributeError) as exc:
+        raise AssistantAPIError("Groq returned an empty assistant response", 502) from exc
+    if not answer:
+        raise AssistantAPIError("Groq returned an empty assistant response", 502)
+    return answer
+
+
+async def synthesize_edge_tts(text, voice):
+    """Generate an MP3 with the same edge-tts project used by MoodySong."""
+    import edge_tts
+
+    audio = bytearray()
+    communicate = edge_tts.Communicate(text, voice, rate="-5%")
+    async for chunk in communicate.stream():
+        if chunk.get("type") == "audio":
+            audio.extend(chunk["data"])
+    if not audio:
+        raise RuntimeError("The speech service returned no audio")
+    return bytes(audio)
 
 
 def get_region_from_request():
@@ -181,55 +263,89 @@ def assistant():
     if not message:
         return error_response("Message is required", 400)
 
+    try:
+        answer = request_assistant_answer(message, context)
+        return no_store_json({"success": True, "answer": answer})
+    except AssistantAPIError as exc:
+        return error_response(str(exc), exc.status_code)
+    except Exception:
+        return error_response("Assistant request failed", 502)
+
+
+@app.route("/api/assistant/voice", methods=["POST"])
+def assistant_voice():
+    """Transcribe one short recording, answer with the dashboard LLM, and speak it."""
+    audio_file = request.files.get("audio")
+    if audio_file is None or not audio_file.filename:
+        return error_response("Record a short question before sending it", 400)
+
+    audio_bytes = audio_file.read(3_800_001)
+    if not audio_bytes:
+        return error_response("The recording was empty. Please try again", 400)
+    if len(audio_bytes) > 3_800_000:
+        return error_response("The recording is too large. Keep it under 20 seconds and try again", 413)
+    if not (audio_file.mimetype or "").lower().startswith("audio/"):
+        return error_response("Please send a browser-recorded audio file", 415)
+
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         return error_response("Groq API key is not configured on the backend", 503)
 
     try:
-        system_prompt = """You are VarshaGuard Assistant, the explanation layer for a flood-risk monitoring dashboard.
-Explain only what is supported by the dashboard context provided by the application.
-The dashboard prototype may use historical data, so never describe it as live unless the context explicitly says so.
-Help users understand flood probability, risk level, rainfall, river level, model features, forecast horizon, station information, and dashboard sections in clear operational language.
-Do not invent measurements, causes, alerts, locations, or forecasts.
-When discussing a risk prediction, clearly distinguish model output from certainty. This is a prototype and not a substitute for official warnings.
-Keep responses concise and practical. If asked about something outside the dashboard, say that it is outside your available dashboard context."""
+        raw_context = request.form.get("context", "{}")
+        context = json.loads(raw_context)
+        if not isinstance(context, dict) or len(raw_context) > 16_000:
+            return error_response("Dashboard context is invalid", 400)
+    except (TypeError, json.JSONDecodeError):
+        return error_response("Dashboard context is invalid", 400)
 
-        user_prompt = (
-            f"Dashboard context:\n{context}\n\n"
-            f"User question:\n{message}"
-        )
+    reply_language = "hi" if request.form.get("reply_language") == "hi" else "en"
+    filename = os.path.basename(audio_file.filename) or "question.webm"
+    mime_type = audio_file.mimetype or "audio/webm"
 
-        model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
-        groq_response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
+    try:
+        transcription_response = requests.post(
+            "https://api.groq.com/openai/v1/audio/transcriptions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            data={
+                "model": os.environ.get("GROQ_STT_MODEL", "whisper-large-v3"),
+                "response_format": "json",
+                "prompt": "VarshaGuard, Bihar, Patna, Muzaffarpur, CWC, IMD, flood risk, rainfall, river gauge.",
             },
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "temperature": 0.2,
-                "max_completion_tokens": 500,
-            },
-            timeout=30,
+            files={"file": (filename, audio_bytes, mime_type)},
+            timeout=45,
         )
-
-        if not groq_response.ok:
+        if not transcription_response.ok:
             try:
-                details = groq_response.json().get("error", {}).get("message", groq_response.text)
+                details = transcription_response.json().get("error", {}).get("message", transcription_response.text)
             except Exception:
-                details = groq_response.text
-            return error_response(f"Groq API error: {details}", 502)
+                details = transcription_response.text
+            return error_response(f"Speech transcription failed: {details}", 502)
 
-        completion = groq_response.json()
-        answer = completion["choices"][0]["message"]["content"].strip()
-        return no_store_json({"success": True, "answer": answer})
-    except Exception as exc:
-        return error_response(f"Assistant request failed: {exc}", 502)
+        transcript = str(transcription_response.json().get("text", "")).strip()
+        if not transcript:
+            return error_response("I could not hear a question. Please speak clearly and try again", 422)
+        transcript = transcript[:500]
+        answer = request_assistant_answer(transcript, context, reply_language)
+
+        voice = "hi-IN-SwaraNeural" if reply_language == "hi" else "en-IN-NeerjaNeural"
+        audio_output = asyncio.run(synthesize_edge_tts(answer, voice))
+        return no_store_json({
+            "success": True,
+            "transcript": transcript,
+            "answer": answer,
+            "audio_base64": base64.b64encode(audio_output).decode("ascii"),
+            "audio_mime_type": "audio/mpeg",
+        })
+    except AssistantAPIError as exc:
+        return error_response(str(exc), exc.status_code)
+    except Exception:
+        return error_response("Voice reply could not be created. Please try again", 502)
+
+
+@app.errorhandler(413)
+def request_too_large(_error):
+    return error_response("The recording is too large. Keep it under 20 seconds and try again", 413)
 
 
 @app.route("/")

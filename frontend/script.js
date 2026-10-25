@@ -9,6 +9,7 @@ function appendAssistantMessage(textValue, role = "bot") {
     item.textContent = textValue;
     container.appendChild(item);
     container.scrollTop = container.scrollHeight;
+    return item;
 }
 
 function buildAssistantContext() {
@@ -39,6 +40,7 @@ function setupAssistant() {
     const form = document.getElementById("assistantForm");
     const input = document.getElementById("assistantInput");
     const sendButton = document.getElementById("assistantSendButton");
+    let voiceControls = null;
 
     if (!modal || !openButtons.length || !closeButton || !form || !input || !sendButton) return;
 
@@ -47,7 +49,7 @@ function setupAssistant() {
         modal.classList.remove("hidden");
         input.focus();
     };
-    const close = () => modal.classList.add("hidden");
+    const close = () => { voiceControls?.cancel(); modal.classList.add("hidden"); };
 
     openButtons.forEach((button) => button.addEventListener("click", open));
     closeButton.addEventListener("click", close);
@@ -56,6 +58,16 @@ function setupAssistant() {
     });
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") close();
+    });
+
+    voiceControls = window.VarshaGuardVoice?.bind({
+        button: document.getElementById("assistantMicButton"),
+        status: document.getElementById("assistantVoiceStatus"),
+        language: document.getElementById("assistantVoiceLanguage"),
+        input,
+        sendButton,
+        getContext: buildAssistantContext,
+        appendMessage: appendAssistantMessage,
     });
 
     form.addEventListener("submit", async (event) => {
@@ -67,6 +79,8 @@ function setupAssistant() {
         input.value = "";
         input.disabled = true;
         sendButton.disabled = true;
+        const voiceButton = document.getElementById("assistantMicButton");
+        if (voiceButton) voiceButton.disabled = true;
         sendButton.textContent = "Thinking…";
 
         try {
@@ -86,6 +100,7 @@ function setupAssistant() {
         } finally {
             input.disabled = false;
             sendButton.disabled = false;
+            if (voiceButton) voiceButton.disabled = false;
             sendButton.textContent = "Send";
             input.focus();
         }

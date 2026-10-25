@@ -370,6 +370,7 @@
     item.textContent = text;
     $("assistantMessages").appendChild(item);
     $("assistantMessages").scrollTop = $("assistantMessages").scrollHeight;
+    return item;
   }
 
   function setupAssistant() {
@@ -377,13 +378,23 @@
     const input = $("assistantInput");
     const form = $("assistantForm");
     const send = $("assistantSendButton");
+    let voiceControls = null;
     const open = () => { modal.classList.remove("hidden"); input.focus(); };
-    const close = () => modal.classList.add("hidden");
+    const close = () => { voiceControls?.cancel(); modal.classList.add("hidden"); };
     $("assistantTopButton").addEventListener("click", open);
     $("assistantOpenButton").addEventListener("click", open);
     $("assistantCloseButton").addEventListener("click", close);
     modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
     document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
+    voiceControls = window.VarshaGuardVoice?.bind({
+      button: $("assistantMicButton"),
+      status: $("assistantVoiceStatus"),
+      language: $("assistantVoiceLanguage"),
+      input,
+      sendButton: send,
+      getContext: buildAssistantContext,
+      appendMessage: appendAssistantMessage
+    });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const question = input.value.trim();
@@ -392,6 +403,8 @@
       input.value = "";
       input.disabled = true;
       send.disabled = true;
+      const voiceButton = $("assistantMicButton");
+      if (voiceButton) voiceButton.disabled = true;
       send.textContent = "Thinking…";
       try {
         const response = await fetch("/api/assistant", {
@@ -407,6 +420,7 @@
       } finally {
         input.disabled = false;
         send.disabled = false;
+        if (voiceButton) voiceButton.disabled = false;
         send.textContent = "Send";
         input.focus();
       }

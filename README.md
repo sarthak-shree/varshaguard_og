@@ -143,3 +143,11 @@ python backend/app.py
 ```
 
 The Flask app serves the dashboard and API from the same origin.
+
+### Voice assistant setup
+
+Both assistant windows support voice questions. The browser records up to 20 seconds, Groq Whisper transcribes the recording, the existing Groq chat model answers using the current dashboard context, and edge-tts creates an English or Hindi spoken reply. Text chat continues to work as before.
+
+Set GROQ_API_KEY in the server environment (the same key used by text chat). GROQ_STT_MODEL is optional and defaults to whisper-large-v3. On Vercel, add the dependency in requirements.txt and make sure GROQ_API_KEY is configured for the deployment.
+
+Voice audio is sent to Groq for transcription; the generated reply text is sent to Microsoft's online Edge TTS service. Do not speak sensitive personal information. Microphone access requires HTTPS or localhost.
