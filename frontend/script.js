@@ -47,6 +47,7 @@ function setupAssistant() {
     const open = () => {
         latestAssistantContext = buildAssistantContext();
         modal.classList.remove("hidden");
+        window.VarshaGuardOrb?.setState("idle");
         input.focus();
     };
     const close = () => { voiceControls?.cancel(); modal.classList.add("hidden"); };
@@ -79,6 +80,10 @@ function setupAssistant() {
         input.value = "";
         input.disabled = true;
         sendButton.disabled = true;
+        modal.dataset.assistantState = "thinking";
+        window.VarshaGuardOrb?.setState("thinking");
+        const orbLabel = document.getElementById("assistantOrbState");
+        if (orbLabel) orbLabel.textContent = "Thinking through the dashboard";
         const voiceButton = document.getElementById("assistantMicButton");
         if (voiceButton) voiceButton.disabled = true;
         sendButton.textContent = "Thinking…";
@@ -95,8 +100,14 @@ function setupAssistant() {
                 throw new Error(data.error || "Assistant request failed");
             }
             appendAssistantMessage(data.answer || "No answer returned.");
+            modal.dataset.assistantState = "idle";
+            window.VarshaGuardOrb?.setState("idle");
+            if (orbLabel) orbLabel.textContent = "Ready to help";
         } catch (error) {
             appendAssistantMessage(error.message, "error");
+            modal.dataset.assistantState = "idle";
+            window.VarshaGuardOrb?.setState("idle");
+            if (orbLabel) orbLabel.textContent = "Ready to help";
         } finally {
             input.disabled = false;
             sendButton.disabled = false;
