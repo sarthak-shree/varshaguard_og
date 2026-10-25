@@ -1,0 +1,19 @@
+{
+  "name": "varshaguard-nebula-orb",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "dev": "next dev", "build": "next build", "start": "next start", "lint": "next lint" },
+  "dependencies": {
+    "@react-three/fiber": "^8.17.10",
+    "next": "^14.2.31",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/three": "^0.170.0",
+    "typescript": "^5.7.2"
+  }
+}
