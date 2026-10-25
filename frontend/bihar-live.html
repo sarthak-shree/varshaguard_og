@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/bihar-live.css">
   <link rel="stylesheet" href="/assistant-orb.css">
+  <link rel="stylesheet" href="/orb-native.css">
 </head>
 <body>
   <header class="topbar">
@@ -48,9 +49,7 @@
         </div>
       </div>
       <div class="ai-hero-card">
-        <button class="ai-orb" type="button" aria-label="Open VarshaGuard AI assistant">
-          <span class="orb-fallback" hidden></span><canvas class="ai-orb-canvas" aria-hidden="true"></canvas>
-        </button>
+        <button class="ai-orb" type="button" aria-label="Open VarshaGuard AI assistant"></button>
         <div class="ai-hero-copy">
           <span class="ai-hero-kicker">✦ YOUR DASHBOARD HELPER</span>
           <strong>VarshaGuard AI</strong>
@@ -194,45 +193,50 @@
     </section>
   </main>
 
-  <div id="assistantModal" class="assistant-modal hidden" role="dialog" aria-modal="true" aria-labelledby="assistantTitle">
-    <div class="assistant-dialog">
-      <div class="assistant-dialog-header">
-        <div>
-          <span class="assistant-kicker">DASHBOARD HELPER</span>
-          <h3 id="assistantTitle">VarshaGuard AI</h3>
-          <p>Ask about the latest river reading or the experimental model estimate.</p>
+    <div id="assistantModal" class="assistant-modal hidden" role="dialog" aria-modal="true" aria-labelledby="assistantTitle">
+        <div class="assistant-dialog">
+            <div class="assistant-dialog-header">
+                <div>
+                    <span class="assistant-kicker">GROQ-POWERED</span>
+                    <h3 id="assistantTitle">VarshaGuard AI</h3>
+                    <p>Ask about Bihar's CWC river readings, the 24-hour gauge-risk estimate, or what the model can and cannot tell you.</p>
+                </div>
+                <button id="assistantCloseButton" class="assistant-close-btn" type="button" aria-label="Close assistant">&times;</button>
+            </div>
+            <div class="assistant-mode-switch" role="group" aria-label="Choose assistant mode">
+                <button id="assistantTextMode" class="assistant-mode-btn is-active" type="button" aria-pressed="true">⌨ Text mode</button>
+                <button id="assistantVoiceMode" class="assistant-mode-btn" type="button" aria-pressed="false">◉ Voice mode</button>
+            </div>
+            <div id="assistantOrbPanel" class="assistant-orb-panel hidden" aria-live="polite">
+                <div class="assistant-orb-stage">
+                    <button id="assistantNativeOrb" class="orb" type="button" aria-label="Start listening" aria-pressed="false" data-state="disabled"></button>
+                </div>
+                <div class="assistant-orb-copy"><strong id="assistantOrbState">Ready to listen</strong><span>Speak naturally. The ring responds while VarshaGuard listens and prepares your answer.</span></div>
+            </div>
+            <div id="assistantMessages" class="assistant-messages">
+                <div class="assistant-message assistant-bot">Hi. Ask me to explain the latest CWC river reading or the experimental warning-level estimate.</div>
+            </div>
+            <div class="assistant-quick-prompts" aria-label="Suggested questions">
+                <button type="button" data-assistant-prompt="Explain the latest river readings in simple terms.">Explain river readings</button>
+                <button type="button" data-assistant-prompt="What does the 24-hour gauge-risk percentage mean?">Explain the percentage</button>
+                <button type="button" data-assistant-prompt="What are the limitations of this prediction?">Model limitations</button>
+            </div>
+            <form id="assistantForm" class="assistant-form">
+                <input id="assistantInput" type="text" autocomplete="off" placeholder="Ask: Why is the flood risk LOW?" maxlength="500" required>
+                <button id="assistantSendButton" type="submit">Send</button>
+            </form>
+            <div id="assistantVoiceRow" class="assistant-voice-row hidden">
+                <button id="assistantMicButton" class="assistant-mic-btn" type="button" aria-label="Record a voice question" aria-pressed="false">🎙 Speak</button>
+                <label for="assistantVoiceLanguage">Reply in</label>
+                <select id="assistantVoiceLanguage" aria-label="Choose spoken reply language">
+                    <option value="en">English</option>
+                    <option value="hi">हिन्दी</option>
+                </select>
+                <span id="assistantVoiceStatus" class="assistant-voice-status" role="status" aria-live="polite">Tap Speak to ask by voice (up to 20 seconds).</span>
+            </div>
+            <div class="assistant-disclaimer">Voice questions are transcribed by Groq and spoken replies use the online Edge TTS service. Do not share sensitive details. Prototype predictions are not official alerts.</div>
         </div>
-        <button id="assistantCloseButton" class="assistant-close-btn" type="button" aria-label="Close assistant">&times;</button>
-      </div>
-      <div class="assistant-orb-panel" aria-live="polite">
-        <div class="assistant-orb-stage"><button class="ai-orb" type="button" aria-label="Interact with VarshaGuard AI orb"><span class="orb-fallback" hidden></span><canvas class="ai-orb-canvas" aria-hidden="true"></canvas></button></div>
-        <div class="assistant-orb-copy"><strong id="assistantOrbState">Ready to help</strong><span>Click the orb or use Speak to ask a question.</span></div>
-      </div>
-      <div id="assistantMessages" class="assistant-messages" aria-live="polite">
-        <div class="assistant-message assistant-bot">Hi! I can explain the CWC river readings and what this model estimate means.</div>
-      </div>
-      <div class="assistant-quick-prompts" aria-label="Suggested questions">
-        <button type="button" data-assistant-prompt="Explain the latest river readings in simple terms.">Explain river readings</button>
-        <button type="button" data-assistant-prompt="What does the 24-hour gauge-risk percentage mean?">Explain the percentage</button>
-        <button type="button" data-assistant-prompt="What are the limitations of this estimate?">Model limitations</button>
-      </div>
-      <form id="assistantForm" class="assistant-form">
-        <input id="assistantInput" type="text" autocomplete="off" placeholder="Ask: What does 20% mean?" maxlength="500" required>
-        <button id="assistantSendButton" type="submit">Send</button>
-      </form>
-      <div class="assistant-voice-row">
-        <button id="assistantVoiceMode" class="assistant-mic-btn" type="button" aria-pressed="false">◉ Voice mode</button>
-        <button id="assistantMicButton" class="assistant-mic-btn" type="button" aria-label="Record a voice question" aria-pressed="false">🎙 Speak</button>
-        <label for="assistantVoiceLanguage">Reply in</label>
-        <select id="assistantVoiceLanguage" aria-label="Choose spoken reply language">
-          <option value="en">English</option>
-          <option value="hi">हिन्दी</option>
-        </select>
-        <span id="assistantVoiceStatus" class="assistant-voice-status" role="status" aria-live="polite">Tap Speak to ask by voice (up to 20 seconds).</span>
-      </div>
-      <div class="assistant-disclaimer">Voice questions are transcribed by Groq and spoken replies use the online Edge TTS service. Do not share sensitive details. This research model is not an official warning.</div>
     </div>
-  </div>
 
   <div id="message" class="message hidden" role="status"></div>
   <script>
@@ -253,8 +257,8 @@
     })();
   </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script src="/assistant-orb.js"></script>
+  <script src="/orb-native.js"></script>
   <script src="/assistant-voice.js"></script>
   <script src="/bihar-live.js"></script>
 </body>
