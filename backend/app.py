@@ -130,7 +130,7 @@ async def synthesize_edge_tts(text, voice):
     import edge_tts
 
     audio = bytearray()
-    communicate = edge_tts.Communicate(text, voice, rate="-5%")
+    # A +25% rate keeps spoken answers brisk while remaining intelligible.\n    rate = os.environ.get("EDGE_TTS_RATE", "+25%")\n    communicate = edge_tts.Communicate(text, voice, rate=rate)
     async for chunk in communicate.stream():
         if chunk.get("type") == "audio":
             audio.extend(chunk["data"])
