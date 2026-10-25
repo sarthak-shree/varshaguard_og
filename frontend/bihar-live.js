@@ -379,10 +379,20 @@
     const form = $("assistantForm");
     const send = $("assistantSendButton");
     let voiceControls = null;
-    const open = () => { modal.classList.remove("hidden"); input.focus(); };
+    const open = () => {
+      modal.classList.remove("hidden");
+      window.VarshaGuardOrb?.setState("idle");
+      input.focus();
+    };
     const close = () => { voiceControls?.cancel(); modal.classList.add("hidden"); };
     $("assistantTopButton").addEventListener("click", open);
     $("assistantOpenButton").addEventListener("click", open);
+    document.querySelectorAll("[data-assistant-prompt]").forEach((button) => {
+      button.addEventListener("click", () => {
+        input.value = button.dataset.assistantPrompt || "";
+        form.requestSubmit();
+      });
+    });
     $("assistantCloseButton").addEventListener("click", close);
     modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
     document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
@@ -403,6 +413,10 @@
       input.value = "";
       input.disabled = true;
       send.disabled = true;
+      modal.dataset.assistantState = "thinking";
+      window.VarshaGuardOrb?.setState("thinking");
+      const orbLabel = $("assistantOrbState");
+      if (orbLabel) orbLabel.textContent = "Thinking through the dashboard";
       const voiceButton = $("assistantMicButton");
       if (voiceButton) voiceButton.disabled = true;
       send.textContent = "Thinking…";
@@ -415,8 +429,14 @@
         const data = await response.json();
         if (!response.ok || data.success === false) throw new Error(data.error || "Assistant request failed.");
         appendAssistantMessage(data.answer || "No answer returned.");
+        modal.dataset.assistantState = "idle";
+        window.VarshaGuardOrb?.setState("idle");
+        if (orbLabel) orbLabel.textContent = "Ready to help";
       } catch (error) {
         appendAssistantMessage(error.message, "error");
+        modal.dataset.assistantState = "idle";
+        window.VarshaGuardOrb?.setState("idle");
+        if (orbLabel) orbLabel.textContent = "Ready to help";
       } finally {
         input.disabled = false;
         send.disabled = false;

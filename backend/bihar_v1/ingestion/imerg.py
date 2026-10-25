@@ -18,7 +18,7 @@ def precipitation_to_observations(records: list[dict[str, Any]]) -> list[Observa
         observations.append(
             Observation(
                 timestamp=pd.Timestamp(record["timestamp"]).isoformat(),
-                district="",
+                district=str(record.get("district") or ""),
                 variable="rain_mm",
                 value=float(record["rainfall_mm"]),
                 unit="mm",
@@ -42,9 +42,15 @@ def normalize_precipitation(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, pd.DataFrame):
         frame = payload.copy()
     elif isinstance(payload, list):
+        # An empty list is a valid empty result, not a malformed record.
+        if not payload:
+            return []
         frame = pd.DataFrame(payload)
     else:
         raise ValueError("Expected IMERG records as a list or DataFrame")
+
+    if frame.empty:
+        return []
 
     missing = REQUIRED_COLUMNS - set(frame.columns)
     if missing:

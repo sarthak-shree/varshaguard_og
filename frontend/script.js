@@ -40,18 +40,63 @@ function setupAssistant() {
     const form = document.getElementById("assistantForm");
     const input = document.getElementById("assistantInput");
     const sendButton = document.getElementById("assistantSendButton");
+    const textModeButton = document.getElementById("assistantTextMode");
+    const voiceModeButton = document.getElementById("assistantVoiceMode");
+    const orbPanel = document.getElementById("assistantOrbPanel");
+    const voiceRow = document.getElementById("assistantVoiceRow");
     let voiceControls = null;
 
     if (!modal || !openButtons.length || !closeButton || !form || !input || !sendButton) return;
 
+    const setAssistantMode = (mode) => {
+        const voiceMode = mode === "voice";
+        modal.dataset.assistantMode = voiceMode ? "voice" : "text";
+        orbPanel?.classList.toggle("hidden", !voiceMode);
+        voiceRow?.classList.toggle("hidden", !voiceMode);
+        textModeButton?.classList.toggle("is-active", !voiceMode);
+        voiceModeButton?.classList.toggle("is-active", voiceMode);
+        textModeButton?.setAttribute("aria-pressed", String(!voiceMode));
+        voiceModeButton?.setAttribute("aria-pressed", String(voiceMode));
+        if (voiceMode) {
+            const orb = document.getElementById("assistantNativeOrb");
+            orb?.setAttribute("aria-label", "Start listening");
+            orb?.setAttribute("aria-pressed", "false");
+            window.VarshaGuardOrb?.setState("idle");
+            const label = document.getElementById("assistantOrbState");
+            if (label) label.textContent = "Ready to listen";
+            const status = document.getElementById("assistantVoiceStatus");
+            if (status) status.textContent = "Tap Speak when you're ready.";
+        } else {
+            voiceControls?.cancel();
+            window.VarshaGuardOrb?.setState("idle");
+            input.focus();
+        }
+    };
+
+    textModeButton?.addEventListener("click", () => setAssistantMode("text"));
+    voiceModeButton?.addEventListener("click", () => setAssistantMode("voice"));
+
     const open = () => {
         latestAssistantContext = buildAssistantContext();
         modal.classList.remove("hidden");
+        setAssistantMode("text");
+        window.VarshaGuardOrb?.setState("idle");
         input.focus();
     };
-    const close = () => { voiceControls?.cancel(); modal.classList.add("hidden"); };
+    const close = () => {
+        voiceControls?.cancel();
+        modal.classList.add("hidden");
+        modal.dataset.assistantMode = "text";
+        window.VarshaGuardOrb?.setState("idle");
+    };
 
     openButtons.forEach((button) => button.addEventListener("click", open));
+    document.querySelectorAll("[data-assistant-prompt]").forEach((button) => {
+        button.addEventListener("click", () => {
+            input.value = button.dataset.assistantPrompt || "";
+            form.requestSubmit();
+        });
+    });
     closeButton.addEventListener("click", close);
     modal.addEventListener("click", (event) => {
         if (event.target === modal) close();
@@ -70,6 +115,17 @@ function setupAssistant() {
         appendMessage: appendAssistantMessage,
     });
 
+    const nativeOrb = document.getElementById("assistantNativeOrb");
+    nativeOrb?.addEventListener("click", () => {
+        if (modal.dataset.assistantMode === "voice") voiceControls?.toggle();
+    });
+    document.addEventListener("varshaguard:assistant-state", (event) => {
+        if (!nativeOrb || modal.dataset.assistantMode !== "voice") return;
+        const state = event.detail?.state || "idle";
+        nativeOrb.setAttribute("aria-label", state === "listening" ? "Stop listening and send question" : "Start listening");
+        nativeOrb.setAttribute("aria-pressed", String(state === "listening"));
+    });
+
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const question = input.value.trim();
@@ -79,6 +135,10 @@ function setupAssistant() {
         input.value = "";
         input.disabled = true;
         sendButton.disabled = true;
+        modal.dataset.assistantState = "thinking";
+        window.VarshaGuardOrb?.setState("thinking");
+        const orbLabel = document.getElementById("assistantOrbState");
+        if (orbLabel) orbLabel.textContent = "Thinking through the dashboard";
         const voiceButton = document.getElementById("assistantMicButton");
         if (voiceButton) voiceButton.disabled = true;
         sendButton.textContent = "Thinking…";
@@ -95,8 +155,14 @@ function setupAssistant() {
                 throw new Error(data.error || "Assistant request failed");
             }
             appendAssistantMessage(data.answer || "No answer returned.");
+            modal.dataset.assistantState = "idle";
+            window.VarshaGuardOrb?.setState("idle");
+            if (orbLabel) orbLabel.textContent = "Ready to help";
         } catch (error) {
             appendAssistantMessage(error.message, "error");
+            modal.dataset.assistantState = "idle";
+            window.VarshaGuardOrb?.setState("idle");
+            if (orbLabel) orbLabel.textContent = "Ready to help";
         } finally {
             input.disabled = false;
             sendButton.disabled = false;

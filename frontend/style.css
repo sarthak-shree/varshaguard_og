@@ -325,7 +325,7 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
 }
 
 /* AI hero uses the main VarshaGuard logo; keep only logo treatment. */
-.ai-orb::before,.ai-orb::after{display:none !important}
+.ai-hero-card .ai-orb::before,.ai-hero-card .ai-orb::after{display:none !important}
 .ai-main-logo{
   position:relative;
   z-index:2;
