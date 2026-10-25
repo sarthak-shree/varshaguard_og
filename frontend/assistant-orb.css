@@ -26,3 +26,17 @@
 @keyframes statusDot{50%{opacity:.3;transform:translateY(-3px)}}
 @media(max-width:520px){.ai-orb{width:72px;height:72px;flex-basis:72px}.ai-orb .ai-main-logo{width:34px;height:34px}.assistant-orb-stage,.assistant-orb-stage .ai-orb{width:74px;height:74px;flex-basis:74px}.assistant-orb-stage{flex-basis:74px}}
 @media(prefers-reduced-motion:reduce){.ai-orb .orb-fallback,.assistant-message,.assistant-status-dots i{animation:none!important;transition:none!important}}
+
+/* Explicit overrides for legacy static-logo rules in the shared dashboard CSS. */
+.ai-hero-card .ai-orb{
+  width:112px;height:112px;flex:0 0 112px;min-width:112px;min-height:112px;
+  padding:0;border:0;background:transparent;box-shadow:none;overflow:visible;
+  appearance:none;-webkit-appearance:none;
+}
+.assistant-orb-stage .ai-orb{padding:0;border:0;background:transparent;box-shadow:none;appearance:none;-webkit-appearance:none}
+.ai-orb:focus-visible{outline:2px solid var(--cyan);outline-offset:4px;border-radius:50%}
+.ai-orb-canvas[hidden]{display:none}
+.assistant-quick-prompts{display:flex;gap:7px;flex-wrap:wrap;padding:0 15px 12px}
+.assistant-quick-prompts button{padding:6px 9px;border:1px solid #c9e0e3;border-radius:999px;background:#f5fbfc;color:var(--cyan);font-size:10px;font-weight:750;cursor:pointer}
+.assistant-quick-prompts button:hover{background:#e5f6f8;transform:translateY(-1px)}
+@media(max-width:520px){.ai-hero-card .ai-orb{width:72px;height:72px;min-width:72px;min-height:72px;flex-basis:72px}}
