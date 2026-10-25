@@ -3,7 +3,7 @@
   "use strict";
 
   const STATES = new Set(["idle", "connecting", "listening", "thinking", "speaking", "error", "disabled"]);
-  const ORB_ORIGIN = "https://varshaguard-nebula-orb-sarthak-shree.vercel.app";
+  const ORB_ORIGIN = "https://varshaguard-nebula-ej5qyo4le-sarthak-shree.vercel.app";
   let currentState = "disabled";
 
   const LABELS = {
