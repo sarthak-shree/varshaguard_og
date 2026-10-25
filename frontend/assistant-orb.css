@@ -217,3 +217,39 @@
 @media(prefers-reduced-motion:reduce){
   .assistant-nebula-orb .nebula-glow-main,.assistant-nebula-orb .nebula-core{animation:none!important}
 }
+
+
+/* The animated assistant is rendered by the dedicated Next.js VoiceOrbs app. */
+.assistant-orb-stage{
+  width:184px;height:184px;flex:0 0 184px;position:relative;overflow:visible;
+  display:flex;align-items:center;justify-content:center;
+}
+.assistant-nebula-frame{
+  display:block;position:relative;width:184px;height:184px;flex:0 0 184px;
+  padding:0;margin:0;border:0;border-radius:50%;background:transparent;
+  overflow:hidden;box-shadow:none;outline:0;
+}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-panel{
+  align-items:center;min-height:184px;gap:14px;
+}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-copy{
+  min-width:0;flex:1 1 180px;
+}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-orb-copy span{
+  display:block;max-width:300px;
+}
+@media(max-width:520px){
+  .assistant-dialog[data-assistant-mode="voice"] .assistant-orb-panel{
+    min-height:136px;gap:8px;padding:8px 12px;flex-wrap:nowrap;
+  }
+  .assistant-dialog[data-assistant-mode="voice"] .assistant-orb-stage{
+    width:136px;height:136px;flex:0 0 136px;
+  }
+  .assistant-dialog[data-assistant-mode="voice"] .assistant-nebula-frame{
+    position:absolute;width:184px;height:184px;left:50%;top:50%;
+    transform:translate(-50%,-50%) scale(.72);transform-origin:center;
+  }
+  .assistant-dialog[data-assistant-mode="voice"] .assistant-orb-copy{
+    flex:1 1 auto;font-size:12px;
+  }
+}
