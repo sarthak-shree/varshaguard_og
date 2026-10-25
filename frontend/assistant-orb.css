@@ -1,0 +1,28 @@
+
+/* Interactive assistant orb + richer modal interaction states */
+.ai-orb{position:relative;flex:0 0 112px;width:112px;height:112px;display:grid;place-items:center;overflow:visible;border-radius:50%;cursor:pointer}
+.ai-orb canvas.ai-orb-canvas{position:absolute;inset:0;width:100%;height:100%;outline:none;cursor:pointer;z-index:3}
+.ai-orb .ai-main-logo{position:absolute;z-index:1;width:45px;height:45px;opacity:.75;pointer-events:none}
+.ai-orb .orb-fallback{position:absolute;inset:12px;border:1px solid #67dce4;border-radius:50%;background:radial-gradient(circle at 35% 28%,#b9fbff 0%,#31c1cc 22%,#126b80 58%,#0b263e 100%);box-shadow:0 0 20px #27c4d966, inset 0 0 22px #c2ffff66;animation:orbBreath 2s ease-in-out infinite}
+.ai-orb .orb-fallback[hidden]{display:none}
+@keyframes orbBreath{50%{transform:scale(1.06);box-shadow:0 0 34px #27c4d9aa,inset 0 0 24px #c2ffff88}}
+.assistant-dialog-header{align-items:center}
+.assistant-orb-panel{display:flex;align-items:center;gap:12px;padding:10px 15px;border-bottom:1px solid var(--line);background:linear-gradient(120deg,#f2fbfc,#fff)}
+.assistant-orb-stage{width:96px;height:96px;flex:0 0 96px;position:relative}
+.assistant-orb-stage .ai-orb{width:96px;height:96px;flex-basis:96px}
+.assistant-orb-copy{display:flex;flex-direction:column;gap:4px}
+.assistant-orb-copy strong{font-size:12px;color:var(--cyan)}
+.assistant-orb-copy span{font-size:10px;color:var(--muted);line-height:1.4}
+.assistant-dialog[data-assistant-state="listening"] .assistant-orb-panel{background:#e6fbff}
+.assistant-dialog[data-assistant-state="thinking"] .assistant-orb-panel{background:#f1ecff}
+.assistant-dialog[data-assistant-state="speaking"] .assistant-orb-panel{background:#e7fbf2}
+.assistant-message{animation:assistantMessageIn .2s ease-out both}
+@keyframes assistantMessageIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.assistant-form button,.assistant-mic-btn,.assistant-top-btn,.assistant-open-btn{transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+.assistant-form button:hover,.assistant-mic-btn:hover,.assistant-top-btn:hover,.assistant-open-btn:hover{transform:translateY(-1px)}
+.assistant-status-dots{display:inline-flex;gap:4px;margin-left:3px}
+.assistant-status-dots i{width:4px;height:4px;background:currentColor;border-radius:50%;animation:statusDot 1s ease-in-out infinite}
+.assistant-status-dots i:nth-child(2){animation-delay:.15s}.assistant-status-dots i:nth-child(3){animation-delay:.3s}
+@keyframes statusDot{50%{opacity:.3;transform:translateY(-3px)}}
+@media(max-width:520px){.ai-orb{width:72px;height:72px;flex-basis:72px}.ai-orb .ai-main-logo{width:34px;height:34px}.assistant-orb-stage,.assistant-orb-stage .ai-orb{width:74px;height:74px;flex-basis:74px}.assistant-orb-stage{flex-basis:74px}}
+@media(prefers-reduced-motion:reduce){.ai-orb .orb-fallback,.assistant-message,.assistant-status-dots i{animation:none!important;transition:none!important}}
