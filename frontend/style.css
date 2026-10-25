@@ -520,6 +520,18 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
   padding:8px 28px 20px;
   text-align:center;
 }
+/* Keep the shared orb fully inside the voice panel; positioning only. */
+.assistant-orb-stage{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-height:190px;
+  padding:24px 0 4px;
+  overflow:visible;
+  flex:0 0 auto;
+}
 .assistant-orb-copy{
   display:flex;
   flex-direction:column;
