@@ -76,17 +76,25 @@ button, select, input { touch-action: manipulation; }
   footer { padding: 0 12px 18px; }
 
   .live-prediction-grid { grid-template-columns: minmax(0,1fr); gap: 10px; }
-  .live-gauge-card { padding: 13px; border-radius: 13px; }
-  .live-gauge-heading { align-items: center; gap: 8px; }
-  .live-gauge-heading h4 { font-size: 16px; }
-  .live-forecast-text { min-height: 0; margin: 10px 0; font-size: 11px; }
-  .live-probability-row { align-items: flex-start; gap: 8px; }
-  .live-probability-row strong { font-size: 28px; }
-  .live-probability-row span { font-size: 10px; line-height: 1.4; }
-  .live-gauge-stats { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
-  .live-gauge-stats > div { padding: 8px; }
+  .live-gauge-card { padding: 10px; border-radius: 12px; }
+  .live-gauge-heading { align-items: center; gap: 6px; }
+  .live-gauge-heading h4 { font-size: 15px; }
+  .live-signal { min-height: 22px; padding: 4px 7px; font-size: 9px; }
+  .live-forecast-text { display: none; }
+  .live-probability-row { align-items: center; gap: 7px; margin: 0 0 7px; }
+  .live-probability-row strong { font-size: 24px; }
+  .live-probability-row span { font-size: 9px; line-height: 1.25; }
+  .live-risk-meter { height: 6px; margin: 0 0 8px; }
+  .live-gauge-primary { margin: 6px 0 7px; padding: 7px 9px; }
+  .live-gauge-primary span { font-size: 9px; }
+  .live-gauge-primary strong { font-size: 13px; }
+  .live-gauge-details { padding-top: 5px; }
+  .live-gauge-details > summary { min-height: 44px; font-size: 9px; }
+  .live-gauge-stats { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; margin-top: 5px; }
+  .live-gauge-stats > div { padding: 6px; }
   .live-gauge-stats span { font-size: 8px; }
-  .live-gauge-stats strong { font-size: 10px; }
+  .live-gauge-stats strong { margin-top: 4px; font-size: 9px; }
+  .live-quality { margin-top: 7px; font-size: 8px; line-height: 1.3; }
   .bihar-status-card { min-height: 0; }
   .bihar-status-card h2 { font-size: 22px; }
   .bihar-about-grid { grid-template-columns: minmax(0,1fr); gap: 8px; }

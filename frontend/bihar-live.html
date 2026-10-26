@@ -50,7 +50,7 @@
         </div>
       </div>
       <div class="ai-hero-card">
-        <button class="ai-orb" type="button" aria-label="Open VarshaGuard AI assistant"><img class="ai-main-logo" src="/assets/ChatGPT%20Image%20Sep%2022%2C%202026%2C%2009_03_22%20PM.png" alt="" aria-hidden="true"></button>
+        <button class="ai-orb" type="button" aria-label="Open VarshaGuard AI assistant"><img class="ai-main-logo" src="https://raw.githubusercontent.com/sarthak-shree/varshaguard_og/main/frontend/assets/ChatGPT%20Image%20Sep%2022%2C%202026%2C%2009_03_22%20PM.png" alt="" aria-hidden="true"></button>
         <div class="ai-hero-copy">
           <span class="ai-hero-kicker">✦ YOUR DASHBOARD HELPER</span>
           <strong>VarshaGuard AI</strong>
@@ -140,14 +140,17 @@
             <span id="patnaProbabilityLabel">Chance of reaching the CWC warning level in the next 24 hours</span>
           </div>
           <div id="patnaRiskMeter" class="live-risk-meter" role="meter" aria-label="Patna risk percentage" aria-valuemin="0" aria-valuemax="100" hidden><span id="patnaRiskFill"></span></div>
-          <div class="live-gauge-stats">
-            <div><span>Latest river level</span><strong id="patnaStage">—</strong></div>
-            <div><span>CWC warning level</span><strong id="patnaWarning">—</strong></div>
-            <div><span>CWC danger level</span><strong id="patnaDanger">—</strong></div>
-            <div><span>Rain (24 hours)</span><strong id="patnaRain">—</strong></div>
-            <div><span>Reading time</span><strong id="patnaTime">—</strong></div>
-          </div>
-          <small id="patnaQuality" class="live-quality">Waiting for data quality details</small>
+          <div class="live-gauge-primary"><span>Latest river level</span><strong id="patnaStage">—</strong></div>
+          <details class="live-gauge-details" open>
+            <summary>Gauge details</summary>
+            <div class="live-gauge-stats">
+              <div><span>CWC warning level</span><strong id="patnaWarning">—</strong></div>
+              <div><span>CWC danger level</span><strong id="patnaDanger">—</strong></div>
+              <div><span>Rain (24 hours)</span><strong id="patnaRain">—</strong></div>
+              <div><span>Reading time</span><strong id="patnaTime">—</strong></div>
+            </div>
+            <small id="patnaQuality" class="live-quality">Waiting for data quality details</small>
+          </details>
         </article>
 
         <article class="live-gauge-card" id="muzaffarpurCard">
@@ -161,14 +164,17 @@
             <span id="muzaffarpurProbabilityLabel">Chance of reaching the CWC warning level in the next 24 hours</span>
           </div>
           <div id="muzaffarpurRiskMeter" class="live-risk-meter" role="meter" aria-label="Muzaffarpur risk percentage" aria-valuemin="0" aria-valuemax="100" hidden><span id="muzaffarpurRiskFill"></span></div>
-          <div class="live-gauge-stats">
-            <div><span>Latest river level</span><strong id="muzaffarpurStage">—</strong></div>
-            <div><span>CWC warning level</span><strong id="muzaffarpurWarning">—</strong></div>
-            <div><span>CWC danger level</span><strong id="muzaffarpurDanger">—</strong></div>
-            <div><span>Rain (24 hours)</span><strong id="muzaffarpurRain">—</strong></div>
-            <div><span>Reading time</span><strong id="muzaffarpurTime">—</strong></div>
-          </div>
-          <small id="muzaffarpurQuality" class="live-quality">Waiting for data quality details</small>
+          <div class="live-gauge-primary"><span>Latest river level</span><strong id="muzaffarpurStage">—</strong></div>
+          <details class="live-gauge-details" open>
+            <summary>Gauge details</summary>
+            <div class="live-gauge-stats">
+              <div><span>CWC warning level</span><strong id="muzaffarpurWarning">—</strong></div>
+              <div><span>CWC danger level</span><strong id="muzaffarpurDanger">—</strong></div>
+              <div><span>Rain (24 hours)</span><strong id="muzaffarpurRain">—</strong></div>
+              <div><span>Reading time</span><strong id="muzaffarpurTime">—</strong></div>
+            </div>
+            <small id="muzaffarpurQuality" class="live-quality">Waiting for data quality details</small>
+          </details>
         </article>
       </div>
       <p id="riskBandGuide" class="plain-text bihar-note">The percentage is an experimental estimate that the river gauge may reach its CWC warning level within 24 hours. If the warning or danger level is already observed, the card marks it as observed. It is not a street or block flood probability.</p>

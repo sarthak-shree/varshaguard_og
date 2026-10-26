@@ -552,6 +552,11 @@
       });
   }
   document.addEventListener("DOMContentLoaded", () => {
+    const gaugeDetails = document.querySelectorAll(".live-gauge-details");
+    const compactGaugeCards = window.matchMedia("(max-width: 620px)");
+    const setGaugeDetails = (compact) => gaugeDetails.forEach((details) => { details.open = !compact; });
+    setGaugeDetails(compactGaugeCards.matches);
+    compactGaugeCards.addEventListener("change", (event) => setGaugeDetails(event.matches));
     setupMap();
     setupAssistant();
     $("districtSelect").addEventListener("change", () => selectDistrict());
