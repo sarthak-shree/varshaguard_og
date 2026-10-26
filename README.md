@@ -151,3 +151,11 @@ Both assistant windows support voice questions. The browser records up to 20 sec
 Set GROQ_API_KEY in the server environment (the same key used by text chat). GROQ_STT_MODEL is optional and defaults to whisper-large-v3. On Vercel, add the dependency in requirements.txt and make sure GROQ_API_KEY is configured for the deployment.
 
 Voice audio is sent to Groq for transcription; the generated reply text is sent to Microsoft's online Edge TTS service. Do not speak sensitive personal information. Microphone access requires HTTPS or localhost.
+
+## Bihar Live selected-location risk card
+
+The Bihar Live page now presents one 24-hour CWC gauge-warning estimate for the selected Patna or Muzaffarpur focus area. The percentage and risk band refresh with live CWC river-level and observed rainfall inputs. Selecting a district, clicking its gauge on the map, or using device location near a supported focus area updates the card.
+
+A new `GET /api/bihar-live/weather?district=patna` endpoint fetches hourly Open-Meteo precipitation for the selected CWC gauge location. The card shows the next-24-hour rainfall outlook and peak hourly rain chance separately from the CWC model percentage. Forecast rainfall is not blended into the flood-risk probability because the saved CWC model was not trained or validated with future-rain forecast inputs. Weather results are cached for ten minutes; CWC estimates refresh in the dashboard every five minutes.
+
+The displayed percentage estimates whether the selected river gauge may reach its published CWC warning level. It is experimental, is not a neighborhood/block inundation probability, and is not an official warning. If CWC data are missing or stale, the page suppresses the percentage. If a warning/danger threshold is already observed, the card says so directly instead of presenting it as a 100% forecast chance. The Open-Meteo forecast is subject to its [usage terms](https://open-meteo.com/en/terms).

@@ -81,19 +81,42 @@
           <button id="locateButton" class="assistant-open-btn bihar-locate" type="button">Show my location</button>
         </section>
 
-        <section class="risk-card bihar-status-card" id="connectionCard">
+        <section class="risk-card bihar-status-card" id="selectedRiskCard" data-risk="stale" aria-labelledby="selectedRiskDistrict">
           <div class="risk-card-topline">
             <div>
-              <p class="small-title">CWC river data</p>
-              <h2 id="dataMode">Connecting…</h2>
+              <p class="small-title">24-HOUR FLOOD WARNING RISK</p>
+              <h2 id="selectedRiskDistrict">Patna</h2>
             </div>
-            <div id="dataBadge" class="risk-trend">Checking</div>
+            <div id="selectedRiskBadge" class="risk-trend" data-state="stale">Loading</div>
           </div>
-          <p id="statusNote">Checking the latest river readings for both districts.</p>
-          <div class="risk-meta">
-            <div><span>River stations</span><strong id="stationCount">—</strong></div>
-            <div><span>Last CWC reading</span><strong id="lastUpdated">Waiting</strong></div>
+          <p id="selectedRiskGauge" class="selected-risk-gauge">CWC gauge: Gandhighat</p>
+          <div class="risk-card-probability">
+            <div class="risk-card-probability-header">
+              <span id="selectedRiskProbabilityLabel">Chance the gauge reaches its warning level</span>
+              <strong id="selectedRiskProbability">—</strong>
+            </div>
+            <div id="selectedRiskMeter" class="risk-card-bar" role="meter" aria-label="24-hour gauge warning risk" aria-valuemin="0" aria-valuemax="100" hidden>
+              <div id="selectedRiskFill" class="risk-card-bar-fill"></div>
+            </div>
+            <div class="risk-card-bar-scale" id="selectedRiskScale" hidden><span>0%</span><span>50%</span><span>100%</span></div>
           </div>
+          <p id="selectedRiskMessage" class="selected-risk-message">Waiting for live river readings.</p>
+          <div class="risk-meta selected-risk-meta">
+            <div><span>Rain forecast · next 24h</span><strong id="selectedRiskRainForecast">Loading</strong></div>
+            <div><span>Latest river level</span><strong id="selectedRiskStage">—</strong></div>
+            <div><span>Latest CWC reading</span><strong id="selectedRiskReadingTime">Waiting</strong></div>
+          </div>
+          <p id="selectedRiskWeatherNote" class="selected-risk-weather-note">The rainfall outlook is context only; it is not included in the model percentage.</p>
+          <a class="selected-risk-source" href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Rainfall forecast source: Open-Meteo ↗</a>
+          <details class="selected-risk-details">
+            <summary>CWC thresholds and data quality</summary>
+            <div class="selected-risk-thresholds">
+              <div><span>Warning level</span><strong id="selectedRiskWarning">—</strong></div>
+              <div><span>Danger level</span><strong id="selectedRiskDanger">—</strong></div>
+              <div><span>Observed rain · 24h</span><strong id="selectedRiskObservedRain">—</strong></div>
+            </div>
+            <small id="selectedRiskQuality">Waiting for data quality details.</small>
+          </details>
         </section>
       </div>
 
@@ -120,66 +143,6 @@
       </div>
     </section>
 
-    <section class="panel forecast-panel">
-      <div class="panel-heading-row">
-        <div>
-          <h3>24-hour river warning risk</h3>
-          <span>Rolling outlook from the latest CWC river reading</span>
-        </div>
-        <span id="forecastBadge" class="health-badge">Waiting for CWC</span>
-      </div>
-      <div class="live-prediction-grid">
-        <article class="live-gauge-card" id="patnaCard">
-          <div class="live-gauge-heading">
-            <div><span class="eyebrow">PATNA</span><h4>Gandhighat</h4></div>
-            <span id="patnaSignal" class="live-signal">Loading</span>
-          </div>
-          <p id="patnaForecastText" class="live-forecast-text">Waiting for river readings…</p>
-          <div class="live-probability-row">
-            <strong id="patnaProbability">—</strong>
-            <span id="patnaProbabilityLabel">Chance of reaching the CWC warning level in the next 24 hours</span>
-          </div>
-          <div id="patnaRiskMeter" class="live-risk-meter" role="meter" aria-label="Patna risk percentage" aria-valuemin="0" aria-valuemax="100" hidden><span id="patnaRiskFill"></span></div>
-          <div class="live-gauge-primary"><span>Latest river level</span><strong id="patnaStage">—</strong></div>
-          <details class="live-gauge-details" open>
-            <summary>Gauge details</summary>
-            <div class="live-gauge-stats">
-              <div><span>CWC warning level</span><strong id="patnaWarning">—</strong></div>
-              <div><span>CWC danger level</span><strong id="patnaDanger">—</strong></div>
-              <div><span>Rain (24 hours)</span><strong id="patnaRain">—</strong></div>
-              <div><span>Reading time</span><strong id="patnaTime">—</strong></div>
-            </div>
-            <small id="patnaQuality" class="live-quality">Waiting for data quality details</small>
-          </details>
-        </article>
-
-        <article class="live-gauge-card" id="muzaffarpurCard">
-          <div class="live-gauge-heading">
-            <div><span class="eyebrow">MUZAFFARPUR</span><h4>Sikandarpur</h4></div>
-            <span id="muzaffarpurSignal" class="live-signal">Loading</span>
-          </div>
-          <p id="muzaffarpurForecastText" class="live-forecast-text">Waiting for river readings…</p>
-          <div class="live-probability-row">
-            <strong id="muzaffarpurProbability">—</strong>
-            <span id="muzaffarpurProbabilityLabel">Chance of reaching the CWC warning level in the next 24 hours</span>
-          </div>
-          <div id="muzaffarpurRiskMeter" class="live-risk-meter" role="meter" aria-label="Muzaffarpur risk percentage" aria-valuemin="0" aria-valuemax="100" hidden><span id="muzaffarpurRiskFill"></span></div>
-          <div class="live-gauge-primary"><span>Latest river level</span><strong id="muzaffarpurStage">—</strong></div>
-          <details class="live-gauge-details" open>
-            <summary>Gauge details</summary>
-            <div class="live-gauge-stats">
-              <div><span>CWC warning level</span><strong id="muzaffarpurWarning">—</strong></div>
-              <div><span>CWC danger level</span><strong id="muzaffarpurDanger">—</strong></div>
-              <div><span>Rain (24 hours)</span><strong id="muzaffarpurRain">—</strong></div>
-              <div><span>Reading time</span><strong id="muzaffarpurTime">—</strong></div>
-            </div>
-            <small id="muzaffarpurQuality" class="live-quality">Waiting for data quality details</small>
-          </details>
-        </article>
-      </div>
-      <p id="riskBandGuide" class="plain-text bihar-note">The percentage is an experimental estimate that the river gauge may reach its CWC warning level within 24 hours. If the warning or danger level is already observed, the card marks it as observed. It is not a street or block flood probability.</p>
-    </section>
-
     <section class="two-column">
       <section class="panel">
         <div class="panel-heading-row">
@@ -187,14 +150,14 @@
           <span id="sourceCount" class="health-badge">—</span>
         </div>
         <div class="bihar-sources" id="sourceList" aria-live="polite"></div>
-        <p class="plain-text bihar-note">River stage and rainfall observations are from the Central Water Commission Flood Forecasting System.</p>
+        <p class="plain-text bihar-note">River stage and observed rain come from the Central Water Commission Flood Forecasting System. The separate rainfall outlook comes from Open-Meteo and is not used to calculate the CWC model percentage.</p>
       </section>
       <section class="panel">
         <div class="panel-heading-row">
           <div><h3>About this estimate</h3><span>What this screen can and cannot tell you</span></div>
           <button id="assistantOpenButton" class="assistant-open-btn" type="button">Ask VarshaGuard AI</button>
         </div>
-        <p class="plain-text">The model uses recent CWC river-level and rainfall readings to estimate whether a gauge may reach its published warning level during the 24 hours after the latest reading.</p>
+        <p class="plain-text">Choose Patna or Muzaffarpur to update the risk card. The percentage estimates whether that area's CWC gauge may reach its published warning level during the 24 hours after the latest reading. The separate Open-Meteo rainfall forecast adds weather context.</p>
         <p class="plain-text bihar-note">This is a research estimate. Muzaffarpur has too few historical warning events to measure local accuracy. The model does not predict flooded streets, blocks, or grid cells and is not an official warning. Follow CWC, IMD, and local disaster-management guidance.</p>
       </section>
     </section>

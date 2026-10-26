@@ -88,3 +88,38 @@
 /* Bihar Live voice workspace matches the main dashboard's immersive orb. */
 .assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row{display:flex}
 .assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row label{font-weight:700}
+
+/* The selected-location flood-risk card replaces the former CWC connection-only panel. */
+.bihar-status-card{min-height:0;transition:background .2s ease}
+.bihar-status-card h2{font-size:30px;line-height:1.1;overflow-wrap:anywhere}
+.bihar-status-card[data-risk="low"]{background:linear-gradient(135deg,#238b70,#247a84)}
+.bihar-status-card[data-risk="medium"]{background:linear-gradient(135deg,#a8791c,#91621e)}
+.bihar-status-card[data-risk="high"]{background:linear-gradient(135deg,#b84741,#963f49)}
+.bihar-status-card[data-risk="stale"]{background:linear-gradient(135deg,#556575,#465462)}
+.bihar-status-card .risk-trend[data-state="low"]{background:rgba(255,255,255,.16)}
+.bihar-status-card .risk-trend[data-state="medium"]{background:rgba(255,241,215,.16)}
+.bihar-status-card .risk-trend[data-state="high"]{background:rgba(255,229,226,.18)}
+.selected-risk-gauge{margin:8px 0 0;color:rgba(255,255,255,.82);font-size:11px}
+.selected-risk-message{margin:12px 0 0;font-size:11px;line-height:1.5}
+.selected-risk-meta{grid-template-columns:1fr 1fr;gap:10px}
+.selected-risk-meta>div:first-child{grid-column:1/-1}
+.selected-risk-meta strong{white-space:normal}
+.selected-risk-weather-note{margin:9px 0 0;color:rgba(255,255,255,.78);font-size:9px;line-height:1.45}
+.selected-risk-details{margin-top:11px;padding-top:8px;border-top:1px solid rgba(255,255,255,.22)}
+.selected-risk-details>summary{cursor:pointer;list-style:none;color:rgba(255,255,255,.92);font-size:10px;font-weight:750}
+.selected-risk-details>summary::-webkit-details-marker{display:none}
+.selected-risk-details>summary::after{content:"+";float:right;font-size:15px;line-height:1}
+.selected-risk-details[open]>summary::after{content:"−"}
+.selected-risk-thresholds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+.selected-risk-thresholds>div{padding:7px;background:rgba(255,255,255,.1);border-radius:6px;min-width:0}
+.selected-risk-thresholds span{display:block;color:rgba(255,255,255,.72);font-size:8px}
+.selected-risk-thresholds strong{display:block;margin-top:3px;font-size:10px;overflow-wrap:anywhere}
+.selected-risk-details small{display:block;margin-top:8px;color:rgba(255,255,255,.75);font-size:9px;line-height:1.45}
+.risk-card-bar[hidden],.risk-card-bar-scale[hidden]{display:none}
+@media(max-width:620px){
+  .selected-risk-meta{grid-template-columns:1fr 1fr}
+  .selected-risk-thresholds{grid-template-columns:1fr 1fr}
+  .selected-risk-thresholds>div:first-child{grid-column:1/-1}
+}
+.selected-risk-source{display:inline-block;margin-top:5px;color:rgba(255,255,255,.84);font-size:9px;text-decoration:underline;text-underline-offset:2px}
+.selected-risk-source:hover{color:#fff}
