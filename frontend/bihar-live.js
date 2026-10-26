@@ -399,6 +399,7 @@
       const openButtons = [
           document.getElementById("assistantOpenButton"),
           document.getElementById("assistantTopButton"),
+          document.querySelector(".ai-hero-card .ai-orb"),
       ].filter(Boolean);
       const closeButton = document.getElementById("assistantCloseButton");
       const form = document.getElementById("assistantForm");
@@ -409,9 +410,10 @@
       const orbPanel = document.getElementById("assistantOrbPanel");
       const voiceRow = document.getElementById("assistantVoiceRow");
       let voiceControls = null;
-  
+      let returnFocus = null;
+
       if (!modal || !openButtons.length || !closeButton || !form || !input || !sendButton) return;
-  
+
       const setAssistantMode = (mode) => {
           const voiceMode = mode === "voice";
           modal.dataset.assistantMode = voiceMode ? "voice" : "text";
@@ -422,12 +424,7 @@
           textModeButton?.setAttribute("aria-pressed", String(!voiceMode));
           voiceModeButton?.setAttribute("aria-pressed", String(voiceMode));
           if (voiceMode) {
-              const orb = document.getElementById("assistantNativeOrb");
-              orb?.setAttribute("aria-label", "Start listening");
-              orb?.setAttribute("aria-pressed", "false");
               window.VarshaGuardOrb?.setState("idle");
-              const label = document.getElementById("assistantOrbState");
-              if (label) label.textContent = "Ready to listen";
               const status = document.getElementById("assistantVoiceStatus");
               if (status) status.textContent = "Tap Speak when you're ready.";
           } else {
@@ -436,11 +433,12 @@
               input.focus();
           }
       };
-  
+
       textModeButton?.addEventListener("click", () => setAssistantMode("text"));
       voiceModeButton?.addEventListener("click", () => setAssistantMode("voice"));
-  
+
       const open = () => {
+          returnFocus = document.activeElement;
           // Use the current Bihar Live context when a question is submitted.
           modal.classList.remove("hidden");
           setAssistantMode("text");
@@ -452,8 +450,10 @@
           modal.classList.add("hidden");
           modal.dataset.assistantMode = "text";
           window.VarshaGuardOrb?.setState("idle");
+          returnFocus?.focus();
+          returnFocus = null;
       };
-  
+
       openButtons.forEach((button) => button.addEventListener("click", open));
       document.querySelectorAll("[data-assistant-prompt]").forEach((button) => {
           button.addEventListener("click", () => {
@@ -468,7 +468,27 @@
       document.addEventListener("keydown", (event) => {
           if (event.key === "Escape") close();
       });
-  
+
+      document.addEventListener("keydown", (event) => {
+          if (modal.classList.contains("hidden") || event.key !== "Tab") return;
+          const focusable = Array.from(modal.querySelectorAll(
+              'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), audio[controls], a[href], [tabindex]:not([tabindex="-1"])'
+          )).filter((element) => !element.closest(".hidden") && element.getClientRects().length > 0);
+          if (!focusable.length) {
+              event.preventDefault();
+              return;
+          }
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (event.shiftKey && (document.activeElement === first || document.activeElement === modal)) {
+              event.preventDefault();
+              last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
+          }
+      });
+
       voiceControls = window.VarshaGuardVoice?.bind({
           button: document.getElementById("assistantMicButton"),
           status: document.getElementById("assistantVoiceStatus"),
@@ -478,23 +498,18 @@
           getContext: buildAssistantContext,
           appendMessage: appendAssistantMessage,
       });
-  
+
       const nativeOrb = document.getElementById("assistantNativeOrb");
       nativeOrb?.addEventListener("click", () => {
           if (modal.dataset.assistantMode === "voice") voiceControls?.toggle();
       });
-      document.addEventListener("varshaguard:assistant-state", (event) => {
-          if (!nativeOrb || modal.dataset.assistantMode !== "voice") return;
-          const state = event.detail?.state || "idle";
-          nativeOrb.setAttribute("aria-label", state === "listening" ? "Stop listening and send question" : "Start listening");
-          nativeOrb.setAttribute("aria-pressed", String(state === "listening"));
-      });
-  
+
+
       form.addEventListener("submit", async (event) => {
           event.preventDefault();
           const question = input.value.trim();
           if (!question) return;
-  
+
           appendAssistantMessage(question, "user");
           input.value = "";
           input.disabled = true;
@@ -506,7 +521,7 @@
           const voiceButton = document.getElementById("assistantMicButton");
           if (voiceButton) voiceButton.disabled = true;
           sendButton.textContent = "Thinking…";
-  
+
           try {
               const context = buildAssistantContext();
               const response = await fetch("/api/assistant", {

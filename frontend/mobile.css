@@ -1,0 +1,161 @@
+/* Shared phone-first spacing and touch targets for both VarshaGuard dashboards. */
+html { min-width: 320px; -webkit-text-size-adjust: 100%; }
+body { overflow-x: hidden; }
+.topbar, .layout, .dashboard-header, .overview-grid, .left-column, .right-column { min-width: 0; }
+.assistant-open-btn, .assistant-top-btn, .bihar-live-cta, #mapRefreshButton,
+.assistant-mode-btn, .assistant-mic-btn, .assistant-close-btn, .prototype-badge { min-height: 44px; }
+button, select, input { touch-action: manipulation; }
+:focus-visible { scroll-margin-block: 16px; }
+
+@media (max-width: 780px) {
+  .topbar {
+    align-items: center;
+    flex-direction: row;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+  .topbar > div:first-child { flex: 1 1 auto; min-width: 0; }
+  .topbar p { max-width: 38ch; font-size: 10px; line-height: 1.35; }
+  .topbar-actions { width: auto; flex: 0 0 auto; align-self: center; justify-content: flex-end; gap: 8px; }
+  .brand-lockup a { gap: 7px; }
+  .brand-logo { width: 38px; height: 38px; }
+  .brand-wordmark { font-size: clamp(16px,4.4vw,20px); letter-spacing: -.4px; }
+  .bihar-live-cta { min-height: 44px; gap: 7px; padding: 5px 9px; border-radius: 10px; }
+  .bihar-live-cta-icon { width: 30px; height: 30px; flex-basis: 30px; }
+  .bihar-live-cta-icon svg { width: 18px; height: 18px; }
+  .bihar-live-cta-copy strong { font-size: 11px; }
+  .bihar-live-cta-copy small, .bihar-live-cta-arrow, .topbar-actions > .prototype-badge { display: none; }
+  .prototype-switch .prototype-badge { min-height: 44px; padding: 6px 9px; font-size: 10px; }
+
+  .layout { gap: 12px; padding: 12px; }
+  .dashboard-header { align-items: stretch; gap: 10px; }
+  .region-title-card { flex-basis: auto; min-height: 0; padding: 14px 15px; border-radius: 14px; }
+  .region-title-row h2 { font-size: 24px; }
+  .region-title-card > p { font-size: 11px; line-height: 1.4; }
+  .region-card-meta { gap: 5px; margin-top: 8px; }
+  .region-meta-pill { font-size: 8px; }
+  .ai-hero-card { display: grid; grid-template-columns: 52px minmax(0,1fr); align-items: center; gap: 10px; min-height: 0; padding: 13px; border-radius: 14px; }
+  .ai-hero-card .ai-orb { width: 50px; height: 50px; flex-basis: 50px; }
+  .ai-hero-card .ai-main-logo { width: 43px; height: 43px; }
+  .ai-hero-copy { gap: 2px; }
+  .ai-hero-copy strong { font-size: 17px; }
+  .ai-hero-copy > span:last-child { font-size: 11px; line-height: 1.35; }
+  .ai-hero-kicker { font-size: 8px; }
+  .ai-feature-row { display: none; }
+  .assistant-top-btn { grid-column: 1 / -1; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border-radius: 11px; font-size: 12px; }
+
+  .overview-grid { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .left-column, .right-column, .bihar-overview .left-column { gap: 12px; }
+  .panel, .risk-card { min-width: 0; padding: 14px; border-radius: 14px; }
+  .panel-heading-row { align-items: center; gap: 9px; }
+  .panel-heading-row h3, .panel h3 { font-size: 14px; }
+  .panel-heading-row > div > span { font-size: 10px; line-height: 1.4; }
+  .selector-panel { gap: 12px; }
+  select { min-height: 44px; font-size: 14px; }
+  .risk-card h2 { font-size: 32px; }
+  .risk-meta { gap: 8px; }
+  .risk-meta strong { font-size: 10px; }
+  .metrics-strip { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .metric-card { min-width: 0; padding: 11px; border-radius: 12px; }
+  .metric-card > span { font-size: 8px; line-height: 1.35; }
+  .metric-card strong { font-size: clamp(15px,5vw,19px); overflow-wrap: anywhere; }
+  .metric-card small { font-size: 9px; line-height: 1.35; }
+  .two-column { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .chart-container { height: 230px; }
+  .map-wrap, .bihar-map-wrap { height: clamp(230px,68vw,290px); }
+  .map-risk-legend { left: 7px; bottom: 7px; min-width: 0; max-width: 154px; padding: 7px 8px; font-size: 9px; }
+  .map-risk-legend-item { gap: 5px; font-size: 9px; }
+  .station-focus-grid, .feature-list, .status-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+  .station-focus-grid .station-focus-stat:first-child { grid-column: 1 / -1; }
+  .station-focus-stat, .status-tile { min-width: 0; padding: 9px; }
+  .station-focus-stat span, .status-tile span { font-size: 8px; line-height: 1.35; }
+  .station-focus-stat strong, .status-tile strong { font-size: 10px; }
+  .risk-drivers { grid-template-columns: minmax(0,1fr); gap: 7px; }
+  .technical-details summary { min-height: 40px; display: flex; align-items: center; }
+  .message { right: 12px; bottom: max(12px,env(safe-area-inset-bottom)); left: 12px; width: auto; max-width: none; }
+  footer { padding: 0 12px 18px; }
+
+  .live-prediction-grid { grid-template-columns: minmax(0,1fr); gap: 10px; }
+  .live-gauge-card { padding: 13px; border-radius: 13px; }
+  .live-gauge-heading { align-items: center; gap: 8px; }
+  .live-gauge-heading h4 { font-size: 16px; }
+  .live-forecast-text { min-height: 0; margin: 10px 0; font-size: 11px; }
+  .live-probability-row { align-items: flex-start; gap: 8px; }
+  .live-probability-row strong { font-size: 28px; }
+  .live-probability-row span { font-size: 10px; line-height: 1.4; }
+  .live-gauge-stats { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+  .live-gauge-stats > div { padding: 8px; }
+  .live-gauge-stats span { font-size: 8px; }
+  .live-gauge-stats strong { font-size: 10px; }
+  .bihar-status-card { min-height: 0; }
+  .bihar-status-card h2 { font-size: 22px; }
+  .bihar-about-grid { grid-template-columns: minmax(0,1fr); gap: 8px; }
+  .bihar-map-wrap { height: clamp(230px,68vw,290px); }
+  #mapRefreshButton { width: auto; padding-inline: 10px; font-size: 10px; }
+  .leaflet-control-zoom a { width: 44px !important; height: 44px !important; line-height: 44px !important; }
+}
+
+@media (max-width: 520px) {
+  .topbar { padding: 9px 12px; }
+  .topbar p { max-width: 28ch; font-size: 9px; }
+  .brand-logo { width: 34px; height: 34px; }
+  .brand-wordmark { font-size: clamp(15px,4.3vw,18px); }
+  .bihar-live-cta { gap: 0; padding-inline: 7px; }
+  .bihar-live-cta-icon { display: none; }
+  .bihar-live-cta-copy strong { font-size: 10px; }
+  .prototype-switch .prototype-badge { font-size: 9px; }
+  .layout { padding: 10px; gap: 10px; }
+  .region-title-card { padding: 12px; }
+  .region-title-row h2 { font-size: 22px; }
+  .ai-hero-card { grid-template-columns: 44px minmax(0,1fr); gap: 8px; padding: 11px; }
+  .ai-hero-card .ai-orb { width: 44px; height: 44px; flex-basis: 44px; }
+  .ai-hero-card .ai-main-logo { width: 36px; height: 36px; }
+  .ai-hero-copy strong { font-size: 15px; }
+  .ai-hero-copy > span:last-child { font-size: 10px; }
+  .assistant-top-btn { min-height: 44px; }
+  .panel, .risk-card { padding: 12px; }
+  .map-wrap, .bihar-map-wrap { height: 238px; }
+  .chart-container { height: 205px; }
+  .assistant-modal { align-items: flex-end; padding: 0; }
+  .assistant-dialog { width: 100%; max-height: min(92dvh,820px); border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .assistant-dialog-header { gap: 10px; padding: 15px 15px 11px; }
+  .assistant-dialog-header h3 { font-size: 18px; }
+  .assistant-dialog-header p { font-size: 11px; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog-header p { display: none; }
+  .assistant-close-btn { flex-basis: 42px; width: 42px; height: 42px; }
+  .assistant-mode-switch { align-self: stretch; margin: 10px 15px 6px; }
+  .assistant-mode-btn { flex: 1 1 0; min-height: 44px; padding: 8px 9px; }
+  .assistant-messages { min-height: 120px; max-height: 32dvh; padding: 12px 15px; }
+  .assistant-message { max-width: 94%; font-size: 12px; }
+  .assistant-quick-prompts { gap: 6px; padding: 8px 15px 10px; }
+  .assistant-quick-prompts button { min-height: 44px; font-size: 10px; }
+  .assistant-form { gap: 7px; padding: 10px 15px; }
+  .assistant-voice-row { gap: 8px; padding: 9px 15px; }
+  .assistant-disclaimer { padding: 0 15px 12px; font-size: 9px; }
+  .assistant-orb-panel { gap: 8px; padding: 8px 12px; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog { width: 100%; height: min(92dvh,760px); max-height: min(92dvh,760px); border-radius: 22px 22px 0 0; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-orb-panel { gap: 10px; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-orb-stage { width: min(64vw,28dvh,220px); height: min(64vw,28dvh,220px); }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-orb-copy strong { font-size: 16px; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-orb-copy span { max-width: 32ch; font-size: 11px; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-voice-row { gap: 8px; padding: 8px 12px max(12px,env(safe-area-inset-bottom)); }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-voice-row label { flex: 0 0 auto; font-size: 10px; white-space: nowrap; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-voice-row select { width: 96px; min-width: 0; flex: 0 1 96px; padding-inline: 8px; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-mic-btn,
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-voice-row select { min-height: 44px; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-voice-status { flex-basis: 100%; font-size: 10px; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-disclaimer { padding-bottom: 10px; font-size: 8px; }
+}
+
+@media (max-width: 360px) {
+  .topbar { gap: 6px; }
+  .topbar p { max-width: 23ch; font-size: 8px; }
+  .brand-wordmark { font-size: 15px; }
+  .bihar-live-cta-copy strong { font-size: 9px; }
+  .layout { padding: 8px; }
+  .assistant-modal[data-assistant-mode="voice"] .assistant-dialog .assistant-orb-stage { width: min(54vw,26dvh,160px); height: min(54vw,26dvh,160px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

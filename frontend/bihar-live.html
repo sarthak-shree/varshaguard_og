@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/bihar-live.css">
   <link rel="stylesheet" href="/assistant-orb.css">
   <link rel="stylesheet" href="/orb-native.css">
+  <link rel="stylesheet" href="/mobile.css">
 </head>
 <body>
   <header class="topbar">
@@ -49,7 +50,7 @@
         </div>
       </div>
       <div class="ai-hero-card">
-        <button class="ai-orb" type="button" aria-label="Open VarshaGuard AI assistant"></button>
+        <button class="ai-orb" type="button" aria-label="Open VarshaGuard AI assistant"><img class="ai-main-logo" src="/assets/ChatGPT%20Image%20Sep%2022%2C%202026%2C%2009_03_22%20PM.png" alt="" aria-hidden="true"></button>
         <div class="ai-hero-copy">
           <span class="ai-hero-kicker">✦ YOUR DASHBOARD HELPER</span>
           <strong>VarshaGuard AI</strong>
@@ -211,7 +212,7 @@
                 <div class="assistant-orb-stage">
                     <button id="assistantNativeOrb" class="orb" type="button" aria-label="Start listening" aria-pressed="false" data-state="disabled"></button>
                 </div>
-                <div class="assistant-orb-copy"><strong id="assistantOrbState">Ready to listen</strong><span>Speak naturally. The ring responds while VarshaGuard listens and prepares your answer.</span></div>
+                <div class="assistant-orb-copy"><strong id="assistantOrbState" role="status" aria-live="polite" aria-atomic="true">Ready when you are</strong><span>Tap Speak or the orb to begin. Tap again to send your question.</span></div>
             </div>
             <div id="assistantMessages" class="assistant-messages">
                 <div class="assistant-message assistant-bot">Hi. Ask me to explain the latest CWC river reading or the experimental warning-level estimate.</div>

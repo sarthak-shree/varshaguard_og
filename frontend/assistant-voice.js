@@ -22,11 +22,31 @@
     let chunks = [];
     let stopTimer = null;
     let starting = false;
+    let cancelPendingStart = false;
     let busy = false;
     let discardRecording = false;
     let audioContext = null;
     let audioSource = null;
     let audioMeterFrame = 0;
+    let speechFrame = 0;
+    let speechToken = 0;
+    let activeSpeechAudio = null;
+    let speechCleanup = null;
+
+    function setStatus(message, state) {
+      const currentState = state || "idle";
+      status.textContent = message;
+      if (typeof onStateChange === "function") onStateChange(currentState, message);
+      document.dispatchEvent(new CustomEvent("varshaguard:assistant-state", {
+        detail: { state: currentState, global: true }
+      }));
+      const dialog = document.getElementById("assistantModal");
+      if (dialog) dialog.dataset.assistantState = currentState;
+    }
+
+    function setAudioLevel(level) {
+      window.VarshaGuardOrb?.setAudioLevel(level);
+    }
 
     function stopAudioMeter() {
       if (audioMeterFrame) window.cancelAnimationFrame(audioMeterFrame);
@@ -38,7 +58,7 @@
       if (previousContext && previousContext.state !== "closed") {
         previousContext.close().catch(() => {});
       }
-      window.VarshaGuardOrb?.setAudioLevel(0);
+      setAudioLevel(0);
     }
 
     async function startAudioMeter(mediaStream) {
@@ -67,8 +87,7 @@
             sumSquares += amplitude * amplitude;
           }
           const rms = Math.sqrt(sumSquares / samples.length);
-          const level = Math.max(0, Math.min(1, (rms - .012) * 9));
-          window.VarshaGuardOrb?.setAudioLevel(level);
+          setAudioLevel(Math.max(0, Math.min(1, (rms - .012) * 9)));
           audioMeterFrame = window.requestAnimationFrame(readVolume);
         };
         readVolume();
@@ -77,23 +96,106 @@
       }
     }
 
-    function setStatus(message, state) {
-      const currentState = state || "idle";
-      status.textContent = message;
-      if (typeof onStateChange === "function") onStateChange(currentState, message);
-      document.dispatchEvent(new CustomEvent("varshaguard:assistant-state", {
-        detail: { state: currentState, global: true }
-      }));
-      const dialog = document.getElementById("assistantModal");
-      if (dialog) dialog.dataset.assistantState = currentState;
-      const stateLabel = document.getElementById("assistantOrbState");
-      if (stateLabel) {
-        stateLabel.textContent = ({
-          idle: "Ready to listen",
-          listening: "Listening to you",
-          thinking: "Preparing your answer",
-          speaking: "Speaking response"
-        })[currentState] || "Ready to help";
+    function createSpeechEnvelope(buffer) {
+      const samplesPerBand = Math.max(256, Math.floor(buffer.sampleRate / 24));
+      const bands = Math.ceil(buffer.length / samplesPerBand);
+      const levels = new Float32Array(bands);
+      const channels = Array.from({ length: buffer.numberOfChannels }, (_, index) => buffer.getChannelData(index));
+
+      for (let band = 0; band < bands; band += 1) {
+        const start = band * samplesPerBand;
+        const end = Math.min(buffer.length, start + samplesPerBand);
+        const stride = Math.max(1, Math.floor((end - start) / 128));
+        let total = 0;
+        let sumSquares = 0;
+        for (const channel of channels) {
+          for (let index = start; index < end; index += stride) {
+            sumSquares += channel[index] * channel[index];
+            total += 1;
+          }
+        }
+        const rms = total ? Math.sqrt(sumSquares / total) : 0;
+        levels[band] = Math.max(0, Math.min(1, (rms - .005) * 11));
+      }
+      return { levels, secondsPerBand: samplesPerBand / buffer.sampleRate };
+    }
+
+    function stopSpeechPlayback(pausePlayback = true) {
+      const previousAudio = activeSpeechAudio;
+      speechToken += 1;
+      if (speechFrame) window.cancelAnimationFrame(speechFrame);
+      speechFrame = 0;
+      speechCleanup?.();
+      speechCleanup = null;
+      activeSpeechAudio = null;
+      setAudioLevel(0);
+      if (pausePlayback && previousAudio && !previousAudio.paused) previousAudio.pause();
+    }
+
+    async function startSpeechPlaybackMeter(audio, clipBlob) {
+      stopSpeechPlayback(true);
+      const token = ++speechToken;
+      let envelope = null;
+      activeSpeechAudio = audio;
+
+      const drawLevel = () => {
+        if (token !== speechToken || activeSpeechAudio !== audio || audio.paused || audio.ended || !envelope) return;
+        const position = Math.max(0, audio.currentTime / envelope.secondsPerBand);
+        const lowerBand = Math.min(Math.floor(position), envelope.levels.length - 1);
+        const upperBand = Math.min(lowerBand + 1, envelope.levels.length - 1);
+        const blend = position - lowerBand;
+        const level = envelope.levels[lowerBand] * (1 - blend) + envelope.levels[upperBand] * blend;
+        setAudioLevel(level);
+        speechFrame = window.requestAnimationFrame(drawLevel);
+      };
+
+      const onPlay = () => {
+        if (token !== speechToken) return;
+        setStatus("Speaking your answer…", "speaking");
+        if (envelope) drawLevel();
+      };
+      const onPause = () => {
+        if (token !== speechToken || audio.ended) return;
+        if (speechFrame) window.cancelAnimationFrame(speechFrame);
+        speechFrame = 0;
+        setAudioLevel(0);
+        setStatus("Answer paused. Tap Play to continue.", "idle");
+      };
+      const onEnded = () => {
+        if (token !== speechToken) return;
+        if (speechFrame) window.cancelAnimationFrame(speechFrame);
+        speechFrame = 0;
+        speechToken += 1;
+        speechCleanup?.();
+        speechCleanup = null;
+        activeSpeechAudio = null;
+        setAudioLevel(0);
+        setStatus("Answer ready. You can ask another question.", "idle");
+      };
+      const cleanup = () => {
+        audio.removeEventListener("play", onPlay);
+        audio.removeEventListener("pause", onPause);
+        audio.removeEventListener("ended", onEnded);
+      };
+      speechCleanup = cleanup;
+      audio.addEventListener("play", onPlay);
+      audio.addEventListener("pause", onPause);
+      audio.addEventListener("ended", onEnded);
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      let context = null;
+      try {
+        context = new AudioContextClass();
+        const audioBytes = await clipBlob.arrayBuffer();
+        const decoded = await context.decodeAudioData(audioBytes);
+        envelope = createSpeechEnvelope(decoded);
+        if (token === speechToken && activeSpeechAudio === audio && !audio.paused && !audio.ended) drawLevel();
+      } catch {
+        // Keep normal playback and the state animation if waveform decoding is unavailable.
+      } finally {
+        if (context && context.state !== "closed") context.close().catch(() => {});
       }
     }
 
@@ -121,7 +223,7 @@
 
     async function sendRecording(blob) {
       if (!blob.size) {
-        setStatus("No speech was recorded. Tap Speak and try again.");
+        setStatus("No speech was recorded. Tap Speak and try again.", "error");
         return;
       }
 
@@ -154,18 +256,18 @@
           for (let index = 0; index < binary.length; index += 1) {
             bytes[index] = binary.charCodeAt(index);
           }
+          const audioBlob = new Blob([bytes], { type: data.audio_mime_type || "audio/mpeg" });
           const audio = document.createElement("audio");
           audio.className = "assistant-audio";
           audio.controls = true;
           audio.preload = "none";
           audio.setAttribute("aria-label", "Play VarshaGuard's spoken answer");
-          audio.src = URL.createObjectURL(new Blob([bytes], {
-            type: data.audio_mime_type || "audio/mpeg",
-          }));
+          audio.src = URL.createObjectURL(audioBlob);
           answerMessage.appendChild(audio);
           setStatus("Speaking your answer…", "speaking");
-          audio.addEventListener("ended", () => setStatus("Answer ready. You can ask another question.", "idle"), { once: true });
+          void startSpeechPlaybackMeter(audio, audioBlob);
           audio.play().catch(() => {
+            stopSpeechPlayback(false);
             setStatus("Answer ready. Tap Play to hear it.", "idle");
           });
         } else {
@@ -189,14 +291,22 @@
       }
 
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-        setStatus("This browser cannot record audio. You can type your question instead.");
+        setStatus("This browser cannot record audio. You can type your question instead.", "error");
         return;
       }
 
+      stopSpeechPlayback(true);
       starting = true;
-      setStatus("Requesting microphone access…");
+      cancelPendingStart = false;
+      setStatus("Requesting microphone access…", "connecting");
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelPendingStart) {
+          stream.getTracks().forEach((track) => track.stop());
+          stream = null;
+          setStatus("Microphone request canceled.", "idle");
+          return;
+        }
         chunks = [];
         discardRecording = false;
         const preferredType = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus"]
@@ -210,7 +320,7 @@
         });
         recorder.addEventListener("error", () => {
           releaseMicrophone();
-          setStatus("Recording stopped unexpectedly. Please try again.");
+          setStatus("Recording stopped unexpectedly. Please try again.", "error");
         });
         recorder.addEventListener("stop", async () => {
           const wasDiscarded = discardRecording;
@@ -250,12 +360,14 @@
 
     return {
       cancel() {
+        if (starting) cancelPendingStart = true;
         if (recorder && recorder.state === "recording") {
           discardRecording = true;
           recorder.stop();
         } else {
           releaseMicrophone();
         }
+        stopSpeechPlayback(true);
       },
       toggle() { button.click(); },
     };

@@ -78,6 +78,5 @@
 
 /* Use the exact shared VarshaGuard AI orb appearance and animation from assistant-orb.css + orb-native.css. */
 /* Bihar Live voice workspace matches the main dashboard's immersive orb. */
-.assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row{display:flex!important}
-.assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row label,
-.assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row select{display:none!important}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row{display:flex}
+.assistant-dialog[data-assistant-mode="voice"] .assistant-voice-row label{font-weight:700}

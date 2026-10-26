@@ -26,8 +26,10 @@
     const currentState = STATES.has(next) ? next : "idle";
     const dialog = document.querySelector(".assistant-dialog");
     const orb = document.getElementById("assistantNativeOrb");
+    const panel = document.getElementById("assistantOrbPanel");
     const label = document.getElementById("assistantOrbState");
     if (dialog) dialog.dataset.assistantState = currentState;
+    if (panel) panel.dataset.state = currentState;
     if (orb) {
       orb.dataset.state = currentState;
       orb.setAttribute("aria-label", BUTTON_LABELS[currentState]);
@@ -40,14 +42,6 @@
   }
 
   function init() {
-    document.querySelectorAll(".ai-hero-card .ai-orb").forEach((button) => {
-      button.addEventListener("click", () => {
-        document.getElementById("assistantModal")?.classList.remove("hidden");
-        window.VarshaGuardOrb?.setState("idle");
-        document.getElementById("assistantInput")?.focus();
-      });
-    });
-
     document.addEventListener("varshaguard:assistant-state", (event) => {
       setState(event.detail?.state || "idle");
     });

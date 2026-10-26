@@ -50,7 +50,7 @@
 
     audioFrame = window.requestAnimationFrame(() => {
       audioFrame = 0;
-      const level = orb.dataset.state === "listening" ? audioLevel : 0;
+      const level = ["listening", "speaking"].includes(orb.dataset.state) ? audioLevel : 0;
       if (reducedMotion.matches) {
         orb.style.setProperty("--orb-scale", "1");
         orb.style.setProperty("--orb-glow-size", "36px");
