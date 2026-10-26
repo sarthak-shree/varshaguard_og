@@ -268,6 +268,10 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
     rainfall_24h = _rain_window(rains, code, last_observation, 24, 2)
     warning_level = float(station_meta["warning_level_m"])
     danger_level = float(station_meta["danger_level_m"])
+    history_start = last_observation - pd.Timedelta(hours=24)
+    stage_history = stage.loc[
+        (stage.index >= history_start) & (stage.index <= last_observation), "value"
+    ]
     result = {
         "station_code": code,
         "station_name": station_meta["name"],
@@ -283,6 +287,10 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
         "daily_summary_partial": last_observation.hour < 23,
         "current_stage_m": round(current_stage, 2),
         "daily_max_stage_m": round(float(today.max()), 2) if not today.empty else round(current_stage, 2),
+        "stage_history": [
+            {"timestamp_ist": timestamp.isoformat(timespec="minutes"), "stage_m": round(float(value), 2)}
+            for timestamp, value in stage_history.items()
+        ],
         "danger_level_m": round(danger_level, 2),
         "warning_level_m": round(warning_level, 2),
         "margin_to_warning_m": round(warning_level - current_stage, 2),

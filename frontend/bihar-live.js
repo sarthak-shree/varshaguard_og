@@ -126,6 +126,120 @@
     fill.style.width = bounded + "%";
   }
 
+  function renderStageTrend(prediction) {
+    const svg = $("stageTrendSvg");
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    const points = (prediction?.stage_history || [])
+      .filter((item) => finiteNumber(item.stage_m) && item.timestamp_ist)
+      .map((item) => {
+        const rawTime = String(item.timestamp_ist);
+        const parsed = new Date(rawTime.includes("+") || rawTime.endsWith("Z") ? rawTime : rawTime + "+05:30");
+        return { time: parsed.getTime(), stage: Number(item.stage_m), rawTime };
+      })
+      .filter((item) => Number.isFinite(item.time))
+      .sort((a, b) => a.time - b.time);
+
+    const warning = finiteNumber(prediction?.warning_level_m) ? Number(prediction.warning_level_m) : null;
+    const count = $("stageTrendCount");
+    const summary = $("stageTrendSummary");
+    const width = 600;
+    const height = 220;
+    const pad = { left: 54, right: 18, top: 24, bottom: 34 };
+    const make = (name, attrs = {}, content = "") => {
+      const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+      Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, String(value)));
+      if (content) node.textContent = content;
+      return node;
+    };
+
+    if (!points.length) {
+      count.textContent = "No readings";
+      summary.textContent = "A river-level trend will appear when recent CWC readings are available.";
+      svg.setAttribute("aria-label", summary.textContent);
+      svg.appendChild(make("text", { class: "stage-trend-empty", x: 300, y: 110, "text-anchor": "middle" }, "No recent river readings available"));
+      return;
+    }
+
+    const observed = points.map((point) => point.stage);
+    const minValue = Math.min(...observed);
+    const maxValue = Math.max(...observed);
+    const spread = Math.max(0.2, maxValue - minValue);
+    let low = minValue - spread * 0.25;
+    let high = maxValue + spread * 0.25;
+    if (warning !== null && warning >= low && warning <= high) {
+      low = Math.min(low, warning - spread * 0.05);
+      high = Math.max(high, warning + spread * 0.05);
+    }
+    const x0 = pad.left;
+    const x1 = width - pad.right;
+    const y0 = pad.top;
+    const y1 = height - pad.bottom;
+    const firstTime = points[0].time;
+    const lastTime = points[points.length - 1].time;
+    const timeSpan = Math.max(1, lastTime - firstTime);
+    const x = (point, index) => points.length === 1 ? (x0 + x1) / 2 : x0 + ((point.time - firstTime) / timeSpan) * (x1 - x0);
+    const y = (value) => y1 - ((value - low) / (high - low)) * (y1 - y0);
+
+    for (let tick = 0; tick <= 2; tick += 1) {
+      const value = high - ((high - low) * tick / 2);
+      const yy = y(value);
+      svg.appendChild(make("line", { class: "stage-trend-grid", x1: x0, x2: x1, y1: yy, y2: yy }));
+      svg.appendChild(make("text", { class: "stage-trend-axis-label", x: x0 - 8, y: yy + 4, "text-anchor": "end" }, value.toFixed(1) + " m"));
+    }
+
+    if (warning !== null && warning >= low && warning <= high) {
+      const warningY = y(warning);
+      svg.appendChild(make("line", { class: "stage-trend-warning", x1: x0, x2: x1, y1: warningY, y2: warningY }));
+      svg.appendChild(make("text", { class: "stage-trend-warning-label", x: x1 - 2, y: Math.max(y0 + 10, warningY - 7), "text-anchor": "end" }, "WARNING " + warning.toFixed(2) + " m"));
+    } else if (warning !== null) {
+      const latestStage = points[points.length - 1].stage;
+      const relation = warning > latestStage ? "above" : "below";
+      const gap = Math.abs(warning - latestStage).toFixed(2);
+      const labelY = warning > latestStage ? y0 + 11 : y1 - 6;
+      svg.appendChild(make("text", { class: "stage-trend-warning-label", x: x1 - 2, y: labelY, "text-anchor": "end" }, "WARNING LINE " + gap + " m " + relation + " latest"));
+    }
+
+    let segment = [];
+    const drawSegment = () => {
+      if (segment.length > 1) {
+        const path = segment.map((point, index) => (index ? "L" : "M") + " " + x(point, points.indexOf(point)).toFixed(1) + " " + y(point.stage).toFixed(1)).join(" ");
+        svg.appendChild(make("path", { class: "stage-trend-line", d: path }));
+      }
+    };
+    points.forEach((point, index) => {
+      if (index && point.time - points[index - 1].time > 4 * 60 * 60 * 1000) {
+        drawSegment();
+        segment = [];
+      }
+      segment.push(point);
+    });
+    drawSegment();
+
+    points.forEach((point, index) => {
+      const circle = make("circle", {
+        class: index === points.length - 1 ? "stage-trend-point is-latest" : "stage-trend-point",
+        cx: x(point, index),
+        cy: y(point.stage),
+        r: index === points.length - 1 ? 5 : 3
+      });
+      circle.appendChild(make("title", {}, formatTime(point.rawTime) + " · " + point.stage.toFixed(2) + " m"));
+      svg.appendChild(circle);
+    });
+
+    svg.appendChild(make("text", { class: "stage-trend-axis-label", x: x0, y: height - 8, "text-anchor": "start" }, "Earlier"));
+    svg.appendChild(make("text", { class: "stage-trend-axis-label", x: x1, y: height - 8, "text-anchor": "end" }, "Latest"));
+    count.textContent = points.length + " reading" + (points.length === 1 ? "" : "s");
+
+    const change = points[points.length - 1].stage - points[0].stage;
+    const spanHours = Math.max(0, (lastTime - firstTime) / 3600000);
+    const direction = Math.abs(change) < 0.03 ? "stayed about the same" : change > 0 ? "rose by " + change.toFixed(2) + " m" : "fell by " + Math.abs(change).toFixed(2) + " m";
+    summary.textContent = points.length < 2
+      ? "Only one recent reading is available, so a trend cannot be shown."
+      : "The level " + direction + " over the " + (spanHours < 1 ? "observed period" : spanHours.toFixed(0) + " observed hours") + ". This chart uses CWC readings, not predicted future river levels.";
+    svg.setAttribute("aria-label", "Recent observed river-level trend. " + summary.textContent);
+  }
+
   function updateSelectedRiskCard() {
     const districtKey = $("districtSelect").value;
     const district = DISTRICTS[districtKey];
@@ -143,7 +257,14 @@
     card.dataset.state = prediction?.status || "unavailable";
     setText("selectedRiskDistrict", district.name);
     setText("selectedRiskGauge", prediction?.station_name ? "CWC gauge: " + prediction.station_name : "CWC gauge: awaiting a recent reading");
+    setText("selectedRiskWindow", prediction?.forecast_end_ist
+      ? "Next 24 hours · through " + formatTime(prediction.forecast_end_ist)
+      : "Next 24 hours after the latest CWC reading");
+    renderStageTrend(prediction);
     setText("selectedRiskStage", finiteNumber(prediction?.current_stage_m) ? Number(prediction.current_stage_m).toFixed(2) + " m" : "—");
+    setText("selectedRiskGap", finiteNumber(prediction?.margin_to_warning_m)
+      ? Math.abs(Number(prediction.margin_to_warning_m)).toFixed(2) + " m " + (Number(prediction.margin_to_warning_m) < 0 ? "above" : "below")
+      : "—");
     setText("selectedRiskWarning", finiteNumber(prediction?.warning_level_m) ? Number(prediction.warning_level_m).toFixed(2) + " m" : "—");
     setText("selectedRiskDanger", finiteNumber(prediction?.danger_level_m) ? Number(prediction.danger_level_m).toFixed(2) + " m" : "—");
     setText("selectedRiskObservedRain", finiteNumber(prediction?.rainfall_24h_mm) ? Number(prediction.rainfall_24h_mm).toFixed(1) + " mm" : "—");
@@ -160,12 +281,12 @@
 
     if (finiteNumber(probability)) {
       setText("selectedRiskProbability", Number(probability).toFixed(1) + "%");
-      setText("selectedRiskProbabilityLabel", "Chance this gauge reaches its CWC warning level within 24 hours");
+      setText("selectedRiskProbabilityLabel", "Chance this gauge reaches its CWC warning level");
       setRiskMeter(probability);
-      setText("selectedRiskMessage", state.toUpperCase() + " estimate for " + district.name + " during the next 24 hours. This percentage is for its CWC gauge, not a neighborhood or block flood probability.");
+      setText("selectedRiskMessage", state.charAt(0).toUpperCase() + state.slice(1) + " model estimate for this gauge over the next 24 hours. It is not a street or home flood probability.");
     } else if (observedDanger || observedWarning) {
       setText("selectedRiskProbability", "Observed");
-      setText("selectedRiskProbabilityLabel", observedDanger ? "CWC danger level already reached" : "CWC warning level already reached");
+      setText("selectedRiskProbabilityLabel", observedDanger ? "The gauge is already at its CWC danger line" : "The gauge is already at its CWC warning line");
       setRiskMeter(null);
       setText("selectedRiskMessage", prediction.message || "A threshold has already been reached in the latest observation. This is not a forecast probability.");
     } else {
@@ -605,6 +726,19 @@
       });
   }
   document.addEventListener("DOMContentLoaded", () => {
+    const mapPanel = $("mapPanel");
+    const compactMap = window.matchMedia("(max-width: 900px)");
+    const setMapDisclosure = (compact) => {
+      mapPanel.open = !compact;
+      $("mapDisclosureLabel").textContent = mapPanel.open ? "Hide map" : "Show map";
+    };
+    mapPanel.addEventListener("toggle", () => {
+      $("mapDisclosureLabel").textContent = mapPanel.open ? "Hide map" : "Show map";
+      if (mapPanel.open) window.requestAnimationFrame(() => map?.invalidateSize());
+    });
+    setMapDisclosure(compactMap.matches);
+    compactMap.addEventListener("change", (event) => setMapDisclosure(event.matches));
+
     const gaugeDetails = document.querySelectorAll(".live-gauge-details");
     const compactGaugeCards = window.matchMedia("(max-width: 620px)");
     const setGaugeDetails = (compact) => gaugeDetails.forEach((details) => { details.open = !compact; });

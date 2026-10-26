@@ -123,3 +123,120 @@
 }
 .selected-risk-source{display:inline-block;margin-top:5px;color:rgba(255,255,255,.84);font-size:9px;text-decoration:underline;text-underline-offset:2px}
 .selected-risk-source:hover{color:#fff}
+
+/* Local UX refinement: clarify forecast timing, river trend, and the mobile map. */
+.selected-risk-window{margin:4px 0 0;color:rgba(255,255,255,.78);font-size:10px;line-height:1.4}
+.selected-risk-meta>div{min-width:0}
+.selected-risk-how{margin:8px 0 10px;color:rgba(255,255,255,.9);font-size:10px;line-height:1.55}
+.stage-trend-panel{min-width:0}
+.stage-trend-chart-wrap{width:100%;margin-top:12px;overflow:hidden}
+#stageTrendSvg{display:block;width:100%;height:auto;min-height:150px;overflow:visible}
+.stage-trend-grid{stroke:#e5ebee;stroke-width:1}
+.stage-trend-axis-label{fill:#71808a;font:10px system-ui,sans-serif}
+.stage-trend-warning{stroke:#d28b17;stroke-width:2;stroke-dasharray:7 5}
+.stage-trend-warning-label{fill:#9a6710;font:700 10px system-ui,sans-serif}
+.stage-trend-line{fill:none;stroke:#167e88;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.stage-trend-point{fill:#167e88;stroke:#fff;stroke-width:2}
+.stage-trend-point.is-latest{fill:#0b6670;stroke-width:3}
+.stage-trend-empty{fill:#71808a;font:13px system-ui,sans-serif}
+.stage-trend-summary{min-height:2.8em;margin:4px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+.stage-trend-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:10px}
+.stage-trend-legend span{display:inline-flex;align-items:center;gap:6px}
+.stage-trend-key{display:inline-block;width:12px;height:3px;border-radius:9px;background:#167e88}
+.stage-trend-key-warning{height:0;border-top:2px dashed #d28b17;background:transparent}
+.map-panel-summary{cursor:pointer;list-style:none}
+.map-panel-summary::-webkit-details-marker{display:none}
+.map-disclosure-label{flex:0 0 auto;color:var(--cyan);font-size:10px;font-weight:800}
+.map-panel-content{margin-top:12px}
+.map-panel-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.map-panel-toolbar>span{color:var(--muted);font-size:10px}
+.map-panel-toolbar #mapRefreshButton{flex:0 0 auto}
+.map-panel:not([open]){padding-bottom:14px}
+.map-panel:not([open]) .map-panel-summary{margin-bottom:0}
+.map-panel[open] .map-disclosure-label{color:var(--muted)}
+@media(max-width:620px){
+  .selected-risk-window{font-size:9px}
+  .selected-risk-meta{grid-template-columns:1fr 1fr}
+  .selected-risk-meta>div:first-child{grid-column:1/-1}
+  .selected-risk-meta strong{font-size:11px}
+  .stage-trend-panel{padding:13px}
+  #stageTrendSvg{min-height:125px}
+  .stage-trend-axis-label{font-size:9px}
+  .stage-trend-summary{font-size:10px}
+  .stage-trend-legend{gap:10px;font-size:9px}
+  .map-panel-summary{min-height:44px}
+  .map-disclosure-label{min-height:36px;display:flex;align-items:center;padding-inline:7px}
+  .map-panel-content{margin-top:9px}
+  .map-panel-toolbar{align-items:flex-start}
+}
+
+
+/* Keep Bihar controls content-sized at widths where the shared dashboard grid changes layout. */
+.bihar-overview .left-column{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  align-self:start;
+  gap:12px;
+}
+.bihar-overview .left-column>*{flex:0 0 auto}
+.bihar-overview .right-column{align-self:start}
+.bihar-overview .selector-panel{
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:end;
+  gap:10px;
+  padding:12px 14px;
+}
+.bihar-overview .selector-panel .field{min-width:0}
+.bihar-overview .selector-panel .field label{margin-bottom:5px}
+.bihar-overview .selector-panel select{width:100%;min-width:0}
+.bihar-overview .bihar-locate{
+  align-self:end;
+  width:auto;
+  min-width:140px;
+  min-height:42px;
+  padding:9px 12px;
+}
+@media(max-width:520px){
+  .bihar-overview .selector-panel{
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px;
+    padding:10px;
+  }
+  .bihar-overview .bihar-locate{min-width:132px;padding-inline:9px;font-size:9px}
+}
+
+@media(min-width:1051px) and (max-width:1200px){
+  .bihar-status-card .risk-card-topline{gap:8px}
+  .bihar-status-card h2{font-size:24px}
+  .bihar-status-card .risk-trend{padding-inline:8px;font-size:8px}
+}
+
+/* On wide layouts, let the open map use the full height beside the risk and trend cards. */
+@media(min-width:1051px){
+  .bihar-overview .right-column{align-self:stretch;min-height:0}
+  .bihar-overview .map-panel[open]{
+    position:relative;
+    display:block;
+    flex:1 1 auto;
+    min-height:100%;
+  }
+  .bihar-overview .map-panel-content{
+    position:absolute;
+    top:83px;
+    right:18px;
+    bottom:12px;
+    left:18px;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    margin:0;
+  }
+  .bihar-overview .map-panel-toolbar{flex:0 0 auto}
+  .bihar-overview .bihar-map-wrap{
+    flex:1 1 auto;
+    height:auto;
+    min-height:402px;
+  }
+  .bihar-overview .bihar-map-wrap #map{height:100%;min-height:402px}
+}
