@@ -1,16 +1,63 @@
-/* Mouse-follow movement based on https://github.com/gabrstew/Orb/orb.js */
+/* Small pointer and microphone reactions for the native voice orb. */
 (() => {
+  "use strict";
+
   const orb = document.querySelector("#assistantNativeOrb");
   const stage = orb?.closest(".assistant-orb-stage");
   if (!orb || !stage) return;
 
-  const reset = () => { orb.style.transform = "translate(0,0) rotate(0) scale(1)"; };
-  stage.addEventListener("pointermove", (event) => {
-    if (event.pointerType === "touch") return;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let pointerFrame = 0;
+  let audioFrame = 0;
+  let pointer = null;
+  let audioLevel = 0;
+
+  function paintPointer() {
+    pointerFrame = 0;
+    if (!pointer || reducedMotion.matches) return;
+
     const rect = stage.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / Math.max(rect.width, 1) - .5;
-    const y = (event.clientY - rect.top) / Math.max(rect.height, 1) - .5;
-    orb.style.transform = `translate(${x * 20}px,${y * 20}px) rotate(${x * 12}deg) scale(${1 + Math.abs(y) * .06})`;
+    const x = Math.max(-.5, Math.min(.5, (pointer.clientX - rect.left) / Math.max(rect.width, 1) - .5));
+    const y = Math.max(-.5, Math.min(.5, (pointer.clientY - rect.top) / Math.max(rect.height, 1) - .5));
+    orb.style.setProperty("--orb-shift-x", `${(x * 12).toFixed(1)}px`);
+    orb.style.setProperty("--orb-shift-y", `${(y * 12).toFixed(1)}px`);
+    orb.style.setProperty("--orb-tilt", `${(x * 8).toFixed(1)}deg`);
+  }
+
+  function resetPointer() {
+    pointer = null;
+    if (pointerFrame) window.cancelAnimationFrame(pointerFrame);
+    pointerFrame = 0;
+    orb.style.setProperty("--orb-shift-x", "0px");
+    orb.style.setProperty("--orb-shift-y", "0px");
+    orb.style.setProperty("--orb-tilt", "0deg");
+  }
+
+  stage.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "touch" || reducedMotion.matches) return;
+    pointer = event;
+    if (!pointerFrame) pointerFrame = window.requestAnimationFrame(paintPointer);
+  }, { passive: true });
+  stage.addEventListener("pointerleave", resetPointer, { passive: true });
+  reducedMotion.addEventListener?.("change", (event) => {
+    if (event.matches) resetPointer();
   });
-  stage.addEventListener("pointerleave", reset);
+
+  document.addEventListener("varshaguard:orb-audio-level", (event) => {
+    const value = Number(event.detail?.level);
+    audioLevel = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+    if (audioFrame) return;
+
+    audioFrame = window.requestAnimationFrame(() => {
+      audioFrame = 0;
+      const level = orb.dataset.state === "listening" ? audioLevel : 0;
+      if (reducedMotion.matches) {
+        orb.style.setProperty("--orb-scale", "1");
+        orb.style.setProperty("--orb-glow-size", "36px");
+        return;
+      }
+      orb.style.setProperty("--orb-scale", (1 + level * .055).toFixed(3));
+      orb.style.setProperty("--orb-glow-size", `${(36 + level * 48).toFixed(1)}px`);
+    });
+  });
 })();

@@ -24,6 +24,58 @@
     let starting = false;
     let busy = false;
     let discardRecording = false;
+    let audioContext = null;
+    let audioSource = null;
+    let audioMeterFrame = 0;
+
+    function stopAudioMeter() {
+      if (audioMeterFrame) window.cancelAnimationFrame(audioMeterFrame);
+      audioMeterFrame = 0;
+      try { audioSource?.disconnect(); } catch { }
+      audioSource = null;
+      const previousContext = audioContext;
+      audioContext = null;
+      if (previousContext && previousContext.state !== "closed") {
+        previousContext.close().catch(() => {});
+      }
+      window.VarshaGuardOrb?.setAudioLevel(0);
+    }
+
+    async function startAudioMeter(mediaStream) {
+      stopAudioMeter();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      try {
+        const context = new AudioContextClass();
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = .72;
+        const source = context.createMediaStreamSource(mediaStream);
+        source.connect(analyser);
+        audioContext = context;
+        audioSource = source;
+        if (context.state === "suspended") await context.resume();
+
+        const samples = new Uint8Array(analyser.fftSize);
+        const readVolume = () => {
+          if (audioContext !== context || !stream || recorder?.state !== "recording") return;
+          analyser.getByteTimeDomainData(samples);
+          let sumSquares = 0;
+          for (let index = 0; index < samples.length; index += 1) {
+            const amplitude = (samples[index] - 128) / 128;
+            sumSquares += amplitude * amplitude;
+          }
+          const rms = Math.sqrt(sumSquares / samples.length);
+          const level = Math.max(0, Math.min(1, (rms - .012) * 9));
+          window.VarshaGuardOrb?.setAudioLevel(level);
+          audioMeterFrame = window.requestAnimationFrame(readVolume);
+        };
+        readVolume();
+      } catch {
+        stopAudioMeter();
+      }
+    }
 
     function setStatus(message, state) {
       const currentState = state || "idle";
@@ -46,6 +98,7 @@
     }
 
     function releaseMicrophone() {
+      stopAudioMeter();
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
         stream = null;
@@ -119,7 +172,7 @@
           setStatus("Answer received, but speech audio was not returned.", "idle");
         }
       } catch (error) {
-        setStatus(error.message || "Voice assistant could not answer. Try again.", "idle");
+        setStatus(error.message || "Voice assistant could not answer. Try again.", "error");
         appendMessage(error.message || "Voice assistant could not answer.", "error");
       } finally {
         setBusy(false);
@@ -174,6 +227,7 @@
         });
 
         recorder.start();
+        void startAudioMeter(stream);
         button.classList.add("is-recording");
         button.setAttribute("aria-pressed", "true");
         button.textContent = "■ Stop";
@@ -188,7 +242,7 @@
         releaseMicrophone();
         setStatus(error.name === "NotAllowedError"
           ? "Allow microphone access in your browser, then try again."
-          : "Microphone unavailable. You can type your question instead.", "idle");
+          : "Microphone unavailable. You can type your question instead.", "error");
       } finally {
         starting = false;
       }
