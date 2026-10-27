@@ -8,6 +8,10 @@
   };
   const REFRESH_MS = 5 * 60 * 1000;
   const $ = (id) => document.getElementById(id);
+  const t = (key, fallback, values = {}) => String(fallback ?? key).replace(/\{(\w+)\}/g, (_, name) => values[name] == null ? "" : String(values[name]));
+  const locale = () => "en-IN";
+  const riskWord = (state) => state.charAt(0).toUpperCase() + state.slice(1);
+  const districtLabel = (name) => name;
   let map = null;
   let stationLayer = null;
   let userMarker = null;
@@ -69,7 +73,7 @@
   function formatDate(value) {
     if (!value) return "—";
     const date = new Date(value.length === 10 ? value + "T00:00:00+05:30" : value);
-    return Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString("en-IN", {
+    return Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString(locale(), {
       day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata"
     });
   }
@@ -77,16 +81,16 @@
   function formatTime(value) {
     if (!value) return "—";
     const date = new Date(value.includes("+") || value.endsWith("Z") ? value : value + "+05:30");
-    return Number.isNaN(date.valueOf()) ? value : date.toLocaleString("en-IN", {
+    return Number.isNaN(date.valueOf()) ? value : date.toLocaleString(locale(), {
       day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata"
     }) + " IST";
   }
 
   function hoursAgo(value) {
     const hours = Number(value);
-    if (!finiteNumber(value)) return "age unknown";
-    if (hours < 1) return "less than 1 hour ago";
-    return Math.round(hours) + " hour" + (Math.round(hours) === 1 ? "" : "s") + " ago";
+    if (!finiteNumber(value)) return t("ageUnknown", "age unknown");
+    if (hours < 1) return t("lessHour", "less than 1 hour ago");
+    return t("hoursAgo", hours === 1 ? "{hours} hour ago" : "{hours} hours ago", { hours: Math.round(hours) });
   }
 
   function signalState(prediction) {
@@ -122,7 +126,7 @@
     meter.hidden = false;
     scale.hidden = false;
     meter.setAttribute("aria-valuenow", bounded.toFixed(1));
-    meter.setAttribute("aria-valuetext", bounded.toFixed(1) + "% experimental chance of gauge warning-level crossing in 24 hours");
+    meter.setAttribute("aria-valuetext", bounded.toFixed(1) + "% " + t("gaugeWarningAria", "experimental chance of gauge warning-level crossing in 24 hours"));
     fill.style.width = bounded + "%";
   }
 
@@ -154,10 +158,10 @@
     };
 
     if (!points.length) {
-      count.textContent = "No readings";
-      summary.textContent = "A river-level trend will appear when recent CWC readings are available.";
+      count.textContent = t("noReadings", "No readings");
+      summary.textContent = t("noTrend", "A river-level trend will appear when recent CWC readings are available.");
       svg.setAttribute("aria-label", summary.textContent);
-      svg.appendChild(make("text", { class: "stage-trend-empty", x: 300, y: 110, "text-anchor": "middle" }, "No recent river readings available"));
+      svg.appendChild(make("text", { class: "stage-trend-empty", x: 300, y: 110, "text-anchor": "middle" }, t("noRecentReadings", "No recent river readings available")));
       return;
     }
 
@@ -191,13 +195,13 @@
     if (warning !== null && warning >= low && warning <= high) {
       const warningY = y(warning);
       svg.appendChild(make("line", { class: "stage-trend-warning", x1: x0, x2: x1, y1: warningY, y2: warningY }));
-      svg.appendChild(make("text", { class: "stage-trend-warning-label", x: x1 - 2, y: Math.max(y0 + 10, warningY - 7), "text-anchor": "end" }, "WARNING " + warning.toFixed(2) + " m"));
+      svg.appendChild(make("text", { class: "stage-trend-warning-label", x: x1 - 2, y: Math.max(y0 + 10, warningY - 7), "text-anchor": "end" }, t("warningMark", "WARNING {level} m", { level: warning.toFixed(2) })));
     } else if (warning !== null) {
       const latestStage = points[points.length - 1].stage;
-      const relation = warning > latestStage ? "above" : "below";
+      const relation = warning > latestStage ? t("above", "above") : t("below", "below");
       const gap = Math.abs(warning - latestStage).toFixed(2);
       const labelY = warning > latestStage ? y0 + 11 : y1 - 6;
-      svg.appendChild(make("text", { class: "stage-trend-warning-label", x: x1 - 2, y: labelY, "text-anchor": "end" }, "WARNING LINE " + gap + " m " + relation + " latest"));
+      svg.appendChild(make("text", { class: "stage-trend-warning-label", x: x1 - 2, y: labelY, "text-anchor": "end" }, t("warningGapChart", "WARNING LINE {gap} m {relation} latest", { gap, relation })));
     }
 
     let segment = [];
@@ -227,17 +231,18 @@
       svg.appendChild(circle);
     });
 
-    svg.appendChild(make("text", { class: "stage-trend-axis-label", x: x0, y: height - 8, "text-anchor": "start" }, "Earlier"));
-    svg.appendChild(make("text", { class: "stage-trend-axis-label", x: x1, y: height - 8, "text-anchor": "end" }, "Latest"));
-    count.textContent = points.length + " reading" + (points.length === 1 ? "" : "s");
+    svg.appendChild(make("text", { class: "stage-trend-axis-label", x: x0, y: height - 8, "text-anchor": "start" }, t("earlier", "Earlier")));
+    svg.appendChild(make("text", { class: "stage-trend-axis-label", x: x1, y: height - 8, "text-anchor": "end" }, t("latest", "Latest")));
+    count.textContent = t("countReadings", points.length === 1 ? "{count} reading" : "{count} readings", { count: points.length });
 
     const change = points[points.length - 1].stage - points[0].stage;
     const spanHours = Math.max(0, (lastTime - firstTime) / 3600000);
-    const direction = Math.abs(change) < 0.03 ? "stayed about the same" : change > 0 ? "rose by " + change.toFixed(2) + " m" : "fell by " + Math.abs(change).toFixed(2) + " m";
+    const amount = Math.abs(change).toFixed(2);
+    const direction = Math.abs(change) < 0.03 ? t("stayedSame", "stayed about the same") : change > 0 ? t("roseBy", "rose by {amount} m", { amount }) : t("fellBy", "fell by {amount} m", { amount });
     summary.textContent = points.length < 2
-      ? "Only one recent reading is available, so a trend cannot be shown."
-      : "The level " + direction + " over the " + (spanHours < 1 ? "observed period" : spanHours.toFixed(0) + " observed hours") + ". This chart uses CWC readings, not predicted future river levels.";
-    svg.setAttribute("aria-label", "Recent observed river-level trend. " + summary.textContent);
+      ? t("onlyOneReading", "Only one recent reading is available, so a trend cannot be shown.")
+      : t("trendSummary", "The level {direction} over {hours} observed hours. This chart uses CWC readings, not predicted future river levels.", { direction, hours: spanHours < 1 ? t("observedPeriod", "the observed period") : spanHours.toFixed(0) });
+    svg.setAttribute("aria-label", t("trendAria", "Recent observed river-level trend. ") + summary.textContent);
   }
 
   function updateSelectedRiskCard() {
@@ -255,63 +260,70 @@
 
     card.dataset.risk = state;
     card.dataset.state = prediction?.status || "unavailable";
-    setText("selectedRiskDistrict", district.name);
-    setText("selectedRiskGauge", prediction?.station_name ? "CWC gauge: " + prediction.station_name : "CWC gauge: awaiting a recent reading");
+    setText("selectedRiskDistrict", districtLabel(district.name));
+    setText("selectedRiskGauge", prediction?.station_name ? t("gaugeNamed", "CWC gauge: {name}", { name: prediction.station_name }) : t("gaugeAwaiting", "CWC gauge: awaiting a recent reading"));
     setText("selectedRiskWindow", prediction?.forecast_end_ist
-      ? "Next 24 hours · through " + formatTime(prediction.forecast_end_ist)
-      : "Next 24 hours after the latest CWC reading");
+      ? t("nextWindow", "Next 24 hours · through {time}", { time: formatTime(prediction.forecast_end_ist) })
+      : t("nextAfterReading", "Next 24 hours after the latest CWC reading"));
     renderStageTrend(prediction);
     setText("selectedRiskStage", finiteNumber(prediction?.current_stage_m) ? Number(prediction.current_stage_m).toFixed(2) + " m" : "—");
     setText("selectedRiskGap", finiteNumber(prediction?.margin_to_warning_m)
-      ? Math.abs(Number(prediction.margin_to_warning_m)).toFixed(2) + " m " + (Number(prediction.margin_to_warning_m) < 0 ? "above" : "below")
+      ? t(Number(prediction.margin_to_warning_m) < 0 ? "distanceAbove" : "distanceBelow", "{amount} m " + (Number(prediction.margin_to_warning_m) < 0 ? "above" : "below"), { amount: Math.abs(Number(prediction.margin_to_warning_m)).toFixed(2) })
       : "—");
     setText("selectedRiskWarning", finiteNumber(prediction?.warning_level_m) ? Number(prediction.warning_level_m).toFixed(2) + " m" : "—");
     setText("selectedRiskDanger", finiteNumber(prediction?.danger_level_m) ? Number(prediction.danger_level_m).toFixed(2) + " m" : "—");
     setText("selectedRiskObservedRain", finiteNumber(prediction?.rainfall_24h_mm) ? Number(prediction.rainfall_24h_mm).toFixed(1) + " mm" : "—");
-    setText("selectedRiskReadingTime", prediction?.observed_at_ist ? formatTime(prediction.observed_at_ist) : "Waiting");
+    setText("selectedRiskReadingTime", prediction?.observed_at_ist ? formatTime(prediction.observed_at_ist) : t("loading", "Waiting"));
+
+    const coverage = prediction?.feature_coverage;
+    setText("selectedRiskFreshness", prediction?.observed_at_ist
+      ? t("latestReading", "Latest CWC reading: {time} ({age})", { time: formatTime(prediction.observed_at_ist), age: hoursAgo(prediction.data_age_hours) })
+      : t("freshnessWaiting", "Latest CWC reading: waiting for data"));
+    setText("selectedRiskCoverage", coverage && finiteNumber(coverage.available) && finiteNumber(coverage.total)
+      ? t("inputCoverage", "Model inputs available: {available} of {total}", { available: coverage.available, total: coverage.total })
+      : t("coverageWaiting", "Model input coverage: waiting for data"));
 
     const badge = $("selectedRiskBadge");
     badge.dataset.state = state;
-    if (observedDanger) badge.textContent = "DANGER OBSERVED";
-    else if (observedWarning) badge.textContent = "WARNING OBSERVED";
-    else if (prediction?.status === "predicted") badge.textContent = state.toUpperCase() + " MODEL RISK";
-    else if (prediction?.status === "stale") badge.textContent = "STALE DATA";
-    else if (prediction?.status === "insufficient_inputs") badge.textContent = "NOT ENOUGH DATA";
-    else badge.textContent = "NO LIVE READING";
+    if (observedDanger) badge.textContent = "▲ " + t("badgeDanger", "DANGER OBSERVED");
+    else if (observedWarning) badge.textContent = "▲ " + t("badgeWarning", "WARNING OBSERVED");
+    else if (prediction?.status === "predicted") badge.textContent = (state === "low" ? "✓ " : state === "medium" ? "◆ " : "▲ ") + t("badgeModel", "{risk} MODEL RISK", { risk: riskWord(state).toUpperCase() });
+    else if (prediction?.status === "stale") badge.textContent = "◷ " + t("badgeStale", "STALE DATA");
+    else if (prediction?.status === "insufficient_inputs") badge.textContent = "• " + t("badgeInsufficient", "NOT ENOUGH DATA");
+    else badge.textContent = "— " + t("badgeUnavailable", "NO LIVE READING");
 
     if (finiteNumber(probability)) {
       setText("selectedRiskProbability", Number(probability).toFixed(1) + "%");
-      setText("selectedRiskProbabilityLabel", "Chance this gauge reaches its CWC warning level");
+      setText("selectedRiskProbabilityLabel", t("chanceWarning", "Chance this gauge reaches the CWC warning line in the next 24 hours"));
       setRiskMeter(probability);
-      setText("selectedRiskMessage", state.charAt(0).toUpperCase() + state.slice(1) + " model estimate for this gauge over the next 24 hours. It is not a street or home flood probability.");
+      setText("selectedRiskMessage", t("riskMessage", "{risk} model estimate for this gauge over the next 24 hours. It is not a street or home flood probability.", { risk: riskWord(state) }));
     } else if (observedDanger || observedWarning) {
-      setText("selectedRiskProbability", "Observed");
-      setText("selectedRiskProbabilityLabel", observedDanger ? "The gauge is already at its CWC danger line" : "The gauge is already at its CWC warning line");
+      setText("selectedRiskProbability", t("observed", "Observed"));
+      setText("selectedRiskProbabilityLabel", observedDanger ? t("observedDanger", "The gauge is already at its CWC danger line") : t("observedWarning", "The gauge is already at its CWC warning line"));
       setRiskMeter(null);
-      setText("selectedRiskMessage", prediction.message || "A threshold has already been reached in the latest observation. This is not a forecast probability.");
+      setText("selectedRiskMessage", prediction.message || t("thresholdReached", "A threshold has already been reached in the latest observation. This is not a forecast probability."));
     } else {
       setText("selectedRiskProbability", "—");
-      setText("selectedRiskProbabilityLabel", "No current 24-hour estimate");
+      setText("selectedRiskProbabilityLabel", t("noCurrentEstimate", "No current 24-hour estimate"));
       setRiskMeter(null);
-      setText("selectedRiskMessage", prediction?.message || currentData.live?.error || "Waiting for a fresh CWC reading. No risk percentage is shown until the required data are available.");
+      setText("selectedRiskMessage", prediction?.message || currentData.live?.error || t("waitingEstimate", "Waiting for a fresh CWC reading. No risk percentage is shown until the required data are available."));
     }
 
     if (weather?.available && finiteNumber(weather.forecast_rainfall_24h_mm)) {
       const peakChance = finiteNumber(weather.peak_hourly_rainfall_probability_pct)
-        ? " · peak hourly rain chance " + Math.round(Number(weather.peak_hourly_rainfall_probability_pct)) + "%"
+        ? t("rainChance", " · peak hourly rain chance {chance}%", { chance: Math.round(Number(weather.peak_hourly_rainfall_probability_pct)) })
         : "";
       setText("selectedRiskRainForecast", Number(weather.forecast_rainfall_24h_mm).toFixed(1) + " mm" + peakChance);
-      setText("selectedRiskWeatherNote", "Open-Meteo weather-model outlook near the CWC gauge, refreshed " + formatTime(weather.fetched_at_ist) + ". It is shown as context and is not included in the flood-risk percentage.");
+      setText("selectedRiskWeatherNote", t("weatherNote", "Open-Meteo weather-model outlook near the CWC gauge, refreshed {time}. It is shown as context and is not included in the flood-risk percentage.", { time: formatTime(weather.fetched_at_ist) }));
     } else {
-      setText("selectedRiskRainForecast", weather ? "Unavailable" : "Loading");
-      setText("selectedRiskWeatherNote", weather?.message || "Rainfall outlook is loading. It is separate from the CWC risk percentage.");
+      setText("selectedRiskRainForecast", weather ? t("rainUnavailable", "Unavailable") : t("rainLoading", "Loading"));
+      setText("selectedRiskWeatherNote", weather?.message || t("rainLoadingNote", "Rainfall outlook is loading. It is separate from the CWC risk percentage."));
     }
 
-    const coverage = prediction?.feature_coverage;
-    const coverageText = coverage ? "Model inputs available: " + coverage.available + " of " + coverage.total + ". " : "";
-    const ageText = finiteNumber(prediction?.data_age_hours) ? "Latest CWC reading " + hoursAgo(prediction.data_age_hours) + ". " : "";
+    const coverageText = coverage ? t("qualityCoverage", "Model inputs available: {available} of {total}. ", { available: coverage.available, total: coverage.total }) : "";
+    const ageText = finiteNumber(prediction?.data_age_hours) ? t("qualityAge", "Latest CWC reading {age}. ", { age: hoursAgo(prediction.data_age_hours) }) : "";
     const localNote = prediction?.local_validation_note ? prediction.local_validation_note + " " : "";
-    setText("selectedRiskQuality", coverageText + ageText + localNote + (prediction?.message && prediction.status !== "predicted" ? prediction.message : ""));
+    setText("selectedRiskQuality", coverageText + ageText + localNote + (prediction?.message && prediction.status !== "predicted" ? prediction.message : "") || t("qualityWaiting", "Waiting for data quality details."));
   }
 
   function renderSources(data, weather) {
@@ -320,8 +332,8 @@
     root.replaceChildren();
     const total = Number(source.stations_in_model) || 13;
     const entries = [
-      { name: "CWC river stage (HHS)", count: source.stations_with_recent_stage },
-      { name: "CWC rainfall (MPS)", count: source.stations_with_recent_rainfall },
+      { name: t("sourceStage", "CWC river stage (HHS)"), count: source.stations_with_recent_stage },
+      { name: t("sourceRain", "CWC rainfall (MPS)"), count: source.stations_with_recent_rainfall },
     ];
     entries.forEach((entry) => {
       const item = document.createElement("div");
@@ -330,7 +342,7 @@
       label.textContent = entry.name;
       const status = document.createElement("strong");
       const count = Number(entry.count);
-      status.textContent = finiteNumber(entry.count) ? count + "/" + total + " gauges" : "unavailable";
+      status.textContent = finiteNumber(entry.count) ? count + "/" + total + " " + t("gauges", "gauges") : t("unavailable", "unavailable");
       status.dataset.state = finiteNumber(entry.count) && count > 0 ? (count === total ? "ready" : "partial") : "unavailable";
       item.append(label, status);
       root.appendChild(item);
@@ -338,23 +350,23 @@
     const weatherItem = document.createElement("div");
     weatherItem.className = "bihar-source-item";
     const weatherLabel = document.createElement("span");
-    weatherLabel.textContent = "Open-Meteo rainfall forecast";
+    weatherLabel.textContent = t("sourceForecast", "Open-Meteo rainfall forecast");
     const weatherStatus = document.createElement("strong");
-    weatherStatus.textContent = weather?.available ? "available" : weather ? "unavailable" : "loading";
+    weatherStatus.textContent = weather?.available ? t("available", "available") : weather ? t("unavailable", "unavailable") : t("loading", "loading");
     weatherStatus.dataset.state = weather?.available ? "ready" : weather ? "unavailable" : "partial";
     weatherItem.append(weatherLabel, weatherStatus);
     root.appendChild(weatherItem);
 
     const cwcConnected = Boolean(data?.available);
     const subtitle = cwcConnected && weather?.available
-      ? "CWC gauge observations and Open-Meteo weather context"
+      ? t("cwcWeatherBoth", "CWC gauge observations and Open-Meteo weather context")
       : cwcConnected
-        ? "CWC gauge readings are current; weather forecast is unavailable"
+        ? t("cwcOnly", "CWC gauge readings are current; weather forecast is unavailable")
         : weather?.available
-          ? "Rainfall forecast is available; CWC gauge estimate is offline"
-          : "CWC gauge readings are not available right now";
+          ? t("weatherOnly", "Rainfall forecast is available; CWC gauge estimate is offline")
+          : t("sourcesOffline", "CWC gauge readings are not available right now");
     setText("sourceSubtitle", subtitle);
-    setText("sourceCount", cwcConnected && weather?.available ? "3 FEEDS" : cwcConnected ? "CWC ONLY" : weather?.available ? "WEATHER ONLY" : "OFFLINE");
+    setText("sourceCount", cwcConnected && weather?.available ? t("threeFeeds", "3 FEEDS") : cwcConnected ? t("cwcFeed", "CWC ONLY") : weather?.available ? t("weatherFeed", "WEATHER ONLY") : t("offline", "OFFLINE"));
   }
 
   async function loadWeatherForecast(districtKey) {
@@ -394,21 +406,21 @@
     title.textContent = prediction.district + " · " + prediction.station_name;
     const reading = document.createElement("div");
     reading.textContent = finiteNumber(prediction.current_stage_m)
-      ? "Latest level: " + Number(prediction.current_stage_m).toFixed(2) + " m"
-      : "Latest level unavailable";
+      ? t("latestLevel", "Latest level: {level} m", { level: Number(prediction.current_stage_m).toFixed(2) })
+      : t("latestLevelUnavailable", "Latest level unavailable");
     const signal = document.createElement("div");
     if (prediction.status === "predicted") {
       const percent = finiteNumber(prediction.risk_percentage)
         ? Number(prediction.risk_percentage)
         : Number(prediction.model_probability) * 100;
       const riskLabel = (prediction.risk_level || "model").toUpperCase();
-      signal.textContent = riskLabel + " risk · " + percent.toFixed(1) + "% chance of warning-level crossing in 24h";
+      signal.textContent = t("crossingChance", "{risk} risk · {percent}% chance of warning-level crossing in 24h", { risk: riskWord(prediction.risk_level || "medium").toUpperCase(), percent: percent.toFixed(1) });
     } else if (prediction.status === "danger_level_reached") {
-      signal.textContent = "HIGH · danger level reached (observed)";
+      signal.textContent = t("highDanger", "HIGH · danger level reached (observed)");
     } else if (prediction.status === "warning_level_reached") {
-      signal.textContent = "HIGH · warning level reached (observed)";
+      signal.textContent = t("highWarning", "HIGH · warning level reached (observed)");
     } else {
-      signal.textContent = prediction.signal || prediction.message || "No current model estimate";
+      signal.textContent = prediction.signal || prediction.message || t("noEstimate", "No current model estimate");
     }
     root.append(title, reading, signal);
     return root;
@@ -439,6 +451,7 @@
         if (!districtKey) return;
         $("districtSelect").value = districtKey;
         selectDistrict(false);
+        showMapGaugeDetails(prediction);
         loadWeatherForecast(districtKey);
       });
     });
@@ -495,12 +508,12 @@
       map.setView(center, 10, { animate: true });
     }
     const assistantInput = $("assistantInput");
-    if (assistantInput) assistantInput.placeholder = "Ask about " + district.name + " river readings";
+    if (assistantInput) assistantInput.placeholder = t("askDistrict", "Ask about {district} river readings", { district: districtLabel(district.name) });
   }
 
   function useMyLocation() {
     if (!navigator.geolocation) {
-      showError("Location access is not available in this browser.");
+      showError(t("locationUnavailable", "Location access is not available in this browser."));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -513,7 +526,7 @@
         } else {
           userMarker.setLatLng(point);
         }
-        userMarker.bindPopup("Your current location").openPopup();
+        userMarker.bindPopup(t("myLocation", "Your current location")).openPopup();
         $("userLocationLegend").hidden = false;
         const distanceKm = (a, b) => {
           const rad = (value) => value * Math.PI / 180;
@@ -533,10 +546,10 @@
           clearError();
         } else {
           map.setView(point, 9, { animate: true });
-          showError("Your location is outside the supported Patna and Muzaffarpur gauge areas. Choose a focus district to see its gauge estimate.");
+          showError(t("locationOutside", "Your location is outside the supported Patna and Muzaffarpur gauge areas. Choose a focus district to see its gauge estimate."));
         }
       },
-      () => showError("Location permission was not granted. You can still choose Patna or Muzaffarpur."),
+      () => showError(t("locationDenied", "Location permission was not granted. You can still choose Patna or Muzaffarpur.")),
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
   }
@@ -730,10 +743,10 @@
     const compactMap = window.matchMedia("(max-width: 900px)");
     const setMapDisclosure = (compact) => {
       mapPanel.open = !compact;
-      $("mapDisclosureLabel").textContent = mapPanel.open ? "Hide map" : "Show map";
+      $("mapDisclosureLabel").textContent = mapPanel.open ? t("hideMap", "Hide map") : t("showMap", "Show map");
     };
     mapPanel.addEventListener("toggle", () => {
-      $("mapDisclosureLabel").textContent = mapPanel.open ? "Hide map" : "Show map";
+      $("mapDisclosureLabel").textContent = mapPanel.open ? t("hideMap", "Hide map") : t("showMap", "Show map");
       if (mapPanel.open) window.requestAnimationFrame(() => map?.invalidateSize());
     });
     setMapDisclosure(compactMap.matches);

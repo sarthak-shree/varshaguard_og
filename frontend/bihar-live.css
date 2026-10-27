@@ -212,31 +212,85 @@
   .bihar-status-card .risk-trend{padding-inline:8px;font-size:8px}
 }
 
-/* On wide layouts, let the open map use the full height beside the risk and trend cards. */
-@media(min-width:1051px){
-  .bihar-overview .right-column{align-self:stretch;min-height:0}
-  .bihar-overview .map-panel[open]{
-    position:relative;
-    display:block;
-    flex:1 1 auto;
-    min-height:100%;
-  }
-  .bihar-overview .map-panel-content{
-    position:absolute;
-    top:83px;
-    right:18px;
-    bottom:12px;
-    left:18px;
-    display:flex;
-    flex-direction:column;
-    min-height:0;
-    margin:0;
-  }
-  .bihar-overview .map-panel-toolbar{flex:0 0 auto}
-  .bihar-overview .bihar-map-wrap{
-    flex:1 1 auto;
-    height:auto;
-    min-height:402px;
-  }
-  .bihar-overview .bihar-map-wrap #map{height:100%;min-height:402px}
+/* Bihar Live: surface the risk first, keep the map compact, and make every control readable. */
+body.bihar-live-page .topbar-actions{gap:8px;flex-wrap:wrap}
+body.bihar-live-page .topbar-assistant-btn{min-height:44px;padding:9px 12px;border-radius:9px;font-size:11px}
+.topbar-assistant-btn:focus-visible,.map-panel-summary:focus-visible,#mapRefreshButton:focus-visible,.bihar-locate:focus-visible{outline:3px solid #135fba;outline-offset:2px}
+.bihar-overview{align-items:start}
+.bihar-overview .left-column{gap:12px}
+.bihar-overview .right-column{align-self:start;min-height:0}
+.bihar-overview .selector-panel{padding:11px 13px}
+.bihar-overview .bihar-locate{min-height:44px;text-align:center}
+.bihar-status-card{padding:17px 18px}
+.bihar-status-card .risk-card-topline{align-items:flex-start}
+.bihar-status-card .small-title{margin:0;color:rgba(255,255,255,.8);font-size:9px;letter-spacing:.7px}
+.bihar-status-card h2{font-size:26px}
+.selected-risk-gauge{margin-top:5px}
+.selected-risk-window{margin-top:3px}
+.risk-card-probability{margin-top:12px}
+.risk-card-probability-header{align-items:flex-end;gap:8px}
+.risk-card-probability-header span{max-width:30ch;line-height:1.35}
+.selected-risk-data-strip{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;color:rgba(255,255,255,.94);font-size:9px;font-weight:700;line-height:1.4}
+.selected-risk-data-strip span{display:inline-flex;align-items:center;gap:5px}
+.selected-risk-data-strip span::before{content:"✓";font-weight:900}
+.selected-risk-message{margin:8px 0 0}
+.selected-risk-disclaimer{margin:7px 0 0;padding:7px 9px;border:1px solid rgba(255,255,255,.3);border-radius:7px;background:rgba(16,43,51,.2);color:#fff;font-size:9px;font-weight:700;line-height:1.4}
+.selected-risk-meta{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px;padding-top:9px}
+.selected-risk-meta>div:first-child{grid-column:auto}
+.selected-risk-meta span{font-size:8px}
+.selected-risk-meta strong{font-size:10px;line-height:1.3}
+.selected-risk-weather-note{margin-top:7px}
+.selected-risk-details{margin-top:9px;padding-top:7px}
+.selected-risk-details>summary{min-height:36px;display:flex;align-items:center;font-size:10px}
+.selected-risk-details>summary::after{margin-left:auto;padding-left:8px}
+.selected-risk-source{margin:5px 0 0}
+.stage-trend-panel{width:100%;align-self:stretch}
+.bihar-overview .map-panel[open]{position:static;display:block;min-height:0;flex:none}
+.bihar-overview .map-panel-content{position:static;display:block;margin-top:12px}
+.bihar-overview .map-panel-toolbar{align-items:center}
+.bihar-overview .bihar-map-wrap{height:min(58vh,480px);min-height:360px}
+.bihar-overview .bihar-map-wrap #map{width:100%;height:100%;min-height:0}
+.map-risk-dot{display:inline-grid;place-items:center;width:15px;height:15px;flex-basis:15px;font-size:9px;font-weight:900;line-height:1}
+.map-risk-low{font-style:normal}
+.map-risk-medium{border-radius:50%}
+.map-risk-location{background:#1376d1!important;border-radius:2px!important}
+.map-risk-legend-item>span:last-child{white-space:nowrap}
+.map-gauge-details{margin-top:10px;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel2)}
+.map-gauge-details[hidden]{display:none}
+.map-gauge-details-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--cyan);font-size:10px;text-transform:uppercase;letter-spacing:.45px}
+.map-gauge-details-heading button{min-height:40px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--text);font-size:10px;font-weight:700;cursor:pointer}
+.map-gauge-details h4{margin:5px 0;font-size:14px}
+.map-gauge-details p{margin:0;color:var(--text);font-size:11px;line-height:1.45}
+.map-gauge-details-stats{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;color:var(--muted);font-size:10px}
+.map-panel-summary{min-height:44px}
+.map-disclosure-label{display:flex;min-height:40px;align-items:center;padding-inline:8px}
+.bihar-source-item{min-height:44px}
+.bihar-source-item strong{font-size:9px}
+@media(max-width:900px){
+  .bihar-overview{grid-template-columns:minmax(0,1fr);align-items:start}
+  .bihar-overview .left-column,.bihar-overview .right-column{align-self:stretch}
+  .bihar-overview .right-column{min-height:0}
+  .bihar-overview .map-panel[open]{min-height:0}
+  .bihar-overview .bihar-map-wrap{height:clamp(260px,68vw,420px);min-height:260px}
 }
+@media(max-width:780px){
+  body.bihar-live-page .topbar{align-items:center;flex-direction:row;flex-wrap:wrap;gap:7px 10px;padding:9px 14px}
+  body.bihar-live-page .topbar>div:first-child{flex:1 1 100%;min-width:0}
+  body.bihar-live-page .topbar-actions{width:100%;flex:1 1 100%;justify-content:flex-start;gap:8px}
+  body.bihar-live-page .topbar-assistant-btn{min-width:0;flex:0 0 auto}
+  .bihar-status-card{padding:15px}
+}
+@media(max-width:520px){
+  body.bihar-live-page .topbar{padding:8px 11px}
+  body.bihar-live-page .topbar-actions{gap:6px}
+  body.bihar-live-page .topbar-assistant-btn{min-height:44px;padding:8px 10px;font-size:10px}
+  body.bihar-live-page .prototype-switch .prototype-badge{min-height:44px;padding:6px 8px;font-size:9px}
+  .bihar-overview .selector-panel{grid-template-columns:minmax(0,1fr) auto;gap:7px;padding:9px}
+  .bihar-overview .bihar-locate{min-width:0;padding:8px;font-size:9px}
+  .selected-risk-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .selected-risk-meta>div:first-child{grid-column:1/-1}
+  .map-gauge-details-stats{flex-direction:column;gap:4px}
+}
+
+.bihar-live-page .leaflet-control-zoom a{width:40px;height:40px;line-height:40px;font-size:22px}
+@media(max-width:520px){.bihar-live-page .leaflet-control-zoom a{width:42px;height:42px;line-height:42px}}

@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/orb-native.css">
   <link rel="stylesheet" href="/mobile.css">
 </head>
-<body>
+<body class="bihar-live-page">
   <header class="topbar">
     <div>
       <h1 class="brand-lockup">
@@ -21,9 +21,11 @@
           <span class="brand-wordmark"><span class="brand-varsha">VARSHA</span><span class="brand-guard">GUARD &#8623;</span></span>
         </a>
       </h1>
-      <p><span>SIH26071</span> &bull; Bihar river watch for Patna and Muzaffarpur</p>
+      <p><span>SIH26071</span> &bull; <span>Bihar river watch for Patna and Muzaffarpur</span></p>
     </div>
     <div class="topbar-actions">
+      <button id="assistantTopButton" class="assistant-open-btn topbar-assistant-btn" type="button" aria-haspopup="dialog"><span>Ask VarshaGuard AI</span></button>
+
       <div class="prototype-switch">
         <button id="prototypeMenuButton" class="prototype-badge" type="button" aria-haspopup="true" aria-expanded="false">Bihar Live ▾</button>
         <div id="prototypeMenu" class="prototype-menu" hidden>
@@ -35,39 +37,6 @@
   </header>
 
   <main class="layout">
-    <section class="dashboard-header">
-      <div class="region-title-card">
-        <div class="eyebrow">LIVE RIVER GAUGE WATCH</div>
-        <div class="region-title-row">
-          <h2><span>Bihar</span></h2>
-          <span class="status-chip">CWC DATA</span>
-        </div>
-        <p>See live river readings and the model's Low, Medium, or High estimate.</p>
-        <div class="region-card-meta">
-          <span class="region-meta-pill">Patna</span>
-          <span class="region-meta-pill">Muzaffarpur</span>
-          <span class="region-meta-pill">Updated from CWC</span>
-        </div>
-      </div>
-      <div class="ai-hero-card">
-        <button class="ai-orb" type="button" aria-label="Open VarshaGuard AI assistant"><img class="ai-main-logo" src="https://raw.githubusercontent.com/sarthak-shree/varshaguard_og/main/frontend/assets/ChatGPT%20Image%20Sep%2022%2C%202026%2C%2009_03_22%20PM.png" alt="" aria-hidden="true"></button>
-        <div class="ai-hero-copy">
-          <span class="ai-hero-kicker">✦ YOUR DASHBOARD HELPER</span>
-          <strong>VarshaGuard AI</strong>
-          <span>Ask what the river reading or model signal means.</span>
-          <div class="ai-feature-row">
-            <span class="ai-feature-chip">Simple answers</span>
-            <span class="ai-feature-chip">Live gauge context</span>
-            <span class="ai-feature-chip">Clear limits</span>
-          </div>
-        </div>
-        <button id="assistantTopButton" class="assistant-top-btn" type="button">
-          <span>Ask VarshaGuard AI</span>
-          <b>→</b>
-        </button>
-      </div>
-    </section>
-
     <section class="overview-grid bihar-overview">
       <div class="left-column">
         <section class="panel selector-panel">
@@ -93,7 +62,7 @@
           <p id="selectedRiskWindow" class="selected-risk-window">Forecast window: next 24 hours after the latest CWC reading</p>
           <div class="risk-card-probability">
             <div class="risk-card-probability-header">
-              <span id="selectedRiskProbabilityLabel">Chance the gauge reaches its warning level</span>
+              <span id="selectedRiskProbabilityLabel">Chance this gauge reaches the CWC warning line in the next 24 hours</span>
               <strong id="selectedRiskProbability">—</strong>
             </div>
             <div id="selectedRiskMeter" class="risk-card-bar" role="meter" aria-label="24-hour gauge warning risk" aria-valuemin="0" aria-valuemax="100" hidden>
@@ -101,18 +70,22 @@
             </div>
             <div class="risk-card-bar-scale" id="selectedRiskScale" hidden><span>0%</span><span>50%</span><span>100%</span></div>
           </div>
+          <div class="selected-risk-data-strip" aria-live="polite">
+            <span id="selectedRiskFreshness">Latest CWC reading: waiting</span>
+            <span id="selectedRiskCoverage">Model input coverage: waiting</span>
+          </div>
           <p id="selectedRiskMessage" class="selected-risk-message">Waiting for live river readings.</p>
+          <p class="selected-risk-disclaimer">Research estimate only — not an official alert or a street, home, or neighborhood flood probability.</p>
           <div class="risk-meta selected-risk-meta">
             <div><span>Rain forecast · next 24h</span><strong id="selectedRiskRainForecast">Loading</strong></div>
             <div><span>Latest river level</span><strong id="selectedRiskStage">—</strong></div>
             <div><span>Distance to warning line</span><strong id="selectedRiskGap">—</strong></div>
-            <div><span>Latest CWC reading</span><strong id="selectedRiskReadingTime">Waiting</strong></div>
           </div>
           <p id="selectedRiskWeatherNote" class="selected-risk-weather-note">The rainfall outlook is context only; it is not included in the model percentage.</p>
-          <a class="selected-risk-source" href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Rainfall forecast source: Open-Meteo ↗</a>
           <details class="selected-risk-details">
             <summary>How to read this estimate</summary>
-            <p class="selected-risk-how">The percentage is the model's estimate that this river gauge reaches its CWC warning line in the next 24 hours. It does not mean that a particular street or home will flood.</p>
+            <p class="selected-risk-how">This percentage estimates whether the selected river gauge may reach its CWC warning line in the next 24 hours. It is not a flood probability for a particular street or home.</p>
+            <a class="selected-risk-source" href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Rainfall context source: Open-Meteo ↗</a>
             <div class="selected-risk-thresholds">
               <div><span>Warning level</span><strong id="selectedRiskWarning">—</strong></div>
               <div><span>Danger level</span><strong id="selectedRiskDanger">—</strong></div>
@@ -121,6 +94,43 @@
             <small id="selectedRiskQuality">Waiting for data quality details.</small>
           </details>
         </section>
+
+      </div>
+
+      <div class="right-column">
+        <details class="panel map-panel" id="mapPanel" open>
+          <summary class="panel-heading-row map-panel-summary">
+            <div>
+              <h3>River gauge map</h3>
+              <span>Tap a gauge to see a simple summary</span>
+            </div>
+            <span id="mapDisclosureLabel" class="map-disclosure-label">Hide map</span>
+          </summary>
+          <div class="map-panel-content">
+            <div class="map-panel-toolbar">
+              <span>Patna and Muzaffarpur gauges</span>
+              <button id="mapRefreshButton" class="assistant-open-btn" type="button">Center on selected</button>
+            </div>
+            <div class="map-wrap bihar-map-wrap">
+              <div id="map" role="application" aria-label="Map showing CWC river gauges in Patna and Muzaffarpur"></div>
+              <div class="map-risk-legend" aria-label="Gauge signal key">
+                <div class="map-risk-legend-title">Gauge signal</div>
+                <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-low" aria-hidden="true">✓</span><span>Low model risk</span></div>
+                <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-medium" aria-hidden="true">!</span><span>Medium model risk</span></div>
+                <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-high" aria-hidden="true">▲</span><span>High / warning observed</span></div>
+                <div class="map-risk-legend-item" id="userLocationLegend" hidden><span class="map-risk-dot map-risk-location" aria-hidden="true">◎</span><span>Your location</span></div>
+              </div>
+            </div>
+            <section id="mapGaugeDetails" class="map-gauge-details" aria-live="polite" hidden>
+              <div class="map-gauge-details-heading"><strong>Selected gauge</strong><button id="mapGaugeDetailsClose" type="button" aria-label="Close gauge details">Close</button></div>
+              <h4 id="mapGaugeName"></h4>
+              <p id="mapGaugeSignal"></p>
+              <div class="map-gauge-details-stats"><span id="mapGaugeStage"></span><span id="mapGaugeUpdated"></span></div>
+            </section>
+          </div>
+        </details>
+      </div>
+    </section>
 
         <section class="panel stage-trend-panel" aria-labelledby="stageTrendTitle">
           <div class="panel-heading-row">
@@ -137,41 +147,10 @@
           </div>
           <p id="stageTrendSummary" class="stage-trend-summary" aria-live="polite">The observed trend will appear when CWC readings arrive.</p>
           <div class="stage-trend-legend" aria-hidden="true">
-            <span><i class="stage-trend-key stage-trend-key-level"></i>Observed river level</span>
-            <span><i class="stage-trend-key stage-trend-key-warning"></i>CWC warning level</span>
+            <span><i class="stage-trend-key stage-trend-key-level"></i><b>Observed river level</b></span>
+            <span><i class="stage-trend-key stage-trend-key-warning"></i><b>CWC warning level</b></span>
           </div>
         </section>
-      </div>
-
-      <div class="right-column">
-        <details class="panel map-panel" id="mapPanel" open>
-          <summary class="panel-heading-row map-panel-summary">
-            <div>
-              <h3>River gauge map</h3>
-              <span>Tap a gauge to show its readings and estimate</span>
-            </div>
-            <span id="mapDisclosureLabel" class="map-disclosure-label">Hide map</span>
-          </summary>
-          <div class="map-panel-content">
-            <div class="map-panel-toolbar">
-              <span>Two CWC focus gauges</span>
-              <button id="mapRefreshButton" class="assistant-open-btn" type="button">Center on selected</button>
-            </div>
-            <div class="map-wrap bihar-map-wrap">
-              <div id="map" role="application" aria-label="Map showing CWC river gauges in Patna and Muzaffarpur"></div>
-              <div class="map-risk-legend" aria-label="Gauge signal key">
-                <div class="map-risk-legend-title">Gauge signal</div>
-                <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-low"></span>Low model risk</div>
-                <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-medium"></span>Medium model risk</div>
-                <div class="map-risk-legend-item"><span class="map-risk-dot map-risk-high"></span>High / warning observed</div>
-                <div class="map-risk-legend-item" id="userLocationLegend" hidden><span class="map-risk-dot map-risk-high"></span>Your location</div>
-              </div>
-            </div>
-          </div>
-        </details>
-      </div>
-    </section>
-
     <section class="two-column">
       <section class="panel">
         <div class="panel-heading-row">
@@ -179,16 +158,15 @@
           <span id="sourceCount" class="health-badge">—</span>
         </div>
         <div class="bihar-sources" id="sourceList" aria-live="polite"></div>
-        <p class="plain-text bihar-note">River stage and observed rain come from the Central Water Commission Flood Forecasting System. The separate rainfall outlook comes from Open-Meteo and is not used to calculate the CWC model percentage.</p>
+        <p class="plain-text bihar-note">River stage and observed rain come from the Central Water Commission Flood Forecasting System. The rainfall outlook is separate context and is not used to calculate the gauge-risk percentage.</p>
       </section>
       <section class="panel">
         <div class="panel-heading-row">
           <div><h3>About this estimate</h3><span>What this screen can and cannot tell you</span></div>
-          <button id="assistantOpenButton" class="assistant-open-btn" type="button">Ask VarshaGuard AI</button>
         </div>
-        <p class="plain-text">The percentage estimates whether the selected river gauge may reach its CWC warning line in the 24 hours after its latest reading. The line chart shows recent river readings only; it is not a forecast of the river's future height.</p>
-        <p class="plain-text">Rainfall is shown as extra weather context and is not included in the percentage. When readings are old or too incomplete, the dashboard hides the estimate.</p>
-        <p class="plain-text bihar-note">This is a research estimate, not an official warning or a prediction of flooding in a street, home, block, or grid cell. Local accuracy for Muzaffarpur is unknown. Follow CWC, IMD, and local disaster-management guidance.</p>
+        <p class="plain-text">The percentage estimates whether the selected river gauge may reach its CWC warning line in the next 24 hours. The chart below shows recent readings, not a forecast of future river height.</p>
+        <p class="plain-text">Rainfall is shown as separate weather context and is not included in the percentage. If readings are old or incomplete, the estimate is hidden.</p>
+        <p class="plain-text bihar-note">This is a research estimate, not an official warning or a street, home, block, or grid-cell flood prediction. Muzaffarpur local accuracy is unknown. Follow CWC, IMD, and local disaster-management guidance.</p>
       </section>
     </section>
   </main>
@@ -199,7 +177,7 @@
                 <div>
                     <span class="assistant-kicker">GROQ-POWERED</span>
                     <h3 id="assistantTitle">VarshaGuard AI</h3>
-                    <p>Ask about Bihar's CWC river readings, the 24-hour gauge-risk estimate, or what the model can and cannot tell you.</p>
+                    <p>Ask about Bihar's river readings, the 24-hour gauge estimate, or what this model can and cannot tell you.</p>
                 </div>
                 <button id="assistantCloseButton" class="assistant-close-btn" type="button" aria-label="Close assistant">&times;</button>
             </div>
@@ -222,11 +200,11 @@
                 <button type="button" data-assistant-prompt="What are the limitations of this prediction?">Model limitations</button>
             </div>
             <form id="assistantForm" class="assistant-form">
-                <input id="assistantInput" type="text" autocomplete="off" placeholder="Ask: Why is the flood risk LOW?" maxlength="500" required>
+                <input id="assistantInput" type="text" autocomplete="off" placeholder="Ask: Why is the gauge risk LOW?" maxlength="500" required>
                 <button id="assistantSendButton" type="submit">Send</button>
             </form>
             <div id="assistantVoiceRow" class="assistant-voice-row hidden">
-                <button id="assistantMicButton" class="assistant-mic-btn" type="button" aria-label="Record a voice question" aria-pressed="false">🎙 Speak</button>
+                <button id="assistantMicButton" class="assistant-mic-btn" type="button" aria-label="Record a voice question" aria-pressed="false"><span aria-hidden="true">🎙</span> <span>Speak</span></button>
                 <label for="assistantVoiceLanguage">Reply in</label>
                 <select id="assistantVoiceLanguage" aria-label="Choose spoken reply language">
                     <option value="en">English</option>
@@ -234,7 +212,7 @@
                 </select>
                 <span id="assistantVoiceStatus" class="assistant-voice-status" role="status" aria-live="polite">Tap Speak to ask by voice (up to 20 seconds).</span>
             </div>
-            <div class="assistant-disclaimer">Voice questions are transcribed by Groq and spoken replies use the online Edge TTS service. Do not share sensitive details. Prototype predictions are not official alerts.</div>
+            <div class="assistant-disclaimer">Voice questions are transcribed by Groq and spoken replies use the online Edge TTS service. Do not share sensitive details. Prototype estimates are not official alerts.</div>
         </div>
     </div>
 
@@ -260,6 +238,7 @@
   <script src="/assistant-orb.js"></script>
   <script src="/orb-native.js"></script>
   <script src="/assistant-voice.js"></script>
+  <script src="/bihar-live-map-details.js"></script>
   <script src="/bihar-live.js"></script>
 </body>
 </html>
