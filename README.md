@@ -23,6 +23,20 @@ The model estimates whether one of 13 CWC river gauges will reach its published 
 
 The live inference path fetches observed CWC HHS stage and MPS rainfall records. The dashboard separately displays an Open-Meteo next-24-hour rainfall outlook. Forecast rainfall is **not** blended into the CWC model probability because the saved model was not trained and validated with forecast-rain inputs. The CWC feed is a public endpoint, not a documented stable production API; inference is cached briefly and fails closed when data/model inputs are unavailable or stale.
 
+
+### Live Open-Meteo river-discharge context
+
+Bihar Live also exposes a separate daily hydrological forecast endpoint:
+
+```http
+GET /api/bihar-live/flood-discharge?district=patna
+GET /api/bihar-live/flood-discharge?district=muzaffarpur
+```
+
+This endpoint calls the [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api) at the existing Patna Gandhighat and Muzaffarpur Sikandarpur focus-point coordinates. It requests daily river discharge, mean, median, maximum, minimum, 25th/75th percentiles, six GloFAS v3/v4 model variants, and ensemble output. Results include source, fetch timestamp, units, and model metadata; the response is cached for up to 15 minutes and network failures return an explicit unavailable state. The seven-day forecast and three-day past window keep the request bounded.
+
+**Interpretation limit:** this is modelled river-discharge context, not a flood probability, CWC warning-level prediction, neighborhood inundation estimate, or official alert. It is deliberately kept separate from the CWC classifier and does not change its probability. Use the provider's returned units and metadata; do not assume the API's discharge series is directly interchangeable with a CWC gauge stage reading.
+
 ## Model training and validation
 
 Training entry point:
