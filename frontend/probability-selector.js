@@ -7,41 +7,39 @@
 
   const style = document.createElement("style");
   style.textContent = `
-    .probability-top-controls { display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin:0 0 20px; }
-    .probability-top-controls .selector-panel { display:flex;align-items:end;gap:12px;max-width:100%; }
+    .probability-top-controls { display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:0;min-width:0; }
+    .probability-top-controls .selector-panel { display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:10px;max-width:100%;min-width:0; }
     .probability-top-controls .selector-panel .field { flex:1;min-width:0; }
-    .probability-top-controls .selector-panel .bihar-locate { width:auto;min-width:170px; }
-    #probabilitySelectorCard { width:100%;background:linear-gradient(135deg,#18794e,#126b5b);color:#fff;border:0;box-shadow:0 12px 32px rgba(14,94,68,.18); }
-    #probabilitySelectorCard .small-title { color:rgba(255,255,255,.78);letter-spacing:.12em;font-weight:800; }
-    #probabilitySelectorCard h2 { margin:.2rem 0 .45rem;font-size:clamp(1.35rem,2vw,1.8rem); }
-    #probabilitySelectorCard p { color:rgba(255,255,255,.82);line-height:1.5; }
-    .probability-options { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin:1.1rem 0; }
-    .probability-option { display:flex;flex-direction:column;align-items:flex-start;gap:.35rem;text-align:left;padding:1rem;border:1px solid rgba(255,255,255,.3);border-radius:12px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;min-width:0; }
-    .probability-option>span { font-size:1.35rem; }
-    .probability-option strong { font-size:1rem; }
-    .probability-option small { color:rgba(255,255,255,.78);line-height:1.4; }
-    .probability-option.is-selected { background:#fff;color:#176b4b;border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.2); }
+    .probability-top-controls .selector-panel .bihar-locate { width:100%;min-width:0; }
+    #probabilitySelectorCard { width:100%;min-width:0;box-sizing:border-box;padding:16px 17px;background:linear-gradient(135deg,#18794e,#126b5b);color:#fff;border:0;box-shadow:0 12px 32px rgba(14,94,68,.18); }
+    #probabilitySelectorCard .small-title { color:rgba(255,255,255,.78);letter-spacing:.12em;font-weight:800;font-size:9px;margin:0; }
+    #probabilitySelectorCard h2 { margin:.25rem 0 .4rem;font-size:clamp(1.15rem,1.5vw,1.45rem);line-height:1.18; }
+    #probabilitySelectorCard .probability-heading>p:last-child { margin:.4rem 0 .75rem;font-size:.78rem;line-height:1.45; }
+    .probability-options { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem;margin:.7rem 0; }
+    .probability-option { display:flex;flex-direction:column;align-items:flex-start;gap:.22rem;text-align:left;padding:.65rem .7rem;border:1px solid rgba(255,255,255,.3);border-radius:9px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;min-width:0; }
+    .probability-option>span { font-size:1rem;line-height:1; }
+    .probability-option strong { font-size:.82rem;line-height:1.2; }
+    .probability-option small { color:rgba(255,255,255,.78);font-size:.66rem;line-height:1.3; }
+    .probability-option.is-selected { background:#fff;color:#176b4b;border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,.2); }
     .probability-option.is-selected small { color:#426b5b; }
-    .probability-result { display:flex;flex-direction:column;align-items:center;gap:.55rem;padding:1.3rem .8rem;border:1px solid rgba(255,255,255,.22);border-radius:12px;background:rgba(0,0,0,.12);text-align:center; }
-    #probabilityResultLabel { font-size:.88rem;color:rgba(255,255,255,.85); }
-    #probabilityValue { font-size:clamp(2.5rem,7vw,4rem);line-height:1.1;letter-spacing:-.04em;font-variant-numeric:tabular-nums; }
-    #probabilityStatus { font-size:.9rem;line-height:1.5; }
-    .probability-meter { width:min(100%,480px);height:9px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.2); }
+    .probability-result { display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:.75rem .65rem;border:1px solid rgba(255,255,255,.22);border-radius:9px;background:rgba(0,0,0,.12);text-align:center; }
+    #probabilityResultLabel { font-size:.72rem;line-height:1.35;color:rgba(255,255,255,.85); }
+    #probabilityValue { font-size:clamp(2rem,4vw,2.8rem);line-height:1.05;letter-spacing:-.04em;font-variant-numeric:tabular-nums; }
+    #probabilityStatus { font-size:.72rem;line-height:1.4;overflow-wrap:anywhere; }
+    .probability-meter { width:min(100%,480px);height:7px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.2); }
     .probability-meter[hidden] { display:none; }
     .probability-meter span { display:block;width:0;height:100%;background:#fff;border-radius:inherit;transition:width .25s ease; }
-    #probabilitySelectorCard .probability-disclaimer { margin:.8rem 0 0;font-size:.78rem; }
+    #probabilitySelectorCard .probability-disclaimer { margin:.6rem 0 0;font-size:.66rem;line-height:1.4; }
     @media(min-width:900px) {
-      .probability-top-controls { grid-template-columns:minmax(250px,.38fr) minmax(0,1fr);align-items:stretch; }
-      .probability-top-controls .selector-panel { flex-direction:column;align-items:stretch;justify-content:center; }
-      .probability-top-controls .selector-panel .bihar-locate { width:100%; }
-      .probability-options { max-width:780px; }
+      .probability-top-controls { grid-template-columns:minmax(0,1fr);align-items:stretch; }
+      .probability-top-controls .selector-panel { flex-direction:column;align-items:stretch;justify-content:flex-start; }
+      .probability-options { max-width:none; }
     }
     @media(max-width:520px) {
-      .probability-top-controls .selector-panel { align-items:stretch; }
-      .probability-top-controls .selector-panel .bihar-locate { width:100%;min-width:0; }
-      .probability-options { gap:.55rem; }
-      .probability-option { padding:.8rem; }
-      .probability-option small { font-size:.72rem; }
+      .probability-options { gap:.4rem; }
+      .probability-option { padding:.6rem; }
+      .probability-option small { font-size:.63rem; }
+      #probabilitySelectorCard { padding:14px; }
     }
   `;
   document.head.appendChild(style);
