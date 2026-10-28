@@ -21,7 +21,7 @@ The trainer reads `data/bihar_live/research/cwc_bihar_gauge_hourly.csv`. It writ
 
 - Issue rows are sampled every six hours when a valid CWC stage reading is available and the current stage is below the published warning level.
 - A positive target means at least one valid HHS stage observation in `(issue time, issue time + 24 hours]` reaches the warning threshold.
-- A row is excluded unless there are at least 18 valid future stage observations and the final future observation is at least 23 hours after issue time. This reduces, but cannot eliminate, bias from irregular or missing observations.
+- A row is excluded unless there are at least 18 valid future stage observations, the first arrives within 3 hours, no gap between future observations exceeds 6 hours, and the final observation is at least 23 hours after issue time. This reduces, but cannot eliminate, bias from irregular or missing observations.
 - The timestamp of the first observed crossing is retained only for evaluation and is excluded from model features.
 - Training uses labels whose horizons end before 2025; 2025 selects the model and decision threshold; 2026 is the untouched time-based holdout. The script checks that training label horizons do not overlap validation and validation horizons do not overlap test.
 
