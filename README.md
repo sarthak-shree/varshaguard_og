@@ -24,6 +24,18 @@ The model estimates whether one of 13 CWC river gauges will reach its published 
 The live inference path fetches observed CWC HHS stage and MPS rainfall records. The dashboard separately displays an Open-Meteo next-24-hour rainfall outlook. Forecast rainfall is **not** blended into the CWC model probability because the saved model was not trained and validated with forecast-rain inputs. The CWC feed is a public endpoint, not a documented stable production API; inference is cached briefly and fails closed when data/model inputs are unavailable or stale.
 
 
+### Backend-driven 24-hour probability selector
+
+The frontend now requests a compact summary from:
+
+```http
+GET /api/bihar-live/probability?district=patna&type=flood
+GET /api/bihar-live/probability?district=muzaffarpur&type=flood
+GET /api/bihar-live/probability?district=patna&type=heavy_rainfall
+```
+
+The browser displays only the selected forecast's percentage and status; live CWC retrieval and model inference remain in the backend. The flood percentage is only the experimental probability that the selected CWC gauge reaches its published warning level in the next 24 hours. When the gauge is already at/above a threshold, or inputs are stale/unavailable, the endpoint withholds a forecast percentage and reports the observed/unavailable state instead. Heavy-rainfall probability is explicitly unavailable until a separate rainfall model is implemented and validated; the UI does not substitute the flood score or invent a number. The Open-Meteo discharge panel is not displayed as a frontend probability.
+
 ### Live Open-Meteo river-discharge context
 
 Bihar Live also exposes a separate daily hydrological forecast endpoint:
