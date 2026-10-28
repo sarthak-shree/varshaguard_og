@@ -1,6 +1,6 @@
 {
   "model_name": "VarshaGuard Bihar CWC rolling 24-hour warning-level crossing research model",
-  "trained_at_utc": "2026-10-28T11:47:03+00:00",
+  "trained_at_utc": "2026-10-28T11:51:23+00:00",
   "training_source": "cwc_bihar_gauge_hourly.csv",
   "source_sha256": "9e0c6c74d8305d698d66983d5e2f622ac7aa3c1544baa1dfaab9ca62fa54e86e",
   "source_upstream": "CWC Flood Forecast System hourly observations mirrored by diagram-chasing/cwc-flood-forecasts",
@@ -1149,6 +1149,19 @@
     "minimum_hours": 1.0,
     "maximum_hours": 23.0,
     "interpretation": "Issue-window statistic; overlapping windows are not independent flood events."
+  },
+  "test_crossing_episode_metrics": {
+    "episode_definition": "Unique (station_code, first observed warning-level crossing timestamp) among holdout issue windows.",
+    "interpretation": "Observed gauge warning-level crossing episodes, not independent or verified flood events.",
+    "observed_crossing_episodes": 33,
+    "detected_crossing_episodes": 32,
+    "missed_crossing_episodes": 1,
+    "episode_recall": 0.969697,
+    "lead_time_unit": "hours from earliest predicted-positive issue window to first observed crossing",
+    "median_lead_time_hours": 17.0,
+    "mean_lead_time_hours": 14.625,
+    "minimum_lead_time_hours": 2.0,
+    "maximum_lead_time_hours": 23.0
   },
   "operational_eligible": false,
   "loaded_by_dashboard_server": true,
