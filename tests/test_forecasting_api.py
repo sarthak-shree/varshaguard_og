@@ -88,3 +88,28 @@ def test_forecast_routes_reject_unsupported_districts():
     assert client.get("/api/bihar-live/forecast/rainfall?district=nowhere").status_code == 400
     assert client.get("/api/bihar-live/forecast/river-stage?district=nowhere").status_code == 400
     assert client.get("/api/bihar-live/data-quality?district=nowhere").status_code == 400
+
+
+def test_model_evaluation_reports_missing_real_history_without_synthetic_claims(monkeypatch, tmp_path):
+    from backend.bihar_live import api
+
+    monkeypatch.setenv("VARSHAGUARD_HISTORY_DB", str(tmp_path / "persistent-history.sqlite3"))
+    monkeypatch.setenv("VARSHAGUARD_EVALUATION_REPORT", str(tmp_path / "missing-report.json"))
+    response = _client().get("/api/bihar-live/model/evaluation")
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data["mode"] == "historical_chronological_evaluation"
+    assert data["status"] == "insufficient_data"
+    assert data["operational"] is False
+    assert "synthetic" not in data["message"].lower()
+    assert data["stored_observation_rows"] == 0
+
+
+def test_synthetic_demo_is_explicitly_separated_from_real_evaluation():
+    response = _client().get("/api/bihar-live/model/evaluation/synthetic-demo")
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data["mode"] == "synthetic_demo"
+    assert data["operational"] is False

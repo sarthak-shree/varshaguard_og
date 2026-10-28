@@ -344,7 +344,29 @@ def _make_prediction(code: str, district: str, stages: dict, rains: dict, statio
             "feature_coverage": {"available": available, "total": total},
         })
         return result
-    probability = float(model.predict_proba(row)[0][1])
+    # Never publish a risk band if the estimator returns malformed output or raises.
+    # This guard improves runtime robustness; it does not imply operational validation.
+    try:
+        probabilities = np.asarray(model.predict_proba(row), dtype=float)
+        probability = float(probabilities[0, 1])
+    except (AttributeError, IndexError, TypeError, ValueError, RuntimeError):
+        result.update({
+            "status": "model_error",
+            "risk_level": None,
+            "risk_percentage": None,
+            "risk_basis": "unavailable",
+            "message": "The research model could not produce a valid estimate for this reading.",
+        })
+        return result
+    if not np.isfinite(probability) or not 0.0 <= probability <= 1.0:
+        result.update({
+            "status": "model_error",
+            "risk_level": None,
+            "risk_percentage": None,
+            "risk_basis": "unavailable",
+            "message": "The research model returned an invalid probability; no estimate is shown.",
+        })
+        return result
     threshold = float(metadata["decision_threshold"])
     risk_level = _risk_level(probability, threshold)
     forecast_end = last_observation + pd.Timedelta(hours=24)

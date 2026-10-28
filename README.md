@@ -98,6 +98,70 @@ The current forecast additions are deliberately conservative and do not claim a 
 - The dashboard keeps rainfall accumulation, observed CWC stage, and Open-Meteo discharge in separate units and panels. Stage (m) and discharge (flow per unit time) are not averaged together. Patna Gandhighat and Muzaffarpur Sikandarpur are not assumed to be an upstream/downstream pair.
 - The public source adapters use bounded in-process caches and return source timestamps/quality metadata where available. A serverless process can restart, so this is not a durable historical data warehouse.
 
+#### End-to-end acquisition and evaluation job
+
+A GitHub Actions workflow at `.github/workflows/public-data-pipeline.yml` downloads the catalogued public CSV snapshots, inspects them, attempts schema-aware normalization, builds coverage reports, trains only targets that pass the minimum-label gate, and uploads raw files plus reports as a 30-day artifact. It runs on relevant pushes to this feature branch and can be started manually with the workflow-dispatch action.
+
+The local equivalent after download is:
+
+```bash
+python scripts/fetch_public_sources.py --all
+python scripts/process_public_sources.py
+```
+
+The pipeline writes `data/processed/public_sources/pipeline_report.json`. Source schema mismatches are recorded as `schema_review_required`; they are not silently coerced. Cross-agency station matching is disabled unless a reviewed explicit mapping is supplied. The observation normalizer records missingness, duplicate conflicts, timestamp assumptions and median sample interval. Exact-hour labels are required by the training builder, so daily stage sources will not be treated as hourly forecast labels.
+
+The source pipeline now normalizes the published NWIC columns `Station`, `Data Acquisition Time`, `Telemetry Hourly Rainfall (mm)`, and `River Water Level Telemetry Hourly (meter)`. The downloaded rainfall files contain 15-minute timestamp snapshots despite the hourly rainfall field name; the alignment policy uses the **last snapshot in each Asia/Kolkata clock hour**, never sums repeated values, and never fills missing hours. This assumption is explicitly recorded in coverage output and should be reviewed against the data producer's documentation.
+
+The manually observed daily dataset's downloaded columns contain `Date`, `Discharge (M3/s)`, and `Zero of Gauge (Mts)` metadata, but no measured water-level column. It is retained for inspection and deliberately excluded from stage training.
+
+The training pipeline saves `chronological_test_predictions.csv` only for eligible real-data targets. Rainfall test-event precision/recall uses a 95th-percentile threshold learned from training-period rainfall, clearly marked as a research threshold rather than an official warning threshold. Model selection is validation-only; a 24-hour embargo separates chronological partitions to reduce horizon overlap. No live inference model is replaced.
+
+To convert held-out stage predictions into warning-level event flags, copy `data/bihar_live/research/station_warning_levels.template.csv` to `station_warning_levels.csv` and fill it only with reviewed, official gauge warning levels and the exact normalized `station_id`. Do not guess station IDs or warning levels. The current independent-event ledger has no eligible ground-verified station-level events with explicit onset times, so event recall/lead time remain `not_estimable`; event precision/false-alarm rate additionally require a complete negative-event ledger.
+
+For the current independent-event ledger, run:
+
+```bash
+python scripts/evaluate_independent_events.py --predictions predictions.csv --official-ledger data/bihar_live/research/independent_flood_events.csv
+```
+
+The ledger currently has broad-area reports/rapid maps without ground-verified station-level event onset. The expected and scientifically correct status is `not_estimable` until event records are independently verified and spatially/time matched. Event precision and false-alarm rates additionally require a complete matched negative-event ledger.
+
+### Public source discovery and download
+
+The public-source downloader is `scripts/fetch_public_sources.py`. It downloads raw CSV snapshots when run from a machine with network access, computes SHA-256 hashes, captures column names/sample rows, and records provenance in `data/raw/public_sources/manifest.json`. It deliberately does **not** silently convert unknown columns into training labels.
+
+```bash
+python scripts/fetch_public_sources.py --all
+# or one source at a time
+python scripts/fetch_public_sources.py --source bihar_hourly_rainfall
+```
+
+Initial catalog:
+- Bihar Water Department hourly telemetry rainfall (2021–2025): https://www.nwdp.nwic.gov.in/dataset/rainfall-bihar-telemetry-hourlydata
+- CWC Bihar hourly telemetry rainfall (2021–2025): https://nwdp.nwic.gov.in/en/dataset/rainfall-cwc-telemetry-hourly
+- Bihar Water Department manual daily river stage (2020–2025): https://nwdp.nwic.gov.in/en/dataset/surface-water-level-manual-daily-bihar
+- Official MHA/NDMI flood situation report (30 Sep 2024): https://www.ndmindia.mha.gov.in/ndmi/viewUploadedDocument?uid=NEW2208
+- Bihar WRD/FMISC data services: https://www.fmiscwrdbihar.gov.in/
+- Research-only river-stage comparison portal (BIRA/RAP): https://bihar.rap.ucar.edu/flow
+- GitHub India Flood Inventory: https://github.com/hydrosenselab/India-Flood-Inventory
+- GitHub WRIS API client (community maintained): https://github.com/DrJagadeeshG/india-water-data
+- Reddit is recorded only as qualitative source-discovery context, never as an observation/label source.
+
+Data acquisition caveats: official portals expose distinct temporal resolutions and station schemas. Daily stage cannot be relabeled as hourly stage. CWC and Bihar WRD station IDs must be reconciled through documented station metadata, not guessed from names. Event reports need station/river-specific time windows before they become score-eligible flood labels. Community repositories require license, provenance and target-scope checks; Bangladesh datasets are not Bihar training labels.
+
+### Historical collection and chronological research training
+
+The repository now includes `backend/bihar_live/historical_pipeline.py` for idempotent observation storage, timestamp alignment, future-label construction, and chronological baseline evaluation.
+
+1. Configure `VARSHAGUARD_HISTORY_DB` to a durable database file on a persistent mounted volume. The default SQLite path is for local development; Vercel/serverless local files are ephemeral and are **not** a durable history store.
+2. On a persistent worker/host, run `python -m backend.bihar_live.historical_pipeline --collect-live` on a schedule (for example, hourly). It uses the existing CWC FFS adapter and persists quality-screened HHS stage and MPS rainfall observations with station identity, source, units, UTC-normalized timestamps, source timestamp, quality flag and schema version. The upstream endpoint only returns a recent window; repeat collection and retain the store.
+3. Alternatively, import normalized CSV rows containing `station_id,observed_at,source,variable,value,unit` and optional `quality_flag,source_timestamp` with `--import-csv path.csv`.
+4. Run `python -m backend.bihar_live.historical_pipeline --train` after enough aligned observations have accumulated. It builds exact-hour lag features and exact future labels, does not fill missing target labels, uses chronological train/validation/test partitions, selects candidate model by validation MAE, and reports final test metrics against persistence. Targets without enough labels are explicitly marked `insufficient_labels`; all outputs remain research-only.
+5. Check `/api/bihar-live/model/evaluation` for the persisted real-data evaluation status. The old generated-data example is available separately at `/api/bihar-live/model/evaluation/synthetic-demo` and is never treated as evidence of real forecast skill.
+
+Important limitations: CWC observations may be irregular rather than hourly, and the builder intentionally refuses to fabricate exact-hour labels. This means some/all targets may remain untrainable until enough timestamped records exist at the required horizons. Open-Meteo weather forecasts are not substituted for observed rainfall labels. A training report alone does not qualify a model for operational alerts; use independent event evaluation and a documented review before deployment.
+
 ### Requirements before training a new ML forecast
 
 Persist timestamped source snapshots with source/model version, coordinate/grid mapping, units, and quality flags. Build aligned training rows with future rainfall-gauge totals and future CWC stage labels at each horizon; avoid leakage by splitting chronologically by event/time, not randomly. Compare persistence and trend baselines against any LightGBM/XGBoost model on a held-out season and independent events. Report MAE/RMSE for stage and rainfall, event precision/recall and lead time for threshold crossings, calibration and false-alarm rates where appropriate. Until these steps are complete, forecast outputs remain research-only and are not official warnings.
