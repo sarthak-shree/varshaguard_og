@@ -90,12 +90,18 @@ def test_supervised_builder_does_not_forward_fill_missing_stage_lags():
 
 
 def test_chronological_split_never_shuffles_timestamps():
-    data = pd.DataFrame({"issue_time_utc": pd.date_range("2026-01-01", periods=100, freq="h").astype(str),
+    data = pd.DataFrame({"issue_time_utc": pd.date_range("2026-01-01", periods=500, freq="h").astype(str),
                          "value": range(100)})
     train, validation, test = chronological_split(data)
 
     assert train["value"].max() < validation["value"].min()
     assert validation["value"].max() < test["value"].min()
+    train_end = pd.to_datetime(train["issue_time_utc"], utc=True).max()
+    validation_start = pd.to_datetime(validation["issue_time_utc"], utc=True).min()
+    validation_end = pd.to_datetime(validation["issue_time_utc"], utc=True).max()
+    test_start = pd.to_datetime(test["issue_time_utc"], utc=True).min()
+    assert (validation_start - train_end).total_seconds() >= 24 * 3600
+    assert (test_start - validation_end).total_seconds() >= 24 * 3600
 
 
 def test_training_fails_closed_when_labels_are_insufficient(tmp_path):
