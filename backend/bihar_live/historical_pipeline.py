@@ -251,6 +251,28 @@ def _metrics(actual, predicted) -> dict:
             "samples": int(len(actual))}
 
 
+def _threshold_event_metrics(actual, predicted, threshold: float) -> dict:
+    """Evaluate threshold events using a threshold fixed from training labels only."""
+    actual_event = np.asarray(actual, dtype=float) >= threshold
+    predicted_event = np.asarray(predicted, dtype=float) >= threshold
+    tp = int(np.sum(actual_event & predicted_event))
+    fp = int(np.sum(~actual_event & predicted_event))
+    fn = int(np.sum(actual_event & ~predicted_event))
+    tn = int(np.sum(~actual_event & ~predicted_event))
+    return {
+        "threshold_mm": round(float(threshold), 5),
+        "threshold_definition": "95th percentile of training-period target rainfall; not an official warning threshold",
+        "actual_test_events": int(np.sum(actual_event)),
+        "predicted_test_events": int(np.sum(predicted_event)),
+        "true_positives": tp, "false_positives": fp, "false_negatives": fn, "true_negatives": tn,
+        "precision": round(tp / (tp + fp), 5) if tp + fp else None,
+        "recall": round(tp / (tp + fn), 5) if tp + fn else None,
+        "false_alarm_rate": round(fp / (fp + tn), 5) if fp + tn else None,
+        "false_alarms": fp,
+        "note": "Threshold-event scores are only estimable when the test period contains actual events; None means denominator is zero.",
+    }
+
+
 def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_rows: int = MIN_TRAIN_ROWS,
                        min_test_rows: int = MIN_TEST_ROWS) -> dict:
     """Train fixed baselines and select by chronological validation, never by test scores."""
@@ -316,6 +338,13 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
             final_pred = np.maximum(0, final_pred)
         final_metrics = _metrics(y_test, final_pred)
         persistence_metrics = test_scores["persistence_baseline"]
+        threshold_metrics = None
+        if target.startswith("target_rainfall"):
+            event_threshold = float(y_train.quantile(0.95))
+            threshold_metrics = {
+                "selected_model": _threshold_event_metrics(y_test, final_pred, event_threshold),
+                "persistence_baseline": _threshold_event_metrics(y_test, test_naive, event_threshold),
+            }
         output_dir.mkdir(parents=True, exist_ok=True)
         artifact = output_dir / f"{target}_{selected}.joblib"
         joblib.dump(final_estimator, artifact)
@@ -325,6 +354,7 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
             "validation_metrics": validation_scores, "test_metrics": test_scores,
             "selected_model": selected, "selected_model_final_test_metrics": final_metrics,
             "persistence_test_metrics": persistence_metrics,
+            "rainfall_threshold_event_metrics": threshold_metrics,
             "test_mae_delta_vs_persistence": round(final_metrics["mae"] - persistence_metrics["mae"], 5),
             "artifact": str(artifact), "selected_using": "validation_mae_only",
             "note": "The chronological test period was not used for model selection. Research evaluation only; independent events and ongoing monitoring are still required."
