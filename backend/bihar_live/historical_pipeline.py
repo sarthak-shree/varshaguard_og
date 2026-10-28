@@ -284,6 +284,7 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
     if data.empty or "issue_time_utc" not in data:
         report["message"] = "No aligned supervised rows. Collect timestamped observations before training."
         return report
+    test_prediction_frames = []
     for target in [*(f"target_rainfall_{h}h_mm" for h in RAIN_HORIZONS),
                    *(f"target_stage_{h}h_m" for h in STAGE_HORIZONS)]:
         subset = data.dropna(subset=[target]).copy() if target in data else pd.DataFrame()
@@ -338,6 +339,18 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
             final_pred = np.maximum(0, final_pred)
         final_metrics = _metrics(y_test, final_pred)
         persistence_metrics = test_scores["persistence_baseline"]
+        horizon_hours = int(target.split("_")[2].replace("h", ""))
+        prediction_frame = pd.DataFrame({
+            "station_id": test["station_id"].astype(str).to_numpy(),
+            "issue_time_utc": test["issue_time_utc"].astype(str).to_numpy(),
+            "target": target,
+            "target_variable": "rainfall_mm" if target.startswith("target_rainfall") else "stage_m",
+            "horizon_hours": horizon_hours,
+            "observed_value": y_test.to_numpy(),
+            "model_prediction": final_pred,
+            "persistence_prediction": test_naive,
+        })
+        test_prediction_frames.append(prediction_frame)
         threshold_metrics = None
         if target.startswith("target_rainfall"):
             event_threshold = float(y_train.quantile(0.95))
@@ -362,6 +375,9 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
     if any(item.get("status") == "evaluated_research_only" for item in report["models"].values()):
         report["status"] = "research_models_trained_not_deployment_ready"
         report["warning"] = "Single chronological split is preliminary. Inspect seasonal/event performance and independent data before any live use."
+    if test_prediction_frames:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        pd.concat(test_prediction_frames, ignore_index=True).to_csv(output_dir / "chronological_test_predictions.csv", index=False)
     report_path = output_dir / "training_evaluation.json"
     if report["status"] != "insufficient_data":
         output_dir.mkdir(parents=True, exist_ok=True)
