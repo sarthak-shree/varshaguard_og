@@ -1,121 +1,71 @@
 # VARSHAGUARD
 
-AI/ML-based integrated heavy-rainfall early-warning and inundation-prediction prototype for SIH26071.
+VarshaGuard is an SIH26071 research prototype for heavy-rainfall and flood-risk early warning.
 
-> **Prototype status:** This is a research/demo system, not an operational government warning service. Do not use prototype probabilities or inundation proxies for safety-critical decisions.
+> **Safety status:** This is not an operational government warning service. Do not use prototype probabilities, risk bands, or inundation proxies for safety-critical decisions. Follow official CWC, IMD, and disaster-management guidance.
 
-## Bihar Live: current architecture
+## Bihar Live: what is connected today
 
-```text
-Live Bihar district rainfall (last 14 days)
-                 |
-                 v
-       Same feature schema as training
-                 |
-                 v
-  Calibrated Bihar flood-event ML model
-                 |
-                 +----> P(documented flood-event start in next 24h)
-                 |
-Live Bihar river level + warning/danger + 1h trend
-                 |
-                 v
-        Hydrologic confirmation
-                 |
-                 +----> Integrated LOW / MEDIUM / HIGH alert
-                 |
-                 v
-       Inundation spatial proxy
-
-Flask API --> Leaflet dashboard
-```
-
-The Bihar endpoint now has a real **flood-event target** rather than relabelling a heavy-rain classifier as flood probability. The saved model is trained from the supplied historical Bihar rainfall table and the supplied India flood inventory. The live endpoint fetches current district rainfall and current Bihar river observations at request time.
-
-### Important data limitation
-
-The supplied historical rainfall and river telemetry periods overlap only sparsely at the district/event level. There are not enough overlapping 24-hour flood-event labels to honestly train a joint rainfall+river supervised classifier. Therefore the calibrated ML probability is rainfall/flood-inventory trained, while current river level, warning/danger status and 1-hour trend are kept as independent hydrologic evidence for the integrated alert. The API does **not** pretend that river features were learned when they were not.
-
-The supplied files also do not contain a Bihar DEM, complete floodplain geometry, or hydraulic simulation inputs. Inundation extent/depth shown by the dashboard is consequently a clearly labelled spatial proxy, not a physical flood map.
-
-## Bihar 24-hour ML endpoint
+The dashboard in `frontend/bihar-live.html` calls:
 
 ```http
-GET /api/bihar-live/ml-risk
+GET /api/bihar-live/model/live
 ```
 
-Optional district forecast:
+That endpoint is implemented in `backend/bihar_live/api.py` and delegates to `backend/bihar_live/research/live_prediction.py`. It loads the checked-in research artifact:
 
-```http
-GET /api/bihar-live/forecast?district=PATNA
+```
+models/research/cwc_bihar_gauge_24h_stage_research.joblib
+models/research/cwc_bihar_gauge_24h_stage_research.metadata.json
 ```
 
-or:
+The model estimates whether one of 13 CWC river gauges will reach its published **warning level** during the next rolling 24 hours. The dashboard highlights Patna Gandhighat and Muzaffarpur Sikandarpur. It is a gauge threshold-crossing estimate—not a district-wide, neighborhood, inundation-extent, or flood-depth probability. CWC input freshness and coverage affect whether the API returns an estimate.
 
-```http
-POST /api/bihar-live/forecast
-Content-Type: application/json
+The live inference path fetches observed CWC HHS stage and MPS rainfall records. The dashboard separately displays an Open-Meteo next-24-hour rainfall outlook. Forecast rainfall is **not** blended into the CWC model probability because the saved model was not trained and validated with forecast-rain inputs. The CWC feed is a public endpoint, not a documented stable production API; inference is cached briefly and fails closed when data/model inputs are unavailable or stale.
 
-{"district":"PATNA"}
+## Model training and validation
+
+Training entry point:
+
+```bash
+python backend/bihar_live/research/fetch_cwc_bihar_hourly.py
+python backend/bihar_live/research/train_cwc_gauge_rolling_24h.py
 ```
 
-The response contains:
+The trainer consumes `data/bihar_live/research/cwc_bihar_gauge_hourly.csv`, writes the artifact and metadata under `models/research/`, and exports time-holdout predictions under `data/bihar_live/research/`. Install the project requirements first; the historical downloader also requires `duckdb`.
 
-- `flood_probability` and `flood_probability_percent`
-- prediction horizon (`24` hours)
-- calibrated model metadata and validation metrics
-- current rainfall features and data timestamp
-- live river level, warning/danger counts and 1-hour rise
-- `river_confirmation` (`NORMAL`, `RISING`, `WARNING`, or `DANGER`)
-- integrated `risk` state
-- explicitly labelled inundation proxy
-- source URLs and live-fetch timestamp
+The target is defined only at six-hourly issue times when the gauge is still below its published warning level. A positive label means a valid observed stage reaches that warning level in the following rolling 24 hours. Training excludes issue windows without sufficient future observations; the last accepted stage observation must reach at least 23 hours into the target horizon. The label's first observed crossing time is retained for lead-time diagnostics and is never used as a model feature.
 
-## Model target
+The split is chronological: training labels end before 2025, 2025 is used for model/threshold selection, and 2026 is held out for evaluation. Explicit boundary checks fail training if label horizons cross split boundaries. The trainer reports precision, recall, average precision (PR-AUC-style ranking diagnostic), ROC-AUC, Brier score, a prevalence-baseline Brier score, confusion matrix, reliability bins / expected calibration error, and per-gauge holdout metrics. It also reports lead time for detected positive issue windows. These windows overlap and must not be counted as independent flood events.
 
-The Bihar model target is:
+**Important:** The model probabilities are not currently calibrated by a fitted calibration model. Reliability bins and expected calibration error are diagnostics, not a calibration step. Model metrics are generated by a training run and should not be copied from old documentation after changing data or label rules. Sparse positive examples—especially at individual focus gauges—make station-specific estimates uncertain. The model remains research-only.
 
-```text
-P(documented Bihar flood event starts in the target district within the next 24 hours)
-```
+See [rolling-model training notes](backend/bihar_live/research/README.md) for dataset and evaluation caveats.
 
-The historical flood inventory is used only as the event label source. The trainer uses chronological train/calibration/test periods and isotonic calibration; the final test period is not used to fit the calibrator.
+## Separate prototype scaffold endpoints
 
-## Data and training
+The same Flask app also exposes `/api/bihar-live/health`, `/sources`, `/fusion`, `/weather`, and `/model/evaluation`.
 
-The runtime model artifact is stored at:
+- `/weather` fetches Open-Meteo forecast rainfall for the selected focus gauge.
+- `/health` and `/sources` describe the separate prototype scaffold's `DATA_MODE`.
+- `/fusion` currently passes fixed demonstration values into a heuristic fusion function. It is **not** real radar/satellite/observational/NWP fusion.
+- `/model/evaluation` generates synthetic observations and evaluates a demo baseline. Its metrics are **not evidence** of the live CWC model's predictive performance.
+- The real-mode adapters in the scaffold fail closed when sources are not configured; they do not silently turn synthetic observations into real data.
 
-```text
-models/bihar_flood_24h_rainfall_model.pkl.b64
-```
+These scaffold routes should not be described as operational multi-source data integration.
 
-The artifact is loaded at runtime and the API never retrains the model on a request.
+## Other legacy model and documentation
 
-The current model was trained offline from the supplied `bihar_historical_rainfall_ml_ready.csv` and `IndiaFloodInventory.csv` assets. RF/XGBoost comparison was performed during model development; the saved compact artifact contains the selected XGBoost model and isotonic calibrator.
+The repository also contains a separate older daily danger-level research model documented in [CWC stage research notes](docs/bihar_live/cwc-stage-research.md). Its metrics refer to that separate model and must not be presented as metrics for the rolling 24-hour warning-level model used by Bihar Live.
 
-Because the available historical labels are event-inventory records rather than a dense operational flood-observation series, validation metrics should be treated as prototype research diagnostics, not evidence of operational accuracy.
+The older README description of `/api/bihar-live/ml-risk`, a calibrated rainfall/flood-inventory model, and `models/bihar_flood_24h_rainfall_model.pkl.b64` does not describe the current Bihar Live dashboard inference path. The current dashboard calls `/api/bihar-live/model/live` and uses the CWC gauge artifact listed above.
 
-## CWC live gauge model (research)
+## SIH26071 next priorities
 
-The Bihar Live dashboard now reads current stage (`HHS`) and rainfall (`MPS`) observations from the Central Water Commission Flood Forecast System for 13 nearby Bihar gauges. The live API loads the saved research model at `GET /api/bihar-live/model/live` and shows next-calendar-day gauge threshold estimates for Patna Gandhighat and Muzaffarpur Sikandarpur. The dashboard refreshes every five minutes; each server process caches the CWC response briefly to avoid repeated upstream requests.
-
-This is a research connection to a public CWC endpoint. It has not been operationally approved. It estimates the chance that a gauge's daily maximum reaches its published danger level on the next calendar day. It does not forecast flood probability for a neighborhood, inundation extent, or depth. Current-day aggregates may be incomplete; the dashboard shows reading freshness and input coverage. The model uses median imputation for missing features and has not been calibrated against live operational forecasts.
-
-On untouched 2020+ historical data, precision was 19.3% at 73.8% recall (578 false alarms and 49 missed crossings across 26,895 eligible gauge-days). Patna Gandhighat had 14 positive test days and Muzaffarpur Sikandarpur had 4, so local performance remains uncertain. Read the [research and live-integration notes](docs/bihar_live/cwc-stage-research.md) before interpreting these outputs. Follow official CWC, IMD, and local disaster-management guidance.
-
-## SIH26071 expansion path
-
-The problem statement calls for integration of satellite, radar, observational weather and numerical weather prediction inputs. The current repository does not contain sufficient live/training assets for all of those channels. The architecture is therefore prepared for additional feature groups without fabricating them.
-
-To move from this prototype to a stronger SIH26071 implementation, add:
-
-1. aligned historical rainfall + river + flood/inundation labels across more Bihar districts and years;
-2. satellite precipitation features;
-3. Doppler-radar precipitation/echo features;
-4. NWP/QPF forecast features for the next 24 hours;
-5. Bihar DEM and floodplain/river geometry;
-6. observed flood-extent labels for spatial inundation validation;
-7. rolling backtests and per-district calibration/skill reporting.
+1. **P0 — trustworthy evaluation:** Rebuild labels from the source CSV, rerun the chronological backtest, inspect per-gauge calibration/precision/recall and lead time, and validate on more independent flood seasons. Do not make operational claims from overlapping windows.
+2. **P1 — real multi-source inputs:** Add timestamp-aligned satellite precipitation, Doppler radar, and numerical weather prediction forecasts, with source freshness/quality flags and historical equivalents for training.
+3. **P2 — inundation modelling:** Obtain Bihar DEM, river/floodplain geometry, and observed flood-extent labels; validate any spatial output against observed inundation. A map overlay alone is not hydraulic inundation prediction.
+4. **P3 — operational readiness:** Add monitored source health, versioned data/model lineage, alert delivery and escalation tests, fail-safe handling, security review, and approval from relevant domain authorities.
 
 ## Run locally
 
@@ -125,7 +75,7 @@ python -m venv .venv
 
 Windows:
 
-```bash
+```powershell
 .venv\Scripts\activate
 ```
 
@@ -142,20 +92,8 @@ pip install -r requirements.txt
 python backend/app.py
 ```
 
-The Flask app serves the dashboard and API from the same origin.
+The Flask app serves the dashboard and API from the same origin. Run tests with `pytest -q`.
 
-### Voice assistant setup
+## Voice assistant
 
-Both assistant windows support voice questions. The browser records up to 20 seconds, Groq Whisper transcribes the recording, the existing Groq chat model answers using the current dashboard context, and edge-tts creates an English or Hindi spoken reply. Text chat continues to work as before.
-
-Set GROQ_API_KEY in the server environment (the same key used by text chat). GROQ_STT_MODEL is optional and defaults to whisper-large-v3. On Vercel, add the dependency in requirements.txt and make sure GROQ_API_KEY is configured for the deployment.
-
-Voice audio is sent to Groq for transcription; the generated reply text is sent to Microsoft's online Edge TTS service. Do not speak sensitive personal information. Microphone access requires HTTPS or localhost.
-
-## Bihar Live selected-location risk card
-
-The Bihar Live page now presents one 24-hour CWC gauge-warning estimate for the selected Patna or Muzaffarpur focus area. The percentage and risk band refresh with live CWC river-level and observed rainfall inputs. Selecting a district, clicking its gauge on the map, or using device location near a supported focus area updates the card.
-
-A new `GET /api/bihar-live/weather?district=patna` endpoint fetches hourly Open-Meteo precipitation for the selected CWC gauge location. The card shows the next-24-hour rainfall outlook and peak hourly rain chance separately from the CWC model percentage. Forecast rainfall is not blended into the flood-risk probability because the saved CWC model was not trained or validated with future-rain forecast inputs. Weather results are cached for ten minutes; CWC estimates refresh in the dashboard every five minutes.
-
-The displayed percentage estimates whether the selected river gauge may reach its published CWC warning level. It is experimental, is not a neighborhood/block inundation probability, and is not an official warning. If CWC data are missing or stale, the page suppresses the percentage. If a warning/danger threshold is already observed, the card says so directly instead of presenting it as a 100% forecast chance. The Open-Meteo forecast is subject to its [usage terms](https://open-meteo.com/en/terms).
+The dashboard voice assistant records up to 20 seconds in the browser, sends audio to Groq Whisper for transcription, uses the existing Groq chat model for a response, and uses Microsoft's online Edge TTS service for spoken output. Configure `GROQ_API_KEY` on the server; `GROQ_STT_MODEL` is optional and defaults to `whisper-large-v3`. Microphone access requires HTTPS or localhost. Do not speak sensitive personal information into the assistant.
