@@ -98,6 +98,29 @@ The current forecast additions are deliberately conservative and do not claim a 
 - The dashboard keeps rainfall accumulation, observed CWC stage, and Open-Meteo discharge in separate units and panels. Stage (m) and discharge (flow per unit time) are not averaged together. Patna Gandhighat and Muzaffarpur Sikandarpur are not assumed to be an upstream/downstream pair.
 - The public source adapters use bounded in-process caches and return source timestamps/quality metadata where available. A serverless process can restart, so this is not a durable historical data warehouse.
 
+### Public source discovery and download
+
+The public-source downloader is `scripts/fetch_public_sources.py`. It downloads raw CSV snapshots when run from a machine with network access, computes SHA-256 hashes, captures column names/sample rows, and records provenance in `data/raw/public_sources/manifest.json`. It deliberately does **not** silently convert unknown columns into training labels.
+
+```bash
+python scripts/fetch_public_sources.py --all
+# or one source at a time
+python scripts/fetch_public_sources.py --source bihar_hourly_rainfall
+```
+
+Initial catalog:
+- Bihar Water Department hourly telemetry rainfall (2021–2025): https://www.nwdp.nwic.gov.in/dataset/rainfall-bihar-telemetry-hourlydata
+- CWC Bihar hourly telemetry rainfall (2021–2025): https://nwdp.nwic.gov.in/en/dataset/rainfall-cwc-telemetry-hourly
+- Bihar Water Department manual daily river stage (2020–2025): https://nwdp.nwic.gov.in/en/dataset/surface-water-level-manual-daily-bihar
+- Official MHA/NDMI flood situation report (30 Sep 2024): https://www.ndmindia.mha.gov.in/ndmi/viewUploadedDocument?uid=NEW2208
+- Bihar WRD/FMISC data services: https://www.fmiscwrdbihar.gov.in/
+- Research-only river-stage comparison portal (BIRA/RAP): https://bihar.rap.ucar.edu/flow
+- GitHub India Flood Inventory: https://github.com/hydrosenselab/India-Flood-Inventory
+- GitHub WRIS API client (community maintained): https://github.com/DrJagadeeshG/india-water-data
+- Reddit is recorded only as qualitative source-discovery context, never as an observation/label source.
+
+Data acquisition caveats: official portals expose distinct temporal resolutions and station schemas. Daily stage cannot be relabeled as hourly stage. CWC and Bihar WRD station IDs must be reconciled through documented station metadata, not guessed from names. Event reports need station/river-specific time windows before they become score-eligible flood labels. Community repositories require license, provenance and target-scope checks; Bangladesh datasets are not Bihar training labels.
+
 ### Historical collection and chronological research training
 
 The repository now includes `backend/bihar_live/historical_pipeline.py` for idempotent observation storage, timestamp alignment, future-label construction, and chronological baseline evaluation.
