@@ -208,7 +208,7 @@ def _metrics(actual, predicted) -> dict:
 
 def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_rows: int = MIN_TRAIN_ROWS,
                        min_test_rows: int = MIN_TEST_ROWS) -> dict:
-    """Train only targets with enough labels and report chronological test performance."""
+    """Train fixed baselines and select by chronological validation, never by test scores."""
     output_dir = Path(output_dir)
     report = {"schema_version": SCHEMA_VERSION, "trained_at_utc": datetime.now(timezone.utc).isoformat(),
               "status": "insufficient_data", "models": {}, "operational": False,
@@ -217,7 +217,6 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
     if data.empty or "issue_time_utc" not in data:
         report["message"] = "No aligned supervised rows. Collect timestamped observations before training."
         return report
-    output_dir.mkdir(parents=True, exist_ok=True)
     for target in [*(f"target_rainfall_{h}h_mm" for h in RAIN_HORIZONS),
                    *(f"target_stage_{h}h_m" for h in STAGE_HORIZONS)]:
         subset = data.dropna(subset=[target]).copy() if target in data else pd.DataFrame()
@@ -230,45 +229,62 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
             report["models"][target] = {"status": "insufficient_chronological_split", "label_rows": len(subset)}
             continue
         x_train, y_train = train[FEATURE_COLUMNS], train[target].astype(float)
+        x_validation, y_validation = validation[FEATURE_COLUMNS], validation[target].astype(float)
         x_test, y_test = test[FEATURE_COLUMNS], test[target].astype(float)
-        # Compare a naive persistence baseline to a scaled Ridge model and tree model.
-        if target.startswith("target_rainfall"):
-            horizon = int(target.split("_")[2].replace("h", ""))
-            naive_col = f"rain_lag_1h_mm"
-        else:
-            horizon = int(target.split("_")[2].replace("h", ""))
-            naive_col = "stage_lag_1h_m"
-        baseline = pd.to_numeric(test[naive_col], errors="coerce").fillna(train[naive_col].median()).to_numpy()
-        baseline_scores = _metrics(y_test, baseline)
+        naive_col = "rain_lag_1h_mm" if target.startswith("target_rainfall") else "stage_lag_1h_m"
+        train_median = pd.to_numeric(train[naive_col], errors="coerce").median()
+        if not np.isfinite(train_median):
+            train_median = 0.0
+        validation_naive = pd.to_numeric(validation[naive_col], errors="coerce").fillna(train_median).to_numpy()
+        test_naive = pd.to_numeric(test[naive_col], errors="coerce").fillna(train_median).to_numpy()
         candidates = {
             "ridge": make_pipeline(SimpleImputer(strategy="median"), StandardScaler(), Ridge(alpha=1.0)),
             "random_forest": make_pipeline(SimpleImputer(strategy="median"), RandomForestRegressor(
                 n_estimators=160, min_samples_leaf=3, max_features=0.9, random_state=42, n_jobs=1)),
         }
-        scored = {"persistence_baseline": baseline_scores}
+        validation_scores = {"persistence_baseline": _metrics(y_validation, validation_naive)}
+        test_scores = {"persistence_baseline": _metrics(y_test, test_naive)}
         fitted = {}
         for name, estimator in candidates.items():
-            estimator.fit(x_train[FEATURE_COLUMNS], y_train)
-            predicted = estimator.predict(x_test[FEATURE_COLUMNS])
+            estimator.fit(x_train, y_train)
+            val_pred = estimator.predict(x_validation)
+            test_pred = estimator.predict(x_test)
             if target.startswith("target_rainfall"):
-                predicted = np.maximum(0, predicted)
-            scored[name] = _metrics(y_test, predicted)
+                val_pred = np.maximum(0, val_pred)
+                test_pred = np.maximum(0, test_pred)
+            validation_scores[name] = _metrics(y_validation, val_pred)
+            test_scores[name] = _metrics(y_test, test_pred)
             fitted[name] = estimator
-        winner = min(candidates, key=lambda name: scored[name]["mae"])
-        report["models"][target] = {"status": "evaluated_research_only", "label_rows": len(subset),
-                                    "train_rows": len(train), "validation_rows": len(validation),
-                                    "test_rows": len(test), "test_metrics": scored,
-                                    "selected_by_test_set": False,
-                                    "note": "Test scores are reporting-only; hyperparameters are fixed. Model selection for deployment requires validation-set selection and a final untouched test set."}
-        # Store candidates and metrics for research/reproducibility, not live inference.
-        for name, estimator in fitted.items():
-            artifact = output_dir / f"{target}_{name}.joblib"
-            joblib.dump(estimator, artifact)
+        selected = min(candidates, key=lambda name: validation_scores[name]["mae"])
+        # Fit selected configuration on train+validation only after selection; final test remains untouched.
+        train_validation = pd.concat([train, validation], ignore_index=True)
+        final_estimator = candidates[selected]
+        final_estimator.fit(train_validation[FEATURE_COLUMNS], train_validation[target].astype(float))
+        final_pred = final_estimator.predict(x_test)
+        if target.startswith("target_rainfall"):
+            final_pred = np.maximum(0, final_pred)
+        final_metrics = _metrics(y_test, final_pred)
+        persistence_metrics = test_scores["persistence_baseline"]
+        output_dir.mkdir(parents=True, exist_ok=True)
+        artifact = output_dir / f"{target}_{selected}.joblib"
+        joblib.dump(final_estimator, artifact)
+        report["models"][target] = {
+            "status": "evaluated_research_only", "label_rows": len(subset),
+            "train_rows": len(train), "validation_rows": len(validation), "test_rows": len(test),
+            "validation_metrics": validation_scores, "test_metrics": test_scores,
+            "selected_model": selected, "selected_model_final_test_metrics": final_metrics,
+            "persistence_test_metrics": persistence_metrics,
+            "test_mae_delta_vs_persistence": round(final_metrics["mae"] - persistence_metrics["mae"], 5),
+            "artifact": str(artifact), "selected_using": "validation_mae_only",
+            "note": "The chronological test period was not used for model selection. Research evaluation only; independent events and ongoing monitoring are still required."
+        }
     if any(item.get("status") == "evaluated_research_only" for item in report["models"].values()):
         report["status"] = "research_models_trained_not_deployment_ready"
-        report["warning"] = "A single chronological split is preliminary. Inspect validation/test periods and compare with operational baselines before any production use."
+        report["warning"] = "Single chronological split is preliminary. Inspect seasonal/event performance and independent data before any live use."
     report_path = output_dir / "training_evaluation.json"
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    if report["status"] != "insufficient_data":
+        output_dir.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report
 
 
