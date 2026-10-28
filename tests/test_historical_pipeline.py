@@ -91,7 +91,7 @@ def test_supervised_builder_does_not_forward_fill_missing_stage_lags():
 
 def test_chronological_split_never_shuffles_timestamps():
     data = pd.DataFrame({"issue_time_utc": pd.date_range("2026-01-01", periods=500, freq="h").astype(str),
-                         "value": range(100)})
+                         "value": range(500)})
     train, validation, test = chronological_split(data)
 
     assert train["value"].max() < validation["value"].min()
