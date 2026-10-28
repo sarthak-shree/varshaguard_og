@@ -323,7 +323,9 @@ def main():
                 if variable == "stage_m":
                     meta = stations.get(item["station_code"], {})
                     try:
-                        if not float(meta.get("danger_level_m", float("nan"))) - 25 <= value <= float(meta.get("highest_flow_level_m", meta.get("published_highest_flow_level_m", float("nan"))) + 2:
+                        danger = float(meta.get("danger_level_m", float("nan")))
+                        highest = float(meta.get("highest_flow_level_m", meta.get("published_highest_flow_level_m", float("nan"))))
+                        if not (math.isfinite(danger) and math.isfinite(highest) and danger - 25 <= value <= highest + 2):
                             continue
                     except (TypeError, ValueError):
                         continue
