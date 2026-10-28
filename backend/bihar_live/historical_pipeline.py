@@ -74,6 +74,7 @@ def connect(db_path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
         )
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_obs_station_time ON observations(station_id, observed_at_utc)")
+    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
     return conn
 
@@ -300,9 +301,42 @@ def main():
     parser = argparse.ArgumentParser(description="VarshaGuard timestamp-aligned historical forecast pipeline")
     parser.add_argument("--db", default=str(DEFAULT_DB), help="SQLite path (must be persistent in deployment)")
     parser.add_argument("--import-csv", dest="csv_path", help="Import normalized CSV rows")
+    parser.add_argument("--collect-live", action="store_true", help="Fetch recent CWC stage/rainfall observations and persist them")
     parser.add_argument("--train", action="store_true", help="Build supervised rows and run chronological research evaluation")
     parser.add_argument("--output-dir", default="models/forecast_research")
     args = parser.parse_args()
+    if args.collect_live:
+        # Reuse the same CWC source adapter as the live research page; persist raw
+        # source timestamps and mark these observations as research inputs.
+        from .research import live_prediction as cwc
+        from datetime import datetime as _datetime
+        metadata = cwc._load_bundle()[1]
+        stations = metadata.get("data_quality", {}).get("stations", {})
+        now_ist = _datetime.now(timezone.utc).astimezone(cwc.IST)
+        station_codes = list(stations)
+        collected = []
+        for datatype, variable, unit in (("HHS", "stage_m", "m"), ("MPS", "rainfall_mm", "mm")):
+            raw_rows = cwc._fetch_type(datatype, station_codes, now_ist)
+            parsed = cwc._rows_frame(raw_rows)
+            for item in parsed.to_dict("records"):
+                value = float(item["value"])
+                if variable == "stage_m":
+                    meta = stations.get(item["station_code"], {})
+                    try:
+                        if not float(meta.get("danger_level_m", float("nan"))) - 25 <= value <= float(meta.get("highest_flow_level_m", meta.get("published_highest_flow_level_m", float("nan"))) + 2:
+                            continue
+                    except (TypeError, ValueError):
+                        continue
+                elif not 0 <= value <= 500:
+                    continue
+                collected.append({
+                    "station_id": item["station_code"],
+                    "observed_at": pd.Timestamp(item["timestamp"]).tz_localize("Asia/Kolkata").isoformat(),
+                    "source": f"CWC-FFS:{datatype}", "variable": variable, "value": value,
+                    "unit": unit, "quality_flag": "good",
+                    "source_timestamp": pd.Timestamp(item["timestamp"]).tz_localize("Asia/Kolkata").isoformat(),
+                })
+        print(json.dumps(ingest_observations(collected, args.db), indent=2))
     if args.csv_path:
         data = pd.read_csv(args.csv_path)
         required = {"station_id", "observed_at", "source", "variable", "value", "unit"}
