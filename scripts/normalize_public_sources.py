@@ -89,11 +89,11 @@ def normalize_public_csv(path: str | Path, source_id: str, agency: str, variable
         normalized = normalized.drop_duplicates(["station_id", "observed_at", "variable", "value"])
     ordered = normalized.sort_values(["station_id", "observed_at"])
     if not ordered.empty:
-        gaps = ordered.groupby("station_id")["observed_at"].apply(
-            lambda values: pd.to_datetime(values, utc=True).sort_values().diff().dt.total_seconds().div(3600)
+        ordered["observed_at"] = pd.to_datetime(ordered["observed_at"], utc=True)
+        gap_hours = (
+            ordered.sort_values(["station_id", "observed_at"])
+            .groupby("station_id")["observed_at"].diff().dt.total_seconds().div(3600).dropna()
         )
-        gap_values = pd.concat(gaps.tolist(), ignore_index=True) if len(gaps) else pd.Series(dtype=float)
-        gap_hours = gap_values.dropna()
     else:
         gap_hours = pd.Series(dtype=float)
     coverage = {
