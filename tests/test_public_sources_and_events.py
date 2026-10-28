@@ -71,3 +71,16 @@ def test_event_recall_and_lead_time_only_use_verified_matched_events():
     assert report["metrics"]["event_recall"] == 1.0
     assert report["metrics"]["median_lead_time_hours_detected_events"] == 6.0
     assert "not inferred" in report["precision_note"]
+
+
+def test_normalizer_drops_conflicting_duplicate_measurements(tmp_path):
+    path = tmp_path / "duplicates.csv"
+    pd.DataFrame({
+        "Station Name": ["Gauge A", "Gauge A"],
+        "Date Time": ["2025-08-01 00:00:00", "2025-08-01 00:00:00"],
+        "Rainfall (mm)": [1.0, 9.0],
+    }).to_csv(path, index=False)
+    normalized, report = normalize_public_csv(path, "bihar-rain", "Bihar WRD", "rainfall_mm", "mm")
+
+    assert normalized.empty
+    assert report["conflicting_duplicate_rows"] == 2
