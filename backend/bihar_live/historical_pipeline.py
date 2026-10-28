@@ -33,6 +33,7 @@ RAIN_HORIZONS = (1, 3, 6, 12, 24)
 STAGE_HORIZONS = (1, 3, 6, 12)
 MIN_TRAIN_ROWS = 120
 MIN_TEST_ROWS = 24
+MAX_FIT_ROWS = 100_000
 TIME_FEATURE_COLUMNS = ["hour_sin", "hour_cos", "dayofyear_sin", "dayofyear_cos"]
 RAIN_FEATURE_COLUMNS = [*(f"rain_lag_{lag}h_mm" for lag in (1, 3, 6, 12, 24)), *TIME_FEATURE_COLUMNS]
 STAGE_FEATURE_COLUMNS = [*(f"stage_lag_{lag}h_m" for lag in (1, 3, 6, 12, 24)), "stage_rate_3h_m_per_h", "stage_rate_12h_m_per_h", *(f"rain_lag_{lag}h_mm" for lag in (1, 3, 6, 12, 24)), *TIME_FEATURE_COLUMNS]
@@ -220,15 +221,28 @@ def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) ->
     return pd.DataFrame(rows).sort_values("issue_time_utc").reset_index(drop=True) if rows else pd.DataFrame()
 
 
-def chronological_split(data: pd.DataFrame, train_fraction: float = 0.70, validation_fraction: float = 0.15):
-    """Split by issue timestamp, not random rows, to prevent temporal leakage."""
+def chronological_split(data: pd.DataFrame, train_fraction: float = 0.70, validation_fraction: float = 0.15,
+                        embargo_hours: int = 24):
+    """Split on unique timestamps with a horizon-sized embargo between partitions."""
     if not 0 < train_fraction < 1 or not 0 < validation_fraction < 1 or train_fraction + validation_fraction >= 1:
         raise ValueError("fractions must be positive and sum to less than one")
-    ordered = data.sort_values("issue_time_utc").reset_index(drop=True)
-    n = len(ordered)
-    train_end = int(n * train_fraction)
-    val_end = int(n * (train_fraction + validation_fraction))
-    return ordered.iloc[:train_end].copy(), ordered.iloc[train_end:val_end].copy(), ordered.iloc[val_end:].copy()
+    if embargo_hours < 0:
+        raise ValueError("embargo_hours must be non-negative")
+    ordered = data.copy()
+    ordered["_split_timestamp"] = pd.to_datetime(ordered["issue_time_utc"], utc=True, errors="coerce")
+    ordered = ordered.dropna(subset=["_split_timestamp"]).sort_values("_split_timestamp").reset_index(drop=True)
+    unique_times = pd.DatetimeIndex(ordered["_split_timestamp"].drop_duplicates().sort_values())
+    if len(unique_times) < 3:
+        empty = ordered.drop(columns=["_split_timestamp"]).iloc[0:0].copy()
+        return empty, empty.copy(), empty.copy()
+    train_cut = unique_times[min(len(unique_times) - 1, max(0, int(len(unique_times) * train_fraction) - 1))]
+    validation_cut = unique_times[min(len(unique_times) - 1, max(0, int(len(unique_times) * (train_fraction + validation_fraction)) - 1))]
+    embargo = pd.Timedelta(hours=embargo_hours)
+    stamp = ordered["_split_timestamp"]
+    train = ordered.loc[stamp <= train_cut].copy()
+    validation = ordered.loc[(stamp > train_cut + embargo) & (stamp <= validation_cut)].copy()
+    test = ordered.loc[stamp > validation_cut + embargo].copy()
+    return tuple(part.drop(columns=["_split_timestamp"]).reset_index(drop=True) for part in (train, validation, test))
 
 
 def _metrics(actual, predicted) -> dict:
@@ -244,7 +258,7 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
     report = {"schema_version": SCHEMA_VERSION, "trained_at_utc": datetime.now(timezone.utc).isoformat(),
               "status": "insufficient_data", "models": {}, "operational": False,
               "split": {"method": "chronological_issue_time", "train_fraction": 0.70, "validation_fraction": 0.15,
-                        "test_fraction": 0.15}}
+                        "test_fraction": 0.15, "embargo_hours": 24, "max_fit_rows": MAX_FIT_ROWS}}
     if data.empty or "issue_time_utc" not in data:
         report["message"] = "No aligned supervised rows. Collect timestamped observations before training."
         return report
@@ -271,6 +285,7 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
             train_median = 0.0
         validation_naive = pd.to_numeric(validation[naive_col], errors="coerce").fillna(train_median).to_numpy()
         test_naive = pd.to_numeric(test[naive_col], errors="coerce").fillna(train_median).to_numpy()
+        fit_train = train if len(train) <= MAX_FIT_ROWS else train.iloc[np.linspace(0, len(train) - 1, MAX_FIT_ROWS, dtype=int)].copy()
         candidates = {
             "ridge": make_pipeline(SimpleImputer(strategy="median"), StandardScaler(), Ridge(alpha=1.0)),
             "random_forest": make_pipeline(SimpleImputer(strategy="median"), RandomForestRegressor(
@@ -280,7 +295,7 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
         test_scores = {"persistence_baseline": _metrics(y_test, test_naive)}
         fitted = {}
         for name, estimator in candidates.items():
-            estimator.fit(x_train, y_train)
+            estimator.fit(fit_train[feature_columns], fit_train[target].astype(float))
             val_pred = estimator.predict(x_validation)
             test_pred = estimator.predict(x_test)
             if target.startswith("target_rainfall"):
@@ -292,6 +307,8 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
         selected = min(candidates, key=lambda name: validation_scores[name]["mae"])
         # Fit selected configuration on train+validation only after selection; final test remains untouched.
         train_validation = pd.concat([train, validation], ignore_index=True)
+        if len(train_validation) > MAX_FIT_ROWS:
+            train_validation = train_validation.iloc[np.linspace(0, len(train_validation) - 1, MAX_FIT_ROWS, dtype=int)].copy()
         final_estimator = candidates[selected]
         final_estimator.fit(train_validation[feature_columns], train_validation[target].astype(float))
         final_pred = final_estimator.predict(x_test)
@@ -304,7 +321,7 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
         joblib.dump(final_estimator, artifact)
         report["models"][target] = {
             "status": "evaluated_research_only", "label_rows": len(subset),
-            "train_rows": len(train), "validation_rows": len(validation), "test_rows": len(test),
+            "train_rows": len(train), "fit_rows": len(fit_train), "validation_rows": len(validation), "test_rows": len(test),
             "validation_metrics": validation_scores, "test_metrics": test_scores,
             "selected_model": selected, "selected_model_final_test_metrics": final_metrics,
             "persistence_test_metrics": persistence_metrics,
