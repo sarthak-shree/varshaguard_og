@@ -26,7 +26,6 @@ SOURCE_CONFIG = {
     "bihar_hourly_rainfall": ("Bihar Water Department", "rainfall_mm", "mm"),
     "cwc_bihar_hourly_rainfall": ("Central Water Commission", "rainfall_mm", "mm"),
     "bihar_hourly_river_stage": ("Bihar Water Department", "stage_m", "m"),
-    "bihar_daily_water_level": ("Bihar Water Department", "stage_m", "m"),
 }
 
 
@@ -55,6 +54,15 @@ def run() -> dict:
                 "error": f"{type(exc).__name__}: {exc}",
                 "columns": manifest.get("downloads", {}).get(source_id, {}).get("inspection", {}).get("columns", []),
             })
+    # This daily manual dataset's actual downloaded schema contains discharge and
+    # zero-of-gauge metadata but no measured stage column. Preserve the snapshot for
+    # review, but never mislabel zero-of-gauge as an observed water level.
+    daily_source = "bihar_daily_water_level"
+    if (RAW_DIR / f"{daily_source}.csv").exists():
+        statuses.append({
+            "source_id": daily_source, "status": "inspected_not_eligible_for_stage_training",
+            "reason": "Downloaded CSV has Date, Discharge (M3/s), and Zero of Gauge metadata, but no observed river-water-level value column. Daily discharge/zero datum is not stage.",
+        })
     if normalized_frames:
         combined = pd.concat(normalized_frames, ignore_index=True)
         combined.to_csv(OUTPUT / "all_observations.csv", index=False)
