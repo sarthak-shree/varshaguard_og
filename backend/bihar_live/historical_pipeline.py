@@ -262,9 +262,9 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
         if len(train) < min_train_rows or len(test) < min_test_rows or validation.empty:
             report["models"][target] = {"status": "insufficient_chronological_split", "label_rows": len(subset)}
             continue
-        x_train, y_train = train[FEATURE_COLUMNS], train[target].astype(float)
-        x_validation, y_validation = validation[FEATURE_COLUMNS], validation[target].astype(float)
-        x_test, y_test = test[FEATURE_COLUMNS], test[target].astype(float)
+        x_train, y_train = train[feature_columns], train[target].astype(float)
+        x_validation, y_validation = validation[feature_columns], validation[target].astype(float)
+        x_test, y_test = test[feature_columns], test[target].astype(float)
         naive_col = "rain_lag_1h_mm" if target.startswith("target_rainfall") else "stage_lag_1h_m"
         train_median = pd.to_numeric(train[naive_col], errors="coerce").median()
         if not np.isfinite(train_median):
