@@ -2,6 +2,7 @@ import csv
 
 import pytest
 
+from backend.bihar_live.research.audit_external_event_eligibility import event_scoring_eligibility
 from backend.bihar_live.research.validate_external_events import DEFAULT_LEDGER, validate_ledger
 
 
@@ -13,6 +14,32 @@ def test_seed_external_event_ledger_has_provenance_and_explicit_match_status():
     assert all(row["matching_status"] == "not_spatiotemporally_matched" for row in rows)
     assert all(row["station_level_match_ready"] == "false" for row in rows)
     assert any("NRSC" in row["source_org"] and "2025-10-06" in row["source_observation_time_ist"] for row in rows)
+
+
+def test_no_seed_event_is_eligible_for_independent_scoring():
+    result = event_scoring_eligibility(validate_ledger(DEFAULT_LEDGER))
+
+    assert result["records_reviewed"] == 3
+    assert result["eligible_event_count"] == 0
+    assert result["excluded_event_count"] == 3
+    assert all("event_onset_missing" in reasons for reasons in result["excluded"].values())
+    assert "No model score is computed" in result["interpretation"]
+
+
+def test_event_eligibility_requires_independence_ground_verification_match_and_onset():
+    row = {
+        "event_id": "eligible-example",
+        "independent_of_model_gauge_inputs": "true",
+        "ground_verified": "true",
+        "matching_status": "matched",
+        "station_level_match_ready": "true",
+        "event_start_time_ist": "2026-09-21T18:00:00+05:30",
+    }
+
+    result = event_scoring_eligibility([row])
+
+    assert result["eligible_event_count"] == 1
+    assert result["eligible_event_ids"] == ["eligible-example"]
 
 
 def test_ledger_rejects_timestamp_without_timezone(tmp_path):
