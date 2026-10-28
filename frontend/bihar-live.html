@@ -37,6 +37,8 @@
   </header>
 
   <main class="layout">
+    <section class="overview-grid bihar-overview">
+      <div class="left-column">
     <div class="probability-top-controls">
         <section class="panel selector-panel">
           <div class="field">
@@ -71,52 +73,6 @@
           <p class="probability-disclaimer" id="probabilityDisclaimer">Research estimate only. This is not an official warning or a neighborhood flood probability.</p>
         </section>
     </div>
-    <section class="overview-grid bihar-overview">
-      <div class="left-column">
-        <section class="risk-card bihar-status-card" id="selectedRiskCard" data-risk="stale" aria-labelledby="selectedRiskDistrict">
-          <div class="risk-card-topline">
-            <div>
-              <p class="small-title">24-HOUR RIVER GAUGE OUTLOOK</p>
-              <h2 id="selectedRiskDistrict">Patna</h2>
-            </div>
-            <div id="selectedRiskBadge" class="risk-trend" data-state="stale">Loading</div>
-          </div>
-          <p id="selectedRiskGauge" class="selected-risk-gauge">CWC gauge: Gandhighat</p>
-          <p id="selectedRiskWindow" class="selected-risk-window">Forecast window: next 24 hours after the latest CWC reading</p>
-          <div class="risk-card-probability">
-            <div class="risk-card-probability-header">
-              <span id="selectedRiskProbabilityLabel">Chance this gauge reaches the CWC warning line in the next 24 hours</span>
-              <strong id="selectedRiskProbability">—</strong>
-            </div>
-            <div id="selectedRiskMeter" class="risk-card-bar" role="meter" aria-label="24-hour gauge warning risk" aria-valuemin="0" aria-valuemax="100" hidden>
-              <div id="selectedRiskFill" class="risk-card-bar-fill"></div>
-            </div>
-            <div class="risk-card-bar-scale" id="selectedRiskScale" hidden><span>0%</span><span>50%</span><span>100%</span></div>
-          </div>
-          <div class="selected-risk-data-strip" aria-live="polite">
-            <span id="selectedRiskFreshness">Latest CWC reading: waiting</span>
-            <span id="selectedRiskCoverage">Model input coverage: waiting</span>
-          </div>
-          <p id="selectedRiskMessage" class="selected-risk-message">Waiting for live river readings.</p>
-          <p class="selected-risk-disclaimer">Research estimate only — not an official alert or a street, home, or neighborhood flood probability.</p>
-          <div class="risk-meta selected-risk-meta">
-            <div><span>Rain forecast · next 24h</span><strong id="selectedRiskRainForecast">Loading</strong></div>
-            <div><span>Latest river level</span><strong id="selectedRiskStage">—</strong></div>
-            <div><span>Distance to warning line</span><strong id="selectedRiskGap">—</strong></div>
-          </div>
-          <p id="selectedRiskWeatherNote" class="selected-risk-weather-note">The rainfall outlook is context only; it is not included in the model percentage.</p>
-          <details class="selected-risk-details">
-            <summary>How to read this estimate</summary>
-            <p class="selected-risk-how">This percentage estimates whether the selected river gauge may reach its CWC warning line in the next 24 hours. It is not a flood probability for a particular street or home.</p>
-            <a class="selected-risk-source" href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Rainfall context source: Open-Meteo ↗</a>
-            <div class="selected-risk-thresholds">
-              <div><span>Warning level</span><strong id="selectedRiskWarning">—</strong></div>
-              <div><span>Danger level</span><strong id="selectedRiskDanger">—</strong></div>
-              <div><span>Observed rain · 24h</span><strong id="selectedRiskObservedRain">—</strong></div>
-            </div>
-            <small id="selectedRiskQuality">Waiting for data quality details.</small>
-          </details>
-        </section>
 
       </div>
 
