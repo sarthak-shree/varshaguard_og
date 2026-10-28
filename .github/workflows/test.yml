@@ -17,18 +17,18 @@ jobs:
       - name: Run tests
         run: pytest -q
       - name: Install historical data downloader
-        if: github.event_name == 'pull_request' && github.head_ref == 'p0/model-validation-and-docs'
+        if: github.ref == 'refs/heads/p0/model-validation-and-docs'
         run: pip install duckdb
       - name: Fetch current CWC historical archive
-        if: github.event_name == 'pull_request' && github.head_ref == 'p0/model-validation-and-docs'
+        if: github.ref == 'refs/heads/p0/model-validation-and-docs'
         run: python backend/bihar_live/research/fetch_cwc_bihar_hourly.py
       - name: Retrain and evaluate CWC model
-        if: github.event_name == 'pull_request' && github.head_ref == 'p0/model-validation-and-docs'
+        if: github.ref == 'refs/heads/p0/model-validation-and-docs'
         run: |
           python backend/bihar_live/research/train_cwc_gauge_rolling_24h.py | tee /tmp/cwc-model-training-summary.json
           cat /tmp/cwc-model-training-summary.json >> "$GITHUB_STEP_SUMMARY"
       - name: Upload reproducible training outputs
-        if: always() && github.event_name == 'pull_request' && github.head_ref == 'p0/model-validation-and-docs'
+        if: always() && github.ref == 'refs/heads/p0/model-validation-and-docs'
         uses: actions/upload-artifact@v4
         with:
           name: cwc-bihar-rolling-model-p0
