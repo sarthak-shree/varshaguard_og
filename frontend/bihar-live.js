@@ -114,6 +114,7 @@
     const meter = $("selectedRiskMeter");
     const fill = $("selectedRiskFill");
     const scale = $("selectedRiskScale");
+    if (!meter || !fill || !scale) return;
     if (!finiteNumber(percent)) {
       meter.hidden = true;
       scale.hidden = true;
@@ -258,14 +259,16 @@
       ? (finiteNumber(prediction.risk_percentage) ? Number(prediction.risk_percentage) : Number(prediction.model_probability) * 100)
       : null;
 
-    card.dataset.risk = state;
-    card.dataset.state = prediction?.status || "unavailable";
+    if (card) {
+      card.dataset.risk = state;
+      card.dataset.state = prediction?.status || "unavailable";
+    }
+    renderStageTrend(prediction);
     setText("selectedRiskDistrict", districtLabel(district.name));
     setText("selectedRiskGauge", prediction?.station_name ? t("gaugeNamed", "CWC gauge: {name}", { name: prediction.station_name }) : t("gaugeAwaiting", "CWC gauge: awaiting a recent reading"));
     setText("selectedRiskWindow", prediction?.forecast_end_ist
       ? t("nextWindow", "Next 24 hours · through {time}", { time: formatTime(prediction.forecast_end_ist) })
       : t("nextAfterReading", "Next 24 hours after the latest CWC reading"));
-    renderStageTrend(prediction);
     setText("selectedRiskStage", finiteNumber(prediction?.current_stage_m) ? Number(prediction.current_stage_m).toFixed(2) + " m" : "—");
     setText("selectedRiskGap", finiteNumber(prediction?.margin_to_warning_m)
       ? t(Number(prediction.margin_to_warning_m) < 0 ? "distanceAbove" : "distanceBelow", "{amount} m " + (Number(prediction.margin_to_warning_m) < 0 ? "above" : "below"), { amount: Math.abs(Number(prediction.margin_to_warning_m)).toFixed(2) })
@@ -284,13 +287,15 @@
       : t("coverageWaiting", "Model input coverage: waiting for data"));
 
     const badge = $("selectedRiskBadge");
-    badge.dataset.state = state;
-    if (observedDanger) badge.textContent = "▲ " + t("badgeDanger", "DANGER OBSERVED");
-    else if (observedWarning) badge.textContent = "▲ " + t("badgeWarning", "WARNING OBSERVED");
-    else if (prediction?.status === "predicted") badge.textContent = (state === "low" ? "✓ " : state === "medium" ? "◆ " : "▲ ") + t("badgeModel", "{risk} MODEL RISK", { risk: riskWord(state).toUpperCase() });
-    else if (prediction?.status === "stale") badge.textContent = "◷ " + t("badgeStale", "STALE DATA");
-    else if (prediction?.status === "insufficient_inputs") badge.textContent = "• " + t("badgeInsufficient", "NOT ENOUGH DATA");
-    else badge.textContent = "— " + t("badgeUnavailable", "NO LIVE READING");
+    if (badge) {
+      badge.dataset.state = state;
+      if (observedDanger) badge.textContent = "▲ " + t("badgeDanger", "DANGER OBSERVED");
+      else if (observedWarning) badge.textContent = "▲ " + t("badgeWarning", "WARNING OBSERVED");
+      else if (prediction?.status === "predicted") badge.textContent = (state === "low" ? "✓ " : state === "medium" ? "◆ " : "▲ ") + t("badgeModel", "{risk} MODEL RISK", { risk: riskWord(state).toUpperCase() });
+      else if (prediction?.status === "stale") badge.textContent = "◷ " + t("badgeStale", "STALE DATA");
+      else if (prediction?.status === "insufficient_inputs") badge.textContent = "• " + t("badgeInsufficient", "NOT ENOUGH DATA");
+      else badge.textContent = "— " + t("badgeUnavailable", "NO LIVE READING");
+    }
 
     if (finiteNumber(probability)) {
       setText("selectedRiskProbability", Number(probability).toFixed(1) + "%");
