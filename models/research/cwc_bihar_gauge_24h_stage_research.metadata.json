@@ -1,8 +1,8 @@
 {
   "model_name": "VarshaGuard Bihar CWC rolling 24-hour warning-level crossing research model",
-  "trained_at_utc": "2026-10-23T07:30:20+00:00",
+  "trained_at_utc": "2026-10-28T11:43:11+00:00",
   "training_source": "cwc_bihar_gauge_hourly.csv",
-  "source_sha256": "ad06d90a7306493856b41fff3fc2b309dfd82d15ab4a9c0209e6e2815df54fd5",
+  "source_sha256": "9e0c6c74d8305d698d66983d5e2f622ac7aa3c1544baa1dfaab9ca62fa54e86e",
   "source_upstream": "CWC Flood Forecast System hourly observations mirrored by diagram-chasing/cwc-flood-forecasts",
   "source_urls": [
     "https://ffs.india-water.gov.in/",
@@ -62,70 +62,70 @@
   ],
   "data_quality": {
     "quality": {
-      "source_rows": 226577,
-      "source_stage_rows": 172456,
-      "quality_stage_rows": 172449,
+      "source_rows": 245467,
+      "source_stage_rows": 186876,
+      "quality_stage_rows": 186869,
       "rejected_stage_rows": 7,
-      "source_rain_rows": 54121,
-      "quality_rain_rows": 54121,
+      "source_rain_rows": 58591,
+      "quality_rain_rows": 58591,
       "stage_filter": "CWC HHS only; stage from 25m below warning threshold through published highest flow +2m; duplicates at a station-time are collapsed.",
       "rain_filter": "CWC MPS only; values 0-500mm; duplicates at a station-time are summed.",
       "issue_sampling": "One issue per gauge every 6 hours at a reported HHS observation time.",
       "target_rule": "Among issue times still below the published CWC warning level, positive if any valid HHS observation in (issue time, issue time +24h] reaches that warning level.",
-      "future_coverage_rule": "Require at least 18 valid stage observations in the next 24h and a final observation at least 20h after issue time; missing/low-coverage horizons are excluded.",
+      "future_coverage_rule": "Require at least 18 valid stage observations in the next 24h and a final observation at least 23h after issue time; incomplete horizons are excluded.",
       "missing_future_rows_are_not_labeled_negative": true,
       "stations_used": 13,
       "station_issue_counts": {
         "002-MGD5PTN": {
-          "issue_rows": 1438,
-          "positive_warning_crossings": 32
+          "issue_rows": 1540,
+          "positive_warning_crossings": 36
         },
         "003-MGD5PTN": {
-          "issue_rows": 1190,
+          "issue_rows": 1240,
           "positive_warning_crossings": 33
         },
         "004-MGD4PTN": {
-          "issue_rows": 1909,
+          "issue_rows": 2093,
           "positive_warning_crossings": 8
         },
         "005-MGD5PTN": {
-          "issue_rows": 1532,
-          "positive_warning_crossings": 28
+          "issue_rows": 1638,
+          "positive_warning_crossings": 32
         },
         "009-MGD5PTN": {
-          "issue_rows": 1523,
-          "positive_warning_crossings": 108
+          "issue_rows": 1674,
+          "positive_warning_crossings": 112
         },
         "011-MGD5PTN": {
-          "issue_rows": 1755,
-          "positive_warning_crossings": 41
+          "issue_rows": 1886,
+          "positive_warning_crossings": 45
         },
         "016-MGD4PTN": {
-          "issue_rows": 1360,
-          "positive_warning_crossings": 118
+          "issue_rows": 1499,
+          "positive_warning_crossings": 134
         },
         "017-MGD4PTN": {
-          "issue_rows": 735,
+          "issue_rows": 770,
           "positive_warning_crossings": 69
         },
         "021-MGD5PTN": {
-          "issue_rows": 1527,
-          "positive_warning_crossings": 64
+          "issue_rows": 1657,
+          "positive_warning_crossings": 68
         },
         "026-MGD5PTN": {
-          "issue_rows": 1849,
+          "issue_rows": 2033,
           "positive_warning_crossings": 14
         },
         "027-MGD5PTN": {
-          "issue_rows": 1375,
-          "positive_warning_crossings": 29
+          "issue_rows": 1476,
+          "positive_warning_crossings": 33
         },
         "032-MGD4PTN": {
-          "issue_rows": 1519,
-          "positive_warning_crossings": 8
+          "issue_rows": 1629,
+          "positive_warning_crossings": 12
         },
         "033-MGD4PTN": {
-          "issue_rows": 1625,
+          "issue_rows": 1809,
           "positive_warning_crossings": 0
         }
       }
@@ -141,7 +141,7 @@
       },
       "003-MGD5PTN": {
         "name": "Gandhighat",
-        "lat": 25.62333333333333,
+        "lat": 25.623333333333335,
         "lon": 85.17111111111112,
         "warning_level_m": 47.6,
         "danger_level_m": 48.6,
@@ -229,7 +229,7 @@
       },
       "033-MGD4PTN": {
         "name": "Sakra",
-        "lat": 26.04055555555556,
+        "lat": 26.040555555555557,
         "lon": 85.55499999999999,
         "warning_level_m": 49.58,
         "danger_level_m": 50.58,
@@ -239,17 +239,21 @@
   },
   "runtime_sklearn_version": "1.9.0",
   "split": {
-    "training_issue_years": "through 2024; training forecast horizons end before 2025",
+    "training_issue_years": "through 2024; label horizons end before validation starts",
     "validation_issue_year": 2025,
     "untouched_test_issue_year": 2026,
+    "label_horizon_boundary_checks": {
+      "training_before_validation": true,
+      "validation_before_test": true
+    },
     "training_rows": 9146,
     "training_positive_rows": 246,
     "validation_rows": 5901,
     "validation_positive_rows": 218,
-    "test_rows": 4290,
-    "test_positive_rows": 88,
-    "deployment_training_rows": 19337,
-    "deployment_positive_rows": 552
+    "test_rows": 5897,
+    "test_positive_rows": 132,
+    "deployment_training_rows": 20944,
+    "deployment_positive_rows": 596
   },
   "candidate_validation_metrics": {
     "logistic_regression": {
@@ -261,9 +265,9 @@
       "positive_rows": 218
     },
     "random_forest": {
-      "average_precision": 0.449575,
+      "average_precision": 0.443011,
       "validation_prevalence": 0.036943,
-      "brier_score": 0.027618,
+      "brier_score": 0.027507,
       "training_prevalence_baseline_brier": 0.035679,
       "rows": 5901,
       "positive_rows": 218
@@ -279,65 +283,905 @@
   },
   "selected_model": "random_forest",
   "threshold_selection": "F2 maximized on temporally separate 2025 validation data",
-  "decision_threshold": 0.166597,
+  "decision_threshold": 0.160194,
   "test_metrics": {
-    "rows": 4290,
-    "positive_rows": 88,
-    "positive_fraction": 0.020513,
-    "threshold": 0.166597,
-    "precision": 0.312757,
-    "recall": 0.863636,
-    "average_precision": 0.588514,
-    "prevalence_baseline_average_precision": 0.020513,
-    "roc_auc": 0.977427,
-    "brier_score": 0.013515,
-    "training_prevalence_baseline_brier": 0.020199,
+    "rows": 5897,
+    "positive_rows": 132,
+    "positive_fraction": 0.022384,
+    "threshold": 0.160194,
+    "precision": 0.305785,
+    "recall": 0.840909,
+    "average_precision": 0.564013,
+    "prevalence_baseline_average_precision": 0.022384,
+    "roc_auc": 0.976628,
+    "brier_score": 0.014853,
+    "training_prevalence_baseline_brier": 0.021955,
     "confusion_matrix_labels_0_1": [
       [
-        4035,
-        167
+        5513,
+        252
       ],
       [
-        12,
-        76
+        21,
+        111
       ]
-    ]
+    ],
+    "calibration": {
+      "expected_calibration_error": 0.013149,
+      "bins": [
+        {
+          "lower_bound": 0.0,
+          "upper_bound": 0.1,
+          "rows": 5363,
+          "mean_predicted_probability": 0.009717,
+          "observed_positive_fraction": 0.002238
+        },
+        {
+          "lower_bound": 0.1,
+          "upper_bound": 0.2,
+          "rows": 266,
+          "mean_predicted_probability": 0.144694,
+          "observed_positive_fraction": 0.105263
+        },
+        {
+          "lower_bound": 0.2,
+          "upper_bound": 0.3,
+          "rows": 134,
+          "mean_predicted_probability": 0.244681,
+          "observed_positive_fraction": 0.164179
+        },
+        {
+          "lower_bound": 0.3,
+          "upper_bound": 0.4,
+          "rows": 85,
+          "mean_predicted_probability": 0.343929,
+          "observed_positive_fraction": 0.423529
+        },
+        {
+          "lower_bound": 0.4,
+          "upper_bound": 0.5,
+          "rows": 25,
+          "mean_predicted_probability": 0.443048,
+          "observed_positive_fraction": 0.44
+        },
+        {
+          "lower_bound": 0.5,
+          "upper_bound": 0.6,
+          "rows": 20,
+          "mean_predicted_probability": 0.562338,
+          "observed_positive_fraction": 0.95
+        },
+        {
+          "lower_bound": 0.6,
+          "upper_bound": 0.7,
+          "rows": 4,
+          "mean_predicted_probability": 0.61176,
+          "observed_positive_fraction": 1.0
+        }
+      ]
+    }
   },
-  "focus_gauge_test_metrics": {
-    "003-MGD5PTN": {
-      "label": "Patna: Gandhighat",
-      "rows": 302,
+  "all_station_test_metrics": {
+    "002-MGD5PTN": {
+      "rows": 424,
       "positive_rows": 8,
-      "positive_fraction": 0.02649,
-      "threshold": 0.166597,
-      "precision": 0.545455,
-      "recall": 0.75,
-      "average_precision": 0.579264,
-      "prevalence_baseline_average_precision": 0.02649,
-      "roc_auc": 0.978316,
-      "brier_score": 0.01716,
-      "training_prevalence_baseline_brier": 0.025791,
+      "positive_fraction": 0.018868,
+      "threshold": 0.160194,
+      "precision": 0.583333,
+      "recall": 0.875,
+      "average_precision": 0.908929,
+      "prevalence_baseline_average_precision": 0.018868,
+      "roc_auc": 0.997296,
+      "brier_score": 0.007251,
+      "training_prevalence_baseline_brier": 0.018551,
       "confusion_matrix_labels_0_1": [
         [
-          289,
+          411,
+          5
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.014033,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 403,
+            "mean_predicted_probability": 0.006424,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 13,
+            "mean_predicted_probability": 0.142,
+            "observed_positive_fraction": 0.153846
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 2,
+            "mean_predicted_probability": 0.245413,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 1,
+            "mean_predicted_probability": 0.478282,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 5,
+            "mean_predicted_probability": 0.561068,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "003-MGD5PTN": {
+      "rows": 352,
+      "positive_rows": 8,
+      "positive_fraction": 0.022727,
+      "threshold": 0.160194,
+      "precision": 0.545455,
+      "recall": 0.75,
+      "average_precision": 0.55086,
+      "prevalence_baseline_average_precision": 0.022727,
+      "roc_auc": 0.980015,
+      "brier_score": 0.014408,
+      "training_prevalence_baseline_brier": 0.02224,
+      "confusion_matrix_labels_0_1": [
+        [
+          339,
           5
         ],
         [
           2,
           6
         ]
-      ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.009792,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 337,
+            "mean_predicted_probability": 0.006696,
+            "observed_positive_fraction": 0.005935
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 5,
+            "mean_predicted_probability": 0.141287,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 2,
+            "mean_predicted_probability": 0.233908,
+            "observed_positive_fraction": 0.5
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 6,
+            "mean_predicted_probability": 0.372801,
+            "observed_positive_fraction": 0.666667
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 2,
+            "mean_predicted_probability": 0.40581,
+            "observed_positive_fraction": 0.5
+          }
+        ]
+      }
+    },
+    "004-MGD4PTN": {
+      "rows": 591,
+      "positive_rows": 0,
+      "negative_rows": 591,
+      "note": "Holdout lacks one outcome class; station-level discrimination/calibration is not estimable reliably."
+    },
+    "005-MGD5PTN": {
+      "rows": 438,
+      "positive_rows": 8,
+      "positive_fraction": 0.018265,
+      "threshold": 0.160194,
+      "precision": 1.0,
+      "recall": 0.875,
+      "average_precision": 0.986111,
+      "prevalence_baseline_average_precision": 0.018265,
+      "roc_auc": 0.999709,
+      "brier_score": 0.00788,
+      "training_prevalence_baseline_brier": 0.017934,
+      "confusion_matrix_labels_0_1": [
+        [
+          430,
+          0
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.016509,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 425,
+            "mean_predicted_probability": 0.006935,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 7,
+            "mean_predicted_probability": 0.135694,
+            "observed_positive_fraction": 0.285714
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 1,
+            "mean_predicted_probability": 0.200558,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 1,
+            "mean_predicted_probability": 0.33677,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 1,
+            "mean_predicted_probability": 0.498638,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 3,
+            "mean_predicted_probability": 0.576786,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "009-MGD5PTN": {
+      "rows": 423,
+      "positive_rows": 28,
+      "positive_fraction": 0.066194,
+      "threshold": 0.160194,
+      "precision": 0.342105,
+      "recall": 0.928571,
+      "average_precision": 0.364118,
+      "prevalence_baseline_average_precision": 0.066194,
+      "roc_auc": 0.917812,
+      "brier_score": 0.048067,
+      "training_prevalence_baseline_brier": 0.061813,
+      "confusion_matrix_labels_0_1": [
+        [
+          345,
+          50
+        ],
+        [
+          2,
+          26
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.020342,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 318,
+            "mean_predicted_probability": 0.018406,
+            "observed_positive_fraction": 0.006289
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 43,
+            "mean_predicted_probability": 0.140246,
+            "observed_positive_fraction": 0.116279
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 27,
+            "mean_predicted_probability": 0.237461,
+            "observed_positive_fraction": 0.333333
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 29,
+            "mean_predicted_probability": 0.335718,
+            "observed_positive_fraction": 0.344828
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 4,
+            "mean_predicted_probability": 0.440525,
+            "observed_positive_fraction": 0.25
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 2,
+            "mean_predicted_probability": 0.553012,
+            "observed_positive_fraction": 0.5
+          }
+        ]
+      }
+    },
+    "011-MGD5PTN": {
+      "rows": 472,
+      "positive_rows": 12,
+      "positive_fraction": 0.025424,
+      "threshold": 0.160194,
+      "precision": 0.8,
+      "recall": 0.666667,
+      "average_precision": 0.855031,
+      "prevalence_baseline_average_precision": 0.025424,
+      "roc_auc": 0.991848,
+      "brier_score": 0.011723,
+      "training_prevalence_baseline_brier": 0.024782,
+      "confusion_matrix_labels_0_1": [
+        [
+          458,
+          2
+        ],
+        [
+          4,
+          8
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.011477,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 455,
+            "mean_predicted_probability": 0.009449,
+            "observed_positive_fraction": 0.006593
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 8,
+            "mean_predicted_probability": 0.126739,
+            "observed_positive_fraction": 0.125
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 1,
+            "mean_predicted_probability": 0.203962,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 2,
+            "mean_predicted_probability": 0.359401,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 2,
+            "mean_predicted_probability": 0.481224,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 1,
+            "mean_predicted_probability": 0.573809,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.6,
+            "upper_bound": 0.7,
+            "rows": 3,
+            "mean_predicted_probability": 0.614987,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "016-MGD4PTN": {
+      "rows": 425,
+      "positive_rows": 28,
+      "positive_fraction": 0.065882,
+      "threshold": 0.160194,
+      "precision": 0.170886,
+      "recall": 0.964286,
+      "average_precision": 0.367194,
+      "prevalence_baseline_average_precision": 0.065882,
+      "roc_auc": 0.901403,
+      "brier_score": 0.05668,
+      "training_prevalence_baseline_brier": 0.062619,
+      "confusion_matrix_labels_0_1": [
+        [
+          266,
+          131
+        ],
+        [
+          1,
+          27
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.072851,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 207,
+            "mean_predicted_probability": 0.026603,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 97,
+            "mean_predicted_probability": 0.145585,
+            "observed_positive_fraction": 0.041237
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 69,
+            "mean_predicted_probability": 0.250631,
+            "observed_positive_fraction": 0.086957
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 38,
+            "mean_predicted_probability": 0.345111,
+            "observed_positive_fraction": 0.368421
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 13,
+            "mean_predicted_probability": 0.434951,
+            "observed_positive_fraction": 0.230769
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 1,
+            "mean_predicted_probability": 0.500622,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "017-MGD4PTN": {
+      "rows": 187,
+      "positive_rows": 12,
+      "positive_fraction": 0.064171,
+      "threshold": 0.160194,
+      "precision": 0.243243,
+      "recall": 0.75,
+      "average_precision": 0.438931,
+      "prevalence_baseline_average_precision": 0.064171,
+      "roc_auc": 0.892857,
+      "brier_score": 0.04938,
+      "training_prevalence_baseline_brier": 0.061182,
+      "confusion_matrix_labels_0_1": [
+        [
+          147,
+          28
+        ],
+        [
+          3,
+          9
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.053414,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 132,
+            "mean_predicted_probability": 0.036195,
+            "observed_positive_fraction": 0.007576
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 36,
+            "mean_predicted_probability": 0.153562,
+            "observed_positive_fraction": 0.194444
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 16,
+            "mean_predicted_probability": 0.239424,
+            "observed_positive_fraction": 0.0625
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 2,
+            "mean_predicted_probability": 0.331362,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 1,
+            "mean_predicted_probability": 0.429183,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "021-MGD5PTN": {
+      "rows": 476,
+      "positive_rows": 12,
+      "positive_fraction": 0.02521,
+      "threshold": 0.160194,
+      "precision": 0.642857,
+      "recall": 0.75,
+      "average_precision": 0.836108,
+      "prevalence_baseline_average_precision": 0.02521,
+      "roc_auc": 0.98653,
+      "brier_score": 0.013677,
+      "training_prevalence_baseline_brier": 0.025068,
+      "confusion_matrix_labels_0_1": [
+        [
+          459,
+          5
+        ],
+        [
+          3,
+          9
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.016424,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 443,
+            "mean_predicted_probability": 0.009232,
+            "observed_positive_fraction": 0.004515
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 24,
+            "mean_predicted_probability": 0.138389,
+            "observed_positive_fraction": 0.083333
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 3,
+            "mean_predicted_probability": 0.243994,
+            "observed_positive_fraction": 0.666667
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 2,
+            "mean_predicted_probability": 0.341384,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 1,
+            "mean_predicted_probability": 0.479574,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 3,
+            "mean_predicted_probability": 0.566396,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "026-MGD5PTN": {
+      "rows": 576,
+      "positive_rows": 4,
+      "positive_fraction": 0.006944,
+      "threshold": 0.160194,
+      "precision": 0.107143,
+      "recall": 0.75,
+      "average_precision": 0.47995,
+      "prevalence_baseline_average_precision": 0.006944,
+      "roc_auc": 0.975962,
+      "brier_score": 0.006696,
+      "training_prevalence_baseline_brier": 0.006896,
+      "confusion_matrix_labels_0_1": [
+        [
+          547,
+          25
+        ],
+        [
+          1,
+          3
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.017491,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 540,
+            "mean_predicted_probability": 0.00973,
+            "observed_positive_fraction": 0.001852
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 19,
+            "mean_predicted_probability": 0.156444,
+            "observed_positive_fraction": 0.052632
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 11,
+            "mean_predicted_probability": 0.244532,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 5,
+            "mean_predicted_probability": 0.349216,
+            "observed_positive_fraction": 0.2
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 1,
+            "mean_predicted_probability": 0.587646,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "027-MGD5PTN": {
+      "rows": 425,
+      "positive_rows": 8,
+      "positive_fraction": 0.018824,
+      "threshold": 0.160194,
+      "precision": 0.875,
+      "recall": 0.875,
+      "average_precision": 0.933824,
+      "prevalence_baseline_average_precision": 0.018824,
+      "roc_auc": 0.997302,
+      "brier_score": 0.00871,
+      "training_prevalence_baseline_brier": 0.018494,
+      "confusion_matrix_labels_0_1": [
+        [
+          416,
+          1
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.015278,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 407,
+            "mean_predicted_probability": 0.007159,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 12,
+            "mean_predicted_probability": 0.142349,
+            "observed_positive_fraction": 0.166667
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 2,
+            "mean_predicted_probability": 0.233223,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 3,
+            "mean_predicted_probability": 0.547967,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.6,
+            "upper_bound": 0.7,
+            "rows": 1,
+            "mean_predicted_probability": 0.602078,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "032-MGD4PTN": {
+      "rows": 517,
+      "positive_rows": 4,
+      "positive_fraction": 0.007737,
+      "threshold": 0.160194,
+      "precision": 1.0,
+      "recall": 0.5,
+      "average_precision": 0.875,
+      "prevalence_baseline_average_precision": 0.007737,
+      "roc_auc": 0.998051,
+      "brier_score": 0.005101,
+      "training_prevalence_baseline_brier": 0.007677,
+      "confusion_matrix_labels_0_1": [
+        [
+          513,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.012048,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 514,
+            "mean_predicted_probability": 0.009959,
+            "observed_positive_fraction": 0.001946
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 2,
+            "mean_predicted_probability": 0.145005,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 1,
+            "mean_predicted_probability": 0.59987,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "033-MGD4PTN": {
+      "rows": 591,
+      "positive_rows": 0,
+      "negative_rows": 591,
+      "note": "Holdout lacks one outcome class; station-level discrimination/calibration is not estimable reliably."
+    }
+  },
+  "focus_gauge_test_metrics": {
+    "003-MGD5PTN": {
+      "label": "Patna: Gandhighat",
+      "rows": 352,
+      "positive_rows": 8,
+      "positive_fraction": 0.022727,
+      "threshold": 0.160194,
+      "precision": 0.545455,
+      "recall": 0.75,
+      "average_precision": 0.55086,
+      "prevalence_baseline_average_precision": 0.022727,
+      "roc_auc": 0.980015,
+      "brier_score": 0.014408,
+      "training_prevalence_baseline_brier": 0.02224,
+      "confusion_matrix_labels_0_1": [
+        [
+          339,
+          5
+        ],
+        [
+          2,
+          6
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.009792,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 337,
+            "mean_predicted_probability": 0.006696,
+            "observed_positive_fraction": 0.005935
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 5,
+            "mean_predicted_probability": 0.141287,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 2,
+            "mean_predicted_probability": 0.233908,
+            "observed_positive_fraction": 0.5
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 6,
+            "mean_predicted_probability": 0.372801,
+            "observed_positive_fraction": 0.666667
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 2,
+            "mean_predicted_probability": 0.40581,
+            "observed_positive_fraction": 0.5
+          }
+        ]
+      }
     },
     "004-MGD4PTN": {
       "label": "Muzaffarpur: Sikandarpur",
-      "rows": 407,
+      "rows": 591,
       "positive_rows": 0,
-      "note": "This holdout period does not contain both outcomes for this gauge; local skill cannot be estimated."
+      "negative_rows": 591,
+      "note": "Holdout lacks one outcome class; station-level discrimination/calibration is not estimable reliably."
     }
+  },
+  "test_detected_positive_window_lead_time": {
+    "detected_positive_issue_windows": 111,
+    "unit": "hours from issue time to first observed warning-level crossing",
+    "median_hours": 10.0,
+    "mean_hours": 10.766,
+    "minimum_hours": 1.0,
+    "maximum_hours": 24.0,
+    "interpretation": "Issue-window statistic; overlapping windows are not independent flood events."
   },
   "operational_eligible": false,
   "loaded_by_dashboard_server": true,
-  "warning": "Research-only probability estimate for reaching a CWC gauge warning level within 24 hours. Three years of archived hourly data provide limited independent flood seasons, and focus-gauge event counts are sparse. This is not a block/grid inundation prediction or an official warning; validate with CWC/IMD and disaster-management experts before public-safety use.",
-  "artifact_path": "models\\research\\cwc_bihar_gauge_24h_stage_research.joblib",
-  "holdout_predictions_path": "data\\bihar_live\\research\\cwc_bihar_gauge_24h_stage_research_holdout_predictions.csv"
+  "calibration_status": "Classifier probabilities are not calibrated; reliability bins and ECE are diagnostics only. Threshold selection uses the separate 2025 validation set.",
+  "warning": "Research-only estimate for CWC gauge warning-level crossing within 24 hours. Overlapping issue windows are not independent events, archived seasons and station positives are sparse, and metrics must be regenerated after changes to label rules. This is not a block/grid inundation prediction or official warning.",
+  "artifact_path": "models/research/cwc_bihar_gauge_24h_stage_research.joblib",
+  "holdout_predictions_path": "data/bihar_live/research/cwc_bihar_gauge_24h_stage_research_holdout_predictions.csv"
 }
