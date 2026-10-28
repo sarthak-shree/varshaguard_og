@@ -405,6 +405,75 @@
       }
     }
   }
+  function renderDischargeContext(districtKey) {
+    const prediction = (currentData.live?.predictions || []).find(
+      (item) => String(item.district || "").toLowerCase() === String(DISTRICTS[districtKey]?.name || "").toLowerCase()
+    );
+    const history = (prediction?.stage_history || [])
+      .filter((item) => finiteNumber(item.stage_m) && item.timestamp_ist)
+      .map((item) => ({ value: Number(item.stage_m), time: String(item.timestamp_ist) }))
+      .sort((a, b) => new Date(a.time) - new Date(b.time));
+    const stageValues = history.map((item) => item.value);
+    const stageAverage = stageValues.length >= 2
+      ? stageValues.reduce((sum, value) => sum + value, 0) / stageValues.length
+      : null;
+    setText("cwcAverageStage", stageAverage === null ? "—" : stageAverage.toFixed(2) + " m");
+    setText("cwcStageWindow", history.length >= 2
+      ? history.length + " quality-checked readings in the latest 24-hour history"
+      : "Not enough recent CWC readings to calculate an average");
+
+    const discharge = currentData.discharge?.[districtKey];
+    const daily = discharge?.daily || {};
+    const times = Array.isArray(daily.time) ? daily.time : [];
+    const values = Array.isArray(daily.river_discharge_mean) ? daily.river_discharge_mean
+      : Array.isArray(daily.river_discharge) ? daily.river_discharge : [];
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit"
+    }).format(new Date());
+    const forecastValues = times.map((day, index) => ({ day, value: values[index] }))
+      .filter((item) => item.day >= today && finiteNumber(item.value));
+    const dischargeAverage = forecastValues.length
+      ? forecastValues.reduce((sum, item) => sum + Number(item.value), 0) / forecastValues.length
+      : null;
+    const units = discharge?.units || {};
+    const unit = units.river_discharge_mean || units.river_discharge || "provider units";
+    setText("openMeteoAverageDischarge", dischargeAverage === null ? "—" : dischargeAverage.toFixed(1) + " " + unit);
+    setText("openMeteoDischargeWindow", forecastValues.length
+      ? "Mean of " + forecastValues.length + " daily " + (units.river_discharge_mean ? "mean" : "discharge") + " values from today onward"
+      : (discharge?.message || "No numeric Open-Meteo discharge forecast is available"));
+    const status = $("dischargeContextStatus");
+    if (status) status.textContent = stageAverage !== null && dischargeAverage !== null ? "Both sources" :
+      stageAverage !== null ? "CWC only" : dischargeAverage !== null ? "Open-Meteo only" : "Waiting";
+    setText("dischargeContextNote", "CWC average: " + (stageAverage === null ? "not available" : stageAverage.toFixed(2) + " m") +
+      ". Open-Meteo average discharge: " + (dischargeAverage === null ? "not available" : dischargeAverage.toFixed(1) + " " + unit) +
+      ". These are separate averages, not a combined number: metres of river stage and discharge flow are different physical quantities. Patna and Muzaffarpur are displayed as separate focus gauges, not assumed to be an upstream/downstream pair. The existing ML model estimates CWC warning-level crossing from gauge history and rainfall features; it is not trained to convert discharge into stage.");
+  }
+
+  async function loadDischargeContext(districtKey) {
+    if (!DISTRICTS[districtKey]) return;
+    currentData.discharge ||= {};
+    const existing = currentData.discharge[districtKey];
+    if (existing?.fetched_at_utc) {
+      const age = (Date.now() - new Date(existing.fetched_at_utc).getTime()) / 1000;
+      if (Number.isFinite(age) && age >= 0 && age < 15 * 60) {
+        if (districtKey === $("districtSelect").value) renderDischargeContext(districtKey);
+        return;
+      }
+    }
+    currentData.dischargeLoading ||= {};
+    if (currentData.dischargeLoading[districtKey]) return;
+    currentData.dischargeLoading[districtKey] = true;
+    try {
+      currentData.discharge[districtKey] = await getJson("/api/bihar-live/flood-discharge?district=" + encodeURIComponent(districtKey));
+      currentData.discharge[districtKey].fetched_at_utc ||= new Date().toISOString();
+    } catch (error) {
+      currentData.discharge[districtKey] = { available: false, message: error.message };
+    } finally {
+      delete currentData.dischargeLoading[districtKey];
+      if (districtKey === $("districtSelect").value) renderDischargeContext(districtKey);
+    }
+  }
+
   function makePopup(prediction) {
     const root = document.createElement("div");
     const title = document.createElement("strong");
@@ -468,6 +537,7 @@
     renderMap(predictions);
     updateSelectedRiskCard();
     renderSources(currentData.live, currentData.weather?.[$("districtSelect").value]);
+    renderDischargeContext($("districtSelect").value);
     selectDistrict(false);
     clearError();
   }
@@ -477,6 +547,7 @@
       const data = await getJson(API);
       updateDashboard(data);
       loadWeatherForecast($("districtSelect").value);
+      loadDischargeContext($("districtSelect").value);
       if (!data.available) showError(data.error || "CWC live data is currently unavailable.");
     } catch (error) {
       showError(error.message);
@@ -489,6 +560,7 @@
       updateSelectedRiskCard();
       renderSources(currentData.live, currentData.weather?.[$("districtSelect").value]);
       loadWeatherForecast($("districtSelect").value);
+      loadDischargeContext($("districtSelect").value);
     }
   }
   function setupMap() {
@@ -547,6 +619,7 @@
           $("districtSelect").value = nearest.key;
           selectDistrict(false);
           loadWeatherForecast(nearest.key);
+          loadDischargeContext(nearest.key);
           map.setView(point, 11, { animate: true });
           clearError();
         } else {
@@ -767,6 +840,7 @@
     $("districtSelect").addEventListener("change", () => {
       selectDistrict();
       loadWeatherForecast($("districtSelect").value);
+      loadDischargeContext($("districtSelect").value);
     });
     $("locateButton").addEventListener("click", useMyLocation);
     $("mapRefreshButton").addEventListener("click", () => selectDistrict());
