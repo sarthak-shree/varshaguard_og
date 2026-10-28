@@ -2,6 +2,16 @@ name: Public hydrology data snapshot
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - feat/forecasting-data-pipeline
+    paths:
+      - "scripts/fetch_public_sources.py"
+      - "scripts/normalize_public_sources.py"
+      - "scripts/process_public_sources.py"
+      - "scripts/evaluate_independent_events.py"
+      - "backend/bihar_live/historical_pipeline.py"
+      - ".github/workflows/public-data-pipeline.yml"
   push:
     branches:
       - feat/historical-forecast-ml-pipeline
