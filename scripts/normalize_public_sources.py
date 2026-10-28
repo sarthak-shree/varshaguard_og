@@ -95,15 +95,22 @@ def normalize_public_csv(path: str | Path, source_id: str, agency: str, variable
         "source_timestamp": timestamp[valid].map(lambda item: item.isoformat()),
         "source_kind": "observed",
     })
-    # Duplicate station-time rows are not silently averaged; retain one only if identical.
-    duplicate_mask = normalized.duplicated(["station_id", "observed_at", "variable"], keep=False)
+    # Conflicting duplicate station-time readings are excluded, never averaged or
+    # resolved by file order. Identical duplicates collapse to one record.
+    keys = ["station_id", "observed_at", "variable"]
+    duplicate_mask = normalized.duplicated(keys, keep=False)
     duplicate_rows = int(duplicate_mask.sum())
     conflicting = 0
     if duplicate_rows:
-        for _, group in normalized[duplicate_mask].groupby(["station_id", "observed_at", "variable"]):
-            if group["value"].nunique(dropna=False) > 1:
-                conflicting += len(group)
-        normalized = normalized.drop_duplicates(["station_id", "observed_at", "variable", "value"])
+        grouped = normalized.groupby(keys, dropna=False)
+        unique_counts = grouped["value"].nunique(dropna=False)
+        conflict_keys = unique_counts[unique_counts > 1].index
+        if len(conflict_keys):
+            conflict_index = pd.MultiIndex.from_frame(normalized[keys])
+            conflict_multi = pd.MultiIndex.from_tuples(list(conflict_keys), names=keys)
+            conflicting = int(conflict_index.isin(conflict_multi).sum())
+            normalized = normalized.loc[~conflict_index.isin(conflict_multi)].copy()
+        normalized = normalized.drop_duplicates(keys, keep="first")
     ordered = normalized.sort_values(["station_id", "observed_at"])
     if not ordered.empty:
         ordered["observed_at"] = pd.to_datetime(ordered["observed_at"], utc=True)
@@ -122,7 +129,7 @@ def normalize_public_csv(path: str | Path, source_id: str, agency: str, variable
         "time_start_utc": str(normalized["observed_at"].min()) if len(normalized) else None,
         "time_end_utc": str(normalized["observed_at"].max()) if len(normalized) else None,
         "missing_value_pct": round(100 * (1 - int(valid.sum()) / max(1, len(raw))), 3),
-        "duplicate_rows": duplicate_rows, "conflicting_duplicate_rows": conflicting,
+        "duplicate_rows": duplicate_rows, "conflicting_duplicate_rows": conflicting, "conflicting_rows_removed": conflicting,
         "median_interval_hours": float(gap_hours.median()) if len(gap_hours) else None,
         "timestamp_assumption": "Naive source timestamps interpreted as Asia/Kolkata; confirm against source documentation",
         "station_reconciliation": "explicit mapping" if station_mapping else "source-prefixed IDs; cross-agency joins disabled",
