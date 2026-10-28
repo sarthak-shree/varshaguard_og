@@ -8,10 +8,11 @@ from backend.bihar_live.research.validate_external_events import DEFAULT_LEDGER,
 def test_seed_external_event_ledger_has_provenance_and_explicit_match_status():
     rows = validate_ledger(DEFAULT_LEDGER)
 
-    assert len(rows) >= 1
+    assert len(rows) == 3
     assert all(row["source_url"].startswith("https://") for row in rows)
     assert all(row["matching_status"] == "not_spatiotemporally_matched" for row in rows)
     assert all(row["station_level_match_ready"] == "false" for row in rows)
+    assert any("NRSC" in row["source_org"] and "2025-10-06" in row["source_observation_time_ist"] for row in rows)
 
 
 def test_ledger_rejects_timestamp_without_timezone(tmp_path):
