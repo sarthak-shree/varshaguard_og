@@ -105,9 +105,8 @@ def get_river_discharge_forecast(district: str, force_refresh: bool = False) -> 
             # Preserve the provider's model/ensemble output instead of averaging unlike
             # models into an invented risk score.
             daily_data = {"time": times}
-            for variable in DAILY_VARIABLES:
-                values = daily.get(variable)
-                if isinstance(values, list):
+            for variable, values in daily.items():
+                if variable != "time" and variable.startswith("river_discharge") and isinstance(values, list):
                     daily_data[variable] = values
             result = {
                 "success": True,
