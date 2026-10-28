@@ -111,6 +111,14 @@ python scripts/process_public_sources.py
 
 The pipeline writes `data/processed/public_sources/pipeline_report.json`. Source schema mismatches are recorded as `schema_review_required`; they are not silently coerced. Cross-agency station matching is disabled unless a reviewed explicit mapping is supplied. The observation normalizer records missingness, duplicate conflicts, timestamp assumptions and median sample interval. Exact-hour labels are required by the training builder, so daily stage sources will not be treated as hourly forecast labels.
 
+The source pipeline now normalizes the published NWIC columns `Station`, `Data Acquisition Time`, `Telemetry Hourly Rainfall (mm)`, and `River Water Level Telemetry Hourly (meter)`. The downloaded rainfall files contain 15-minute timestamp snapshots despite the hourly rainfall field name; the alignment policy uses the **last snapshot in each Asia/Kolkata clock hour**, never sums repeated values, and never fills missing hours. This assumption is explicitly recorded in coverage output and should be reviewed against the data producer's documentation.
+
+The manually observed daily dataset's downloaded columns contain `Date`, `Discharge (M3/s)`, and `Zero of Gauge (Mts)` metadata, but no measured water-level column. It is retained for inspection and deliberately excluded from stage training.
+
+The training pipeline saves `chronological_test_predictions.csv` only for eligible real-data targets. Rainfall test-event precision/recall uses a 95th-percentile threshold learned from training-period rainfall, clearly marked as a research threshold rather than an official warning threshold. Model selection is validation-only; a 24-hour embargo separates chronological partitions to reduce horizon overlap. No live inference model is replaced.
+
+To convert held-out stage predictions into warning-level event flags, copy `data/bihar_live/research/station_warning_levels.template.csv` to `station_warning_levels.csv` and fill it only with reviewed, official gauge warning levels and the exact normalized `station_id`. Do not guess station IDs or warning levels. The current independent-event ledger has no eligible ground-verified station-level events with explicit onset times, so event recall/lead time remain `not_estimable`; event precision/false-alarm rate additionally require a complete negative-event ledger.
+
 For the current independent-event ledger, run:
 
 ```bash
