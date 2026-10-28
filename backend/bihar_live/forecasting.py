@@ -31,7 +31,7 @@ def rainfall_summary(hourly: list[dict], district: str, source: str = "Open-Mete
     """Summarize already time-aligned hourly rainfall forecast rows."""
     rows = []
     for item in hourly if isinstance(hourly, list) else []:
-        stamp = _parse_timestamp(item.get("time"))
+        stamp = _parse_timestamp(item.get("time") or item.get("time_ist"))
         try:
             rain = float(item.get("precipitation_mm"))
         except (TypeError, ValueError, OverflowError):
