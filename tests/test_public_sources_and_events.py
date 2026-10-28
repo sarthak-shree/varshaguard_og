@@ -84,3 +84,21 @@ def test_normalizer_drops_conflicting_duplicate_measurements(tmp_path):
 
     assert normalized.empty
     assert report["conflicting_duplicate_rows"] == 2
+
+
+def test_stage_test_predictions_require_explicit_station_thresholds():
+    from scripts.evaluate_independent_events import stage_test_predictions
+
+    test_predictions = pd.DataFrame([
+        {"station_id": "gauge-a", "issue_time_utc": "2025-08-01T00:00:00Z",
+         "target_variable": "stage_m", "model_prediction": 11.0},
+        {"station_id": "gauge-a", "issue_time_utc": "2025-08-01T01:00:00Z",
+         "target_variable": "stage_m", "model_prediction": 9.0},
+        {"station_id": "rain-a", "issue_time_utc": "2025-08-01T00:00:00Z",
+         "target_variable": "rainfall_mm", "model_prediction": 50.0},
+    ])
+    thresholds = pd.DataFrame([{"station_id": "gauge-a", "warning_level_m": 10.0}])
+    events = stage_test_predictions(test_predictions, thresholds)
+
+    assert events["predicted_event"].tolist() == [True, False]
+    assert events["station_id"].eq("gauge-a").all()
