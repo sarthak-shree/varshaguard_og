@@ -33,7 +33,7 @@ RAIN_HORIZONS = (1, 3, 6, 12, 24)
 STAGE_HORIZONS = (1, 3, 6, 12)
 MIN_TRAIN_ROWS = 120
 MIN_TEST_ROWS = 24
-FEATURE_COLUMNS = [
+TIME_FEATURE_COLUMNS = ["hour_sin", "hour_cos", "dayofyear_sin", "dayofyear_cos"]\nRAIN_FEATURE_COLUMNS = [*(f"rain_lag_{lag}h_mm" for lag in (1, 3, 6, 12, 24)), *TIME_FEATURE_COLUMNS]\nSTAGE_FEATURE_COLUMNS = [*(f"stage_lag_{lag}h_m" for lag in (1, 3, 6, 12, 24)), "stage_rate_3h_m_per_h", "stage_rate_12h_m_per_h", *(f"rain_lag_{lag}h_mm" for lag in (1, 3, 6, 12, 24)), *TIME_FEATURE_COLUMNS]\nFEATURE_COLUMNS = [
     "rain_lag_1h_mm", "rain_lag_3h_mm", "rain_lag_6h_mm",
     "rain_lag_12h_mm", "rain_lag_24h_mm",
     "stage_lag_1h_m", "stage_lag_3h_m", "stage_lag_6h_m",
@@ -247,7 +247,7 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
         return report
     for target in [*(f"target_rainfall_{h}h_mm" for h in RAIN_HORIZONS),
                    *(f"target_stage_{h}h_m" for h in STAGE_HORIZONS)]:
-        subset = data.dropna(subset=[target]).copy() if target in data else pd.DataFrame()
+        subset = data.dropna(subset=[target]).copy() if target in data else pd.DataFrame()\n        feature_columns = RAIN_FEATURE_COLUMNS if target.startswith("target_rainfall") else STAGE_FEATURE_COLUMNS\n        if not subset.empty:\n            subset = subset.loc[subset[feature_columns].notna().any(axis=1)].copy()
         if len(subset) < min_train_rows + min_test_rows:
             report["models"][target] = {"status": "insufficient_labels", "label_rows": int(len(subset)),
                                         "required_rows": min_train_rows + min_test_rows}
@@ -287,7 +287,7 @@ def train_and_evaluate(data: pd.DataFrame, output_dir: str | Path, min_train_row
         # Fit selected configuration on train+validation only after selection; final test remains untouched.
         train_validation = pd.concat([train, validation], ignore_index=True)
         final_estimator = candidates[selected]
-        final_estimator.fit(train_validation[FEATURE_COLUMNS], train_validation[target].astype(float))
+        final_estimator.fit(train_validation[feature_columns], train_validation[target].astype(float))
         final_pred = final_estimator.predict(x_test)
         if target.startswith("target_rainfall"):
             final_pred = np.maximum(0, final_pred)
