@@ -1,23 +1,42 @@
-# Bihar rolling 24-hour gauge model
+# Bihar rolling 24-hour CWC gauge model
 
-The dashboard estimates whether one of 13 Bihar CWC river gauges will reach its published **warning level** during the 24 hours after the latest accepted reading. This is a gauge threshold estimate, not a forecast of flooded streets, blocks, or grid cells.
+## Target and scope
 
-## Refresh historical training data
+The dashboard estimates whether one of 13 Bihar CWC gauges, currently focused on Patna Gandhighat and Muzaffarpur Sikandarpur, will reach its published **warning level** in the next rolling 24 hours. This is a gauge-level threshold-crossing estimate, not a forecast of flooded streets, blocks, or grid cells.
 
-From the repository root, install the optional downloader and fetch the public hourly archive:
+## Rebuild the historical dataset and model
 
-```powershell
+From the repository root:
+
+```bash
+python -m pip install -r requirements.txt
 python -m pip install duckdb
 python backend/bihar_live/research/fetch_cwc_bihar_hourly.py
 python backend/bihar_live/research/train_cwc_gauge_rolling_24h.py
 ```
 
-Training uses CWC HHS stage and MPS rainfall observations. Training rows are sampled every six hours; labels require at least 18 future stage observations over the rolling horizon. The 2023–2024 rows train candidate models, 2025 selects the model and risk threshold, and 2026 is kept as a time-based holdout. The deployed artifact is then refit using all available historical rows.
+The trainer reads `data/bihar_live/research/cwc_bihar_gauge_hourly.csv`. It writes the model and metadata to `models/research/` and writes holdout predictions to `data/bihar_live/research/`. The metadata records the source CSV SHA-256, selected model, feature list, split counts, metrics, and artifact paths.
 
-## Current evaluation limits
+## Label and leakage controls
 
-On the 2026 holdout, 76 of 88 positive six-hour issue windows were detected at the selected threshold, with 167 false positive windows. These overlapping windows are not independent flood events. Patna had 8 positive test windows; Muzaffarpur had none, so local Muzaffarpur accuracy could not be measured. Treat the percentages as experimental and follow official CWC, IMD, and local authority updates.
+- Issue rows are sampled every six hours when a valid CWC stage reading is available and the current stage is below the published warning level.
+- A positive target means at least one valid HHS stage observation in `(issue time, issue time + 24 hours]` reaches the warning threshold.
+- A row is excluded unless there are at least 18 valid future stage observations and the final future observation is at least 23 hours after issue time. This reduces, but cannot eliminate, bias from irregular or missing observations.
+- The timestamp of the first observed crossing is retained only for evaluation and is excluded from model features.
+- Training uses labels whose horizons end before 2025; 2025 selects the model and decision threshold; 2026 is the untouched time-based holdout. The script checks that training label horizons do not overlap validation and validation horizons do not overlap test.
 
-The source archive is a public mirror of CWC FFS records at [diagram-chasing/cwc-flood-forecasts](https://github.com/diagram-chasing/cwc-flood-forecasts). Its documentation requests CWC attribution and states ODbL; confirm terms before redistributing data.
+## Metrics and interpretation
 
-`train_cwc_gauge_nextday.py` remains available for historical research but writes only a separate legacy artifact; it cannot overwrite the rolling model used by the dashboard.
+The training run reports precision, recall, average precision, ROC-AUC, Brier score against a training-prevalence baseline, confusion matrix, reliability bins, expected calibration error (ECE), and per-station holdout metrics. It also reports lead-time statistics for detected positive **issue windows** based on the first observed crossing timestamp.
+
+Six-hourly issue windows overlap. Multiple true-positive windows may refer to the same threshold-crossing episode, so window counts are not independent event counts. A gauge with only one class in the test period is explicitly marked as not reliably estimable rather than assigned a misleading station-specific score. Review positive counts and confidence limitations alongside every metric.
+
+The current classifier does not fit a probability calibration model. ECE/reliability bins are diagnostics only, and the F2 decision threshold is selected on the separate 2025 validation set. After changing source data or label rules, rerun the trainer before quoting metrics; historical numbers from older label definitions are not comparable.
+
+The model is experimental and **not operationally eligible**. Validate with more independent flood seasons and CWC/IMD/disaster-management domain experts before considering public-safety use.
+
+## Source and attribution
+
+The hourly archive is mirrored from CWC Flood Forecast System records by [diagram-chasing/cwc-flood-forecasts](https://github.com/diagram-chasing/cwc-flood-forecasts). The mirror documentation states ODbL and requests CWC attribution; confirm the applicable terms before redistributing data.
+
+`train_cwc_gauge_nextday.py` is a separate legacy research trainer and writes a separate artifact. It does not train or overwrite the rolling model used by the dashboard.
