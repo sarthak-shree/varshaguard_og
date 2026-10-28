@@ -39,6 +39,14 @@ SOURCES = {
         "landing_page": "https://nwdp.nwic.gov.in/en/dataset/rainfall-cwc-telemetry-hourly",
         "unit_expected": "mm (verify CSV schema)",
     },
+    "bihar_hourly_river_stage": {
+        "agency": "Bihar Water Department via National Water Data Portal / NWIC",
+        "period": "2021-2025",
+        "variable": "hourly river water level observations",
+        "url": "https://nwdp.nwic.gov.in/dataset/a9f05d4d-aa2e-4671-baff-b461760ec89e/resource/9a38ae73-cdea-451d-a431-538fa2e3ac09/download/rwl_tel_hr_bihar_999_2021_2025.csv",
+        "landing_page": "https://nwdp.nwic.gov.in/en/dataset/river-water-level-telemetry-hourly-bihar-water-department",
+        "unit_expected": "m (verify CSV schema)",
+    },
     "bihar_daily_water_level": {
         "agency": "Bihar Water Department via National Water Data Portal / NWIC",
         "period": "2020-2025",
