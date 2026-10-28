@@ -51,7 +51,7 @@ def evaluate_events(predictions: pd.DataFrame, events: pd.DataFrame, lead_hours:
         detected = not positives.empty
         lead = None
         if detected:
-            first_alert = positives["issue_time"].max()
+            first_alert = positives["issue_time"].min()
             lead = (event["event_start"] - first_alert).total_seconds() / 3600
         matches.append({"event_id": str(event["event_id"]), "station_id": str(event["station_id"]),
                         "detected": detected, "lead_time_hours": lead,
