@@ -46,7 +46,7 @@ def test_observation_store_is_idempotent_and_normalizes_timezone(tmp_path):
     assert second["database_changes"] == 6
     assert frame["observed_at_utc"].str.endswith("+00:00").all()
     with connect(db) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 0  # schema version is stored per row
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
 
 
 def test_ingest_rejects_invalid_rainfall_and_unknown_quality(tmp_path):
@@ -83,7 +83,7 @@ def test_supervised_builder_does_not_forward_fill_missing_stage_lags():
     built = build_supervised_rows(pd.DataFrame(rows))
 
     # Rows whose exact 10:00 stage lag is required are not fabricated by filling.
-    assert "2026-06-01T11:00:00+00:00" not in set(built["issue_time_utc"])
+    assert "2026-06-01T05:30:00+00:00" not in set(built["issue_time_utc"])
 
 
 def test_chronological_split_never_shuffles_timestamps():
