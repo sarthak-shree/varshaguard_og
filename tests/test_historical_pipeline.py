@@ -84,7 +84,7 @@ def test_supervised_builder_does_not_forward_fill_missing_stage_lags():
     built = build_supervised_rows(pd.DataFrame(rows))
 
     # Rows whose exact 10:00 stage lag is required are not fabricated by filling.
-    assert "2026-06-01T05:30:00+00:00" not in set(built["issue_time_utc"])
+    row = built.loc[built["issue_time_utc"].eq("2026-06-01T05:30:00+00:00")].iloc[0]\n    assert pd.isna(row["stage_lag_1h_m"])\n    assert pd.notna(row["rain_lag_1h_mm"])
 
 
 def test_chronological_split_never_shuffles_timestamps():
