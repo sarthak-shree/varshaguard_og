@@ -350,6 +350,7 @@ def main():
     if args.train:
         rows = rows_from_store(args.db)
         if not rows.empty:
+            Path(args.output_dir).mkdir(parents=True, exist_ok=True)
             rows.to_csv(Path(args.output_dir) / "supervised_rows.csv", index=False)
         report = train_and_evaluate(rows, args.output_dir)
         print(json.dumps(report, indent=2))
