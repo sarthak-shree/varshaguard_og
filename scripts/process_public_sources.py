@@ -18,7 +18,7 @@ import pandas as pd
 from scripts.fetch_public_sources import OUT as RAW_DIR, SOURCES
 from scripts.normalize_public_sources import align_observations, normalize_public_csv
 from backend.bihar_live.historical_pipeline import build_supervised_rows, train_and_evaluate
-from scripts.evaluate_independent_events import evaluate_events
+from scripts.evaluate_independent_events import evaluate_events, stage_test_predictions
 
 OUTPUT = ROOT / "data" / "processed" / "public_sources"
 EVENT_LEDGER = ROOT / "data" / "bihar_live" / "research" / "independent_flood_events.csv"
@@ -100,6 +100,13 @@ def run() -> dict:
             "models": {},
         }
     # Existing ledger records are context-only until station/time/ground verification passes.
+    test_prediction_path = OUTPUT / "models" / "chronological_test_predictions.csv"
+    test_predictions = pd.read_csv(test_prediction_path) if test_prediction_path.exists() else pd.DataFrame()
+    candidate_stage_predictions = (
+        int(test_predictions["target_variable"].eq("stage_m").sum())
+        if not test_predictions.empty and "target_variable" in test_predictions else 0
+    )
+    threshold_path = ROOT / "data" / "bihar_live" / "research" / "station_warning_levels.csv"
     if EVENT_LEDGER.exists():
         raw_events = pd.read_csv(EVENT_LEDGER)
         events = pd.DataFrame({
@@ -113,11 +120,19 @@ def run() -> dict:
         if "matching_status" in raw_events:
             matched = raw_events["matching_status"].astype(str).str.lower().eq("matched")
             events["station_level_match_ready"] = events["station_level_match_ready"].astype(str).str.lower().isin({"true", "1", "yes"}) & matched
-        event_report = evaluate_events(
-            pd.DataFrame(columns=["station_id", "issue_time", "predicted_event"]), events
-        )
+        if not test_predictions.empty and threshold_path.exists():
+            thresholds = pd.read_csv(threshold_path)
+            stage_predictions = stage_test_predictions(test_predictions, thresholds)
+        else:
+            stage_predictions = pd.DataFrame(columns=["station_id", "issue_time", "predicted_event"])
+        event_report = evaluate_events(stage_predictions, events)
+        event_report["candidate_stage_test_predictions"] = candidate_stage_predictions
+        event_report["threshold_mapping_available"] = threshold_path.exists()
+        if not threshold_path.exists():
+            event_report["threshold_mapping_note"] = "No reviewed station warning-level mapping exists; continuous stage forecasts are not converted into warning events."
     else:
         event_report = {"status": "not_estimable", "operational": False, "metrics": None,
+                        "candidate_stage_test_predictions": candidate_stage_predictions,
                         "reason": "Independent event ledger is missing."}
     report = {
         "schema_version": 1, "status": "completed_with_gaps" if statuses else "no_sources",
