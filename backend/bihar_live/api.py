@@ -1,5 +1,7 @@
 """Bihar Live API for gauge data, research inference, and prototype baselines."""
-from datetime import datetime, timezone\n\nfrom flask import Blueprint, jsonify, request
+from datetime import datetime, timezone
+
+from flask import Blueprint, jsonify, request
 
 from .config import DATA_MODE, PREDICTION_HORIZON_HOURS, SUPPORTED_DISTRICTS
 from .adapters.sources import build_adapters
