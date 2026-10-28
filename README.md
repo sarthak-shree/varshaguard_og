@@ -98,6 +98,27 @@ The current forecast additions are deliberately conservative and do not claim a 
 - The dashboard keeps rainfall accumulation, observed CWC stage, and Open-Meteo discharge in separate units and panels. Stage (m) and discharge (flow per unit time) are not averaged together. Patna Gandhighat and Muzaffarpur Sikandarpur are not assumed to be an upstream/downstream pair.
 - The public source adapters use bounded in-process caches and return source timestamps/quality metadata where available. A serverless process can restart, so this is not a durable historical data warehouse.
 
+#### End-to-end acquisition and evaluation job
+
+A GitHub Actions workflow at `.github/workflows/public-data-pipeline.yml` downloads the catalogued public CSV snapshots, inspects them, attempts schema-aware normalization, builds coverage reports, trains only targets that pass the minimum-label gate, and uploads raw files plus reports as a 30-day artifact. It runs on relevant pushes to this feature branch and can be started manually with the workflow-dispatch action.
+
+The local equivalent after download is:
+
+```bash
+python scripts/fetch_public_sources.py --all
+python scripts/process_public_sources.py
+```
+
+The pipeline writes `data/processed/public_sources/pipeline_report.json`. Source schema mismatches are recorded as `schema_review_required`; they are not silently coerced. Cross-agency station matching is disabled unless a reviewed explicit mapping is supplied. The observation normalizer records missingness, duplicate conflicts, timestamp assumptions and median sample interval. Exact-hour labels are required by the training builder, so daily stage sources will not be treated as hourly forecast labels.
+
+For the current independent-event ledger, run:
+
+```bash
+python scripts/evaluate_independent_events.py --predictions predictions.csv --official-ledger data/bihar_live/research/independent_flood_events.csv
+```
+
+The ledger currently has broad-area reports/rapid maps without ground-verified station-level event onset. The expected and scientifically correct status is `not_estimable` until event records are independently verified and spatially/time matched. Event precision and false-alarm rates additionally require a complete matched negative-event ledger.
+
 ### Public source discovery and download
 
 The public-source downloader is `scripts/fetch_public_sources.py`. It downloads raw CSV snapshots when run from a machine with network access, computes SHA-256 hashes, captures column names/sample rows, and records provenance in `data/raw/public_sources/manifest.json`. It deliberately does **not** silently convert unknown columns into training labels.
