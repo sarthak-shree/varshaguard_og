@@ -114,7 +114,12 @@ def normalize_public_csv(path: str | Path, source_id: str, agency: str, variable
 
 
 def align_observations(normalized: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
-    """Create exact-hour station timelines without filling missing measurements."""
+    """Align to local IST clock hours using the last observation in each hour.
+
+    Rainfall telemetry values are published as an hourly rainfall field but may be
+    timestamped every 15 minutes. We therefore select the latest reading in each IST
+    hour instead of summing repeated snapshots. No gap is interpolated or filled.
+    """
     if normalized.empty:
         return pd.DataFrame(), {"stations": 0, "rows": 0, "complete_hourly_rows": 0, "missing_hour_slots": 0}
     frame = normalized.copy()
@@ -124,15 +129,19 @@ def align_observations(normalized: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     total_expected = total_present = 0
     for station, part in wide.groupby("station_id"):
         part = part.set_index("observed_at").sort_index()
-        hourly_index = pd.date_range(part.index.min().floor("h"), part.index.max().ceil("h"), freq="h", tz="UTC")
-        reindexed = part.reindex(hourly_index)
-        reindexed.index.name = "observed_at"
-        reindexed["station_id"] = station
-        reindexed["is_exact_hour"] = (reindexed.index.minute == 0) & (reindexed.index.second == 0)
-        variables = [column for column in ("rainfall_mm", "stage_m") if column in reindexed]
-        total_expected += len(reindexed) * len(variables)
-        total_present += int(reindexed[variables].notna().sum().sum())
-        aligned.append(reindexed.reset_index())
+        part.index = part.index.tz_convert("Asia/Kolkata")
+        # The source value is a level/reading, not an interval increment; never sum it.
+        hourly = part.resample("h", origin="start_day").last()
+        hourly_index = pd.date_range(part.index.min().floor("h"), part.index.max().floor("h"), freq="h", tz="Asia/Kolkata")
+        hourly = hourly.reindex(hourly_index)
+        hourly.index.name = "observed_at_ist"
+        hourly["station_id"] = station
+        hourly["observed_at"] = hourly.index.tz_convert("UTC")
+        hourly["is_exact_hour"] = True
+        variables = [column for column in ("rainfall_mm", "stage_m") if column in hourly]
+        total_expected += len(hourly) * len(variables)
+        total_present += int(hourly[variables].notna().sum().sum())
+        aligned.append(hourly.reset_index(drop=True))
     result = pd.concat(aligned, ignore_index=True) if aligned else pd.DataFrame()
     return result, {
         "stations": int(result["station_id"].nunique()) if not result.empty else 0,
@@ -141,6 +150,7 @@ def align_observations(normalized: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         "missing_hour_slots": int(total_expected - total_present),
         "observed_cell_coverage_pct": round(100 * total_present / max(1, total_expected), 3),
         "missing_values_not_filled": True,
+        "hourly_policy": "last observation within each Asia/Kolkata clock hour; no summation or interpolation",
     }
 
 
