@@ -62,3 +62,22 @@ def test_flood_client_rejects_unsupported_district_without_network(monkeypatch):
     monkeypatch.setattr(open_meteo_flood.requests, "get", fail_if_called)
     result = open_meteo_flood.get_river_discharge_forecast("oslo", force_refresh=True)
     assert result["available"] is False
+
+
+def test_flood_client_accepts_nested_ensemble_series(monkeypatch):
+    def fake_get(*args, **kwargs):
+        return FakeResponse({
+            "timezone": "Asia/Kolkata",
+            "daily_units": {"river_discharge": "m³/s"},
+            "daily": {
+                "time": ["2026-10-28", "2026-10-29"],
+                "river_discharge": [[100.0, 120.0, 140.0], [110.0, 130.0, 150.0]],
+            },
+        })
+
+    monkeypatch.setattr(open_meteo_flood.requests, "get", fake_get)
+    open_meteo_flood._cache.clear()
+    result = open_meteo_flood.get_river_discharge_forecast("patna", force_refresh=True)
+
+    assert result["available"] is True
+    assert result["daily"]["river_discharge"][0] == [100.0, 120.0, 140.0]
