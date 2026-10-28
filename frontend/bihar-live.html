@@ -50,6 +50,29 @@
           <button id="locateButton" class="assistant-open-btn bihar-locate" type="button">Show my location</button>
         </section>
 
+        <section class="panel probability-selector-card" id="probabilitySelectorCard" aria-labelledby="probabilityTitle">
+          <div class="probability-heading">
+            <p class="small-title">NEXT 24 HOURS</p>
+            <h2 id="probabilityTitle">Early-warning probability</h2>
+            <p>Choose a forecast type to see the percentage returned by the backend.</p>
+          </div>
+          <div class="probability-options" role="group" aria-label="Choose probability type">
+            <button type="button" class="probability-option is-selected" data-forecast-type="flood" aria-pressed="true">
+              <span aria-hidden="true">〰</span><strong>Flood</strong><small>Gauge warning-level risk</small>
+            </button>
+            <button type="button" class="probability-option" data-forecast-type="heavy_rainfall" aria-pressed="false">
+              <span aria-hidden="true">☂</span><strong>Heavy Rainfall</strong><small>Rainfall risk</small>
+            </button>
+          </div>
+          <div class="probability-result" aria-live="polite">
+            <span id="probabilityResultLabel">Flood probability · next 24 hours</span>
+            <strong id="probabilityValue">—%</strong>
+            <div class="probability-meter" id="probabilityMeter" role="meter" aria-label="Forecast probability" aria-valuemin="0" aria-valuemax="100" hidden><span id="probabilityMeterFill"></span></div>
+            <span id="probabilityStatus">Loading backend forecast…</span>
+          </div>
+          <p class="probability-disclaimer" id="probabilityDisclaimer">Research estimate only. This is not an official warning or a neighborhood flood probability.</p>
+        </section>
+
         <section class="risk-card bihar-status-card" id="selectedRiskCard" data-risk="stale" aria-labelledby="selectedRiskDistrict">
           <div class="risk-card-topline">
             <div>
@@ -240,6 +263,6 @@
   <script src="/assistant-voice.js"></script>
   <script src="/bihar-live-map-details.js"></script>
   <script src="/bihar-live.js"></script>
-  <script src="/flood-discharge-panel.js"></script>
+  <script src="/probability-selector.js"></script>
 </body>
 </html>
