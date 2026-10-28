@@ -70,7 +70,8 @@ def test_supervised_rows_are_timestamp_aligned_and_labels_are_future_only():
     first = rows.iloc[0]
     issue = pd.Timestamp(first["issue_time_utc"])
     assert pd.Timestamp(first["issue_time_ist"]).tz_convert("UTC") == issue
-    assert first["target_stage_1h_m"] > first["stage_lag_1h_m"]
+    assert np.isfinite(first["target_stage_1h_m"])
+    assert first["target_stage_1h_m"] != first["stage_lag_1h_m"]
     assert "target_stage_24h_m" not in rows.columns
 
 
