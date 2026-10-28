@@ -13,7 +13,7 @@ def test_seed_external_event_ledger_has_provenance_and_explicit_match_status():
     assert all(row["source_url"].startswith("https://") for row in rows)
     assert all(row["matching_status"] == "not_spatiotemporally_matched" for row in rows)
     assert all(row["station_level_match_ready"] == "false" for row in rows)
-    assert any("NRSC" in row["source_org"] and "2025-10-06" in row["source_observation_time_ist"] for row in rows)
+    assert any("National Remote Sensing Centre" in row["source_org"] and "2025-10-06" in row["source_observation_time_ist"] for row in rows)
 
 
 def test_no_seed_event_is_eligible_for_independent_scoring():
