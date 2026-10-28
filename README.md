@@ -88,6 +88,20 @@ The trainer's deduplicated episode proxy found **33 observed gauge warning-level
 
 Run metadata, including the input CSV SHA-256, full reliability bins, station-level metrics, split counts, and threshold, is stored in `models/research/cwc_bihar_gauge_24h_stage_research.metadata.json`. The training workflow also publishes the source snapshot and holdout predictions as a short-lived GitHub Actions artifact for reproducibility.
 
+## Rainfall and river-stage forecast pipeline (research baseline)
+
+The current forecast additions are deliberately conservative and do not claim a newly trained ML model:
+
+- `/api/bihar-live/data-quality?district=patna` reports CWC stage freshness and independent Open-Meteo rainfall/discharge source status, timestamps, cache age when available, and units.
+- `/api/bihar-live/forecast/rainfall?district=patna` exposes the Open-Meteo provider forecast, hourly rainfall, and derived 1/3/6/12/24-hour accumulation totals. This is a numerical weather forecast from the provider, not a locally trained rainfall model or an independently validated Bihar rainfall prediction.
+- `/api/bihar-live/forecast/river-stage?district=patna` fits a simple least-squares trend to recent CWC gauge readings and extrapolates 1/3/6/12 hours. It requires at least three distinct readings spanning two hours and otherwise returns an explicit unavailable state. This is a transparent baseline, not a trained ML model, and its in-sample residual RMSE is not a confidence interval.
+- The dashboard keeps rainfall accumulation, observed CWC stage, and Open-Meteo discharge in separate units and panels. Stage (m) and discharge (flow per unit time) are not averaged together. Patna Gandhighat and Muzaffarpur Sikandarpur are not assumed to be an upstream/downstream pair.
+- The public source adapters use bounded in-process caches and return source timestamps/quality metadata where available. A serverless process can restart, so this is not a durable historical data warehouse.
+
+### Requirements before training a new ML forecast
+
+Persist timestamped source snapshots with source/model version, coordinate/grid mapping, units, and quality flags. Build aligned training rows with future rainfall-gauge totals and future CWC stage labels at each horizon; avoid leakage by splitting chronologically by event/time, not randomly. Compare persistence and trend baselines against any LightGBM/XGBoost model on a held-out season and independent events. Report MAE/RMSE for stage and rainfall, event precision/recall and lead time for threshold crossings, calibration and false-alarm rates where appropriate. Until these steps are complete, forecast outputs remain research-only and are not official warnings.
+
 ## Separate prototype scaffold endpoints
 
 The same Flask app also exposes `/api/bihar-live/health`, `/sources`, `/fusion`, `/weather`, and `/model/evaluation`.
