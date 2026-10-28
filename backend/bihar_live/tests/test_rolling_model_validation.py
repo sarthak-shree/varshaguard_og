@@ -72,7 +72,7 @@ def test_future_horizon_coverage_requires_start_end_and_bounded_gaps():
     late_start = issue + np.arange(5, 25, dtype=np.int64) * hour
     assert not future_horizon_is_covered(issue, late_start)
 
-    long_gap = np.concatenate([issue + np.arange(1, 10, dtype=np.int64) * hour,
+    long_gap = np.concatenate([issue + np.arange(1, 11, dtype=np.int64) * hour,
                                issue + np.arange(17, 25, dtype=np.int64) * hour])
     assert not future_horizon_is_covered(issue, long_gap)
 
