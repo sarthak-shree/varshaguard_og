@@ -31,6 +31,14 @@ def _unavailable(district: str, message: str) -> dict:
     }
 
 
+def _valid_probability(value) -> bool:
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return math.isfinite(number) and 0 <= number <= 100
+
+
 def get_rainfall_forecast(district: str, force_refresh: bool = False) -> dict:
     """Return a live 24-hour point rainfall outlook, separate from flood probability."""
     key = str(district).strip().lower()
@@ -114,6 +122,33 @@ def get_rainfall_forecast(district: str, force_refresh: bool = False) -> dict:
                     "forecast_start_ist": selected[0][0].isoformat(timespec="minutes"),
                     "forecast_end_ist": end.isoformat(timespec="minutes"),
                     "fetched_at_ist": fetched_at.isoformat(timespec="seconds"),
+                    "hourly_forecast": [
+                        {
+                            "time_ist": stamp.isoformat(timespec="minutes"),
+                            "precipitation_mm": round(rain, 2),
+                            "precipitation_probability_pct": (
+                                round(float(probabilities[index]))
+                                if isinstance(probabilities, list)
+                                and index < len(probabilities)
+                                and probabilities[index] is not None
+                                and _valid_probability(probabilities[index])
+                                else None
+                            ),
+                        }
+                        for index, (stamp, rain) in enumerate(selected)
+                    ],
+                    "data_quality": {
+                        "valid_hourly_values": len(selected),
+                        "expected_minimum_hourly_values": 18,
+                        "status": "usable" if len(selected) >= 18 else "partial",
+                        "provider_timezone": payload.get("timezone", "Asia/Kolkata"),
+                    },
+                    "forecast_model": "Open-Meteo provider numerical weather forecast; not a locally trained ML model",
+                    "validation": {
+                        "independent_local_rain_gauge_validation": False,
+                        "status": "provider_forecast_context_not_locally_validated",
+                    },
+                    "operational": False,
                     "note": "Weather-model rainfall outlook for the CWC gauge location. It is not a flood probability and is not included in the CWC risk model percentage.",
                 }
 
