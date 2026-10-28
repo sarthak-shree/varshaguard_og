@@ -1,0 +1,44 @@
+name: Public hydrology data snapshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/historical-forecast-ml-pipeline
+    paths:
+      - "scripts/fetch_public_sources.py"
+      - "scripts/normalize_public_sources.py"
+      - "scripts/process_public_sources.py"
+      - "scripts/evaluate_independent_events.py"
+      - "backend/bihar_live/historical_pipeline.py"
+      - ".github/workflows/public-data-pipeline.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  collect-normalize-evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install data pipeline dependencies
+        run: python -m pip install --upgrade pip pandas scikit-learn joblib
+      - name: Download official source snapshots and inspect CSV schemas
+        run: python scripts/fetch_public_sources.py --all
+      - name: Normalize source files, quantify coverage, and evaluate eligible targets
+        run: python scripts/process_public_sources.py
+      - name: Preserve raw snapshots and reproducible reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: varshaguard-public-data-${{ github.run_id }}
+          path: |
+            data/raw/public_sources/
+            data/processed/public_sources/
+          if-no-files-found: warn
+          retention-days: 30
