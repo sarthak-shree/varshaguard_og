@@ -16,3 +16,27 @@ jobs:
         run: pip install -r requirements.txt pytest
       - name: Run tests
         run: pytest -q
+      - name: Install historical data downloader
+        if: github.event_name == 'pull_request' && github.head_ref == 'p0/model-validation-and-docs'
+        run: pip install duckdb
+      - name: Fetch current CWC historical archive
+        if: github.event_name == 'pull_request' && github.head_ref == 'p0/model-validation-and-docs'
+        run: python backend/bihar_live/research/fetch_cwc_bihar_hourly.py
+      - name: Retrain and evaluate CWC model
+        if: github.event_name == 'pull_request' && github.head_ref == 'p0/model-validation-and-docs'
+        run: |
+          python backend/bihar_live/research/train_cwc_gauge_rolling_24h.py | tee /tmp/cwc-model-training-summary.json
+          cat /tmp/cwc-model-training-summary.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload reproducible training outputs
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'p0/model-validation-and-docs'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cwc-bihar-rolling-model-p0
+          path: |
+            data/bihar_live/research/cwc_bihar_gauge_hourly.csv
+            data/bihar_live/research/cwc_bihar_gauge_hourly.metadata.json
+            data/bihar_live/research/cwc_bihar_gauge_24h_stage_research_holdout_predictions.csv
+            models/research/cwc_bihar_gauge_24h_stage_research.joblib
+            models/research/cwc_bihar_gauge_24h_stage_research.metadata.json
+          if-no-files-found: warn
+          retention-days: 14
