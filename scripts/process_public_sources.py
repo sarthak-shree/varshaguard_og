@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 import pandas as pd
 
 from scripts.fetch_public_sources import OUT as RAW_DIR, SOURCES
-from scripts.normalize_public_sources import normalize_public_csv
+from scripts.normalize_public_sources import align_observations, normalize_public_csv
 from backend.bihar_live.historical_pipeline import build_supervised_rows, train_and_evaluate
 from scripts.evaluate_independent_events import evaluate_events
 
@@ -34,6 +34,7 @@ def run() -> dict:
     manifest_path = RAW_DIR / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {"downloads": {}}
     normalized_frames = []
+    aligned_long_frames = []
     statuses = []
     for source_id, (agency, variable, unit) in SOURCE_CONFIG.items():
         raw_path = RAW_DIR / f"{source_id}.csv"
@@ -44,10 +45,24 @@ def run() -> dict:
             normalized, coverage = normalize_public_csv(
                 raw_path, source_id, agency, variable, unit, source_kind="observed"
             )
+            aligned, alignment_report = align_observations(normalized)
+            coverage["hourly_alignment"] = alignment_report
             normalized.to_csv(OUTPUT / f"{source_id}_observations.csv", index=False)
+            aligned.to_csv(OUTPUT / f"{source_id}_hourly_alignment.csv", index=False)
             (OUTPUT / f"{source_id}_coverage.json").write_text(json.dumps(coverage, indent=2), encoding="utf-8")
             normalized_frames.append(normalized)
             statuses.append({"source_id": source_id, "status": "normalized", **coverage})
+            for variable in ("rainfall_mm", "stage_m"):
+                if variable not in aligned:
+                    continue
+                label_rows = aligned[["station_id", "observed_at", variable]].dropna(subset=[variable]).rename(columns={variable: "value"})
+                if not label_rows.empty:
+                    label_rows["variable"] = variable
+                    label_rows["quality_flag"] = "good"
+                    label_rows["source"] = f"{agency}:{source_id}:hourly-last"
+                    label_rows["unit"] = unit
+                    label_rows["source_station_id"] = label_rows["station_id"]
+                    aligned_long_frames.append(label_rows[["station_id", "source_station_id", "observed_at", "source", "variable", "value", "unit", "quality_flag"]])
         except Exception as exc:
             statuses.append({
                 "source_id": source_id, "status": "schema_review_required",
@@ -66,7 +81,13 @@ def run() -> dict:
     if normalized_frames:
         combined = pd.concat(normalized_frames, ignore_index=True)
         combined.to_csv(OUTPUT / "all_observations.csv", index=False)
-        supervised = build_supervised_rows(combined)
+        if aligned_long_frames:
+            aligned_long = pd.concat(aligned_long_frames, ignore_index=True)
+            aligned_long.to_csv(OUTPUT / "all_aligned_hourly_observations.csv", index=False)
+            supervised = build_supervised_rows(aligned_long)
+        else:
+            aligned_long = pd.DataFrame()
+            supervised = pd.DataFrame()
         if not supervised.empty:
             supervised.to_csv(OUTPUT / "supervised_rows.csv", index=False)
         training = train_and_evaluate(supervised, OUTPUT / "models")
@@ -104,6 +125,7 @@ def run() -> dict:
         "source_count": len(statuses),
         "normalized_source_count": sum(item["status"] == "normalized" for item in statuses),
         "observation_rows": int(len(combined)),
+        "aligned_hourly_observation_rows": int(len(aligned_long)) if "aligned_long" in locals() else 0,
         "station_count": int(combined["station_id"].nunique()) if not combined.empty else 0,
         "supervised_issue_rows": int(len(supervised)),
         "training": training,
