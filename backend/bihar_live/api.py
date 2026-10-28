@@ -77,6 +77,20 @@ def public_weather():
     return response
 
 
+@bp.get("/flood-discharge")
+def flood_discharge():
+    """Return Open-Meteo daily discharge context, separate from model probability."""
+    district = request.args.get("district", "patna").strip().lower()
+    if district not in SUPPORTED_DISTRICTS:
+        return jsonify({"success": False, "error": "Choose Patna or Muzaffarpur."}), 400
+
+    from .open_meteo_flood import get_river_discharge_forecast
+
+    response = jsonify(get_river_discharge_forecast(district))
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
+
+
 @bp.get("/model/evaluation")
 def evaluation():
     rows = generate_observations(hours=96, seed=26071)
