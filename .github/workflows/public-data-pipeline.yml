@@ -12,16 +12,6 @@ on:
       - "scripts/evaluate_independent_events.py"
       - "backend/bihar_live/historical_pipeline.py"
       - ".github/workflows/public-data-pipeline.yml"
-  push:
-    branches:
-      - feat/historical-forecast-ml-pipeline
-    paths:
-      - "scripts/fetch_public_sources.py"
-      - "scripts/normalize_public_sources.py"
-      - "scripts/process_public_sources.py"
-      - "scripts/evaluate_independent_events.py"
-      - "backend/bihar_live/historical_pipeline.py"
-      - ".github/workflows/public-data-pipeline.yml"
 
 permissions:
   contents: read
