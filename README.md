@@ -44,21 +44,21 @@ See [rolling-model training notes](backend/bihar_live/research/README.md) for da
 
 ### Latest reproducible holdout run (28 October 2026)
 
-The CWC hourly archive was fetched and the rolling trainer completed in GitHub Actions after applying the 23-hour future-coverage rule. The selected candidate was **Random Forest**, with a decision threshold of **0.160194** selected on 2025 validation data. The 2026 holdout contained 5,897 issue windows, of which 132 (2.24%) were positive.
+The CWC hourly archive was fetched and the rolling trainer completed in GitHub Actions with explicit future-coverage checks: at least 18 future observations, the first within 3 hours, no gap longer than 6 hours, and the final observation at least 23 hours after issue time. The selected candidate was **Random Forest**, with a decision threshold of **0.206491** selected on 2025 validation data. The 2026 holdout contained 5,884 issue windows, of which 132 (2.24%) were positive.
 
 | 2026 holdout metric | Result |
 |---|---:|
-| Precision at validation-selected threshold | 30.58% |
-| Recall at validation-selected threshold | 84.09% |
-| Average precision (PR ranking metric) | 0.5640 |
-| ROC-AUC | 0.9766 |
-| Brier score | 0.01485 |
-| Brier score for training-prevalence baseline | 0.02196 |
-| Confusion matrix (TN / FP / FN / TP) | 5,513 / 252 / 21 / 111 |
-| Expected calibration error (10 equal-width bins, occupied bins) | 0.01315 |
-| Median lead time among detected positive issue windows | 10 hours |
+| Precision at validation-selected threshold | 34.20% |
+| Recall at validation-selected threshold | 69.70% |
+| Average precision (PR ranking metric) | 0.5506 |
+| ROC-AUC | 0.9760 |
+| Brier score | 0.01506 |
+| Brier score for training-prevalence baseline | 0.02200 |
+| Confusion matrix (TN / FP / FN / TP) | 5,575 / 177 / 40 / 92 |
+| Expected calibration error (10 equal-width bins, occupied bins) | 0.01309 |
+| Median lead time among detected positive issue windows | 9 hours |
 
-The Patna Gandhighat slice had only **8 positive windows** in 352 test rows: recall was 75% (6/8) and precision was 54.5% (6/11). Muzaffarpur Sikandarpur had **zero positive test windows**, so local recall/precision cannot be estimated. The aggregate holdout includes 5,897 overlapping issue windows—not 5,897 independent flood events—and its ECE is only a coarse diagnostic. The classifier is not probability-calibrated. These results are a research backtest, not operational validation.
+The Patna Gandhighat slice had only **8 positive windows** in 351 test rows: recall was 62.5% (5/8) and precision was 55.6% (5/9). Muzaffarpur Sikandarpur had **zero positive test windows**, so local recall/precision cannot be estimated. The aggregate holdout contains overlapping issue windows—not independent flood events—and its ECE is only a coarse diagnostic. The classifier is not probability-calibrated. These results are a research backtest, not operational validation.
 
 Run metadata, including the input CSV SHA-256, full reliability bins, station-level metrics, split counts, and threshold, is stored in `models/research/cwc_bihar_gauge_24h_stage_research.metadata.json`. The training workflow also publishes the source snapshot and holdout predictions as a short-lived GitHub Actions artifact for reproducibility.
 
