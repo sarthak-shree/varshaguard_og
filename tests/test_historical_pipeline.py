@@ -122,5 +122,8 @@ def test_training_uses_validation_for_selection_and_keeps_test_reporting_separat
     assert result["selected_using"] == "validation_mae_only"
     assert result["test_rows"] >= 20
     assert "selected_model_final_test_metrics" in result
+    rainfall = report["models"]["target_rainfall_1h_mm"]
+    assert "rainfall_threshold_event_metrics" in rainfall
+    assert rainfall["rainfall_threshold_event_metrics"]["selected_model"]["threshold_definition"].startswith("95th percentile")
     assert report["operational"] is False
     assert (tmp_path / "training_evaluation.json").exists()
