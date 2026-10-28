@@ -285,6 +285,74 @@ def lead_time_summary(rows: pd.DataFrame, probability: np.ndarray, threshold: fl
     return result
 
 
+def crossing_episode_summary(rows: pd.DataFrame, probability: np.ndarray, threshold: float) -> dict:
+    """Deduplicate overlapping issue windows into observed station crossing episodes.
+
+    An episode is identified by (station, first observed warning-level crossing
+    timestamp). This is a gauge-threshold episode proxy, not a verified flood event.
+    An episode is detected when at least one issue window before that crossing
+    is predicted positive. Lead time uses the earliest such predicted issue.
+    """
+    required = {"target_station", "issue_time", "target_crossing_time", TARGET}
+    missing = sorted(required - set(rows.columns))
+    if missing:
+        raise ValueError("Missing crossing-episode columns: " + ", ".join(missing))
+    if len(rows) != len(probability):
+        raise ValueError("Rows and probability arrays must have equal length.")
+
+    work = rows[list(required)].copy()
+    work["issue_time"] = pd.to_datetime(work["issue_time"], errors="coerce")
+    work["target_crossing_time"] = pd.to_datetime(work["target_crossing_time"], errors="coerce")
+    work["predicted_positive"] = np.asarray(probability, dtype=float) >= threshold
+    work = work[
+        work[TARGET].astype(int).eq(1)
+        & work["target_crossing_time"].notna()
+        & work["target_station"].notna()
+        & work["issue_time"].notna()
+        & work["target_crossing_time"].gt(work["issue_time"])
+    ]
+
+    episodes = []
+    for (station, crossing_time), group in work.groupby(
+        ["target_station", "target_crossing_time"], sort=True, dropna=True
+    ):
+        detections = group[group["predicted_positive"]]
+        detected = not detections.empty
+        lead_hours = None
+        if detected:
+            earliest_issue = detections["issue_time"].min()
+            lead_hours = (crossing_time - earliest_issue).total_seconds() / 3600.0
+        episodes.append({
+            "station_code": str(station),
+            "crossing_time": crossing_time,
+            "detected": detected,
+            "lead_time_hours": lead_hours,
+        })
+
+    total = len(episodes)
+    detected_episodes = [episode for episode in episodes if episode["detected"]]
+    leads = [episode["lead_time_hours"] for episode in detected_episodes]
+    result = {
+        "episode_definition": "Unique (station_code, first observed warning-level crossing timestamp) among holdout issue windows.",
+        "interpretation": "Observed gauge warning-level crossing episodes, not independent or verified flood events.",
+        "observed_crossing_episodes": int(total),
+        "detected_crossing_episodes": int(len(detected_episodes)),
+        "missed_crossing_episodes": int(total - len(detected_episodes)),
+        "episode_recall": round(len(detected_episodes) / total, 6) if total else None,
+        "lead_time_unit": "hours from earliest predicted-positive issue window to first observed crossing",
+    }
+    if not leads:
+        result["lead_time_note"] = "No crossing episodes were detected; event-level lead-time distribution is unavailable."
+    else:
+        result.update({
+            "median_lead_time_hours": round(float(np.median(leads)), 3),
+            "mean_lead_time_hours": round(float(np.mean(leads)), 3),
+            "minimum_lead_time_hours": round(float(np.min(leads)), 3),
+            "maximum_lead_time_hours": round(float(np.max(leads)), 3),
+        })
+    return result
+
+
 def evaluate(y: pd.Series, probability: np.ndarray, threshold: float, baseline: float) -> dict:
     from sklearn.metrics import average_precision_score, brier_score_loss, confusion_matrix, precision_score, recall_score, roc_auc_score
     actual = y.astype(int).to_numpy()
@@ -411,6 +479,7 @@ def main() -> int:
         for code, label in FOCUS_GAUGES.items()
     }
     lead_time_metrics = lead_time_summary(test, test_probability, threshold)
+    crossing_episodes = crossing_episode_summary(test, test_probability, threshold)
 
     # Deployment artifact uses every quality-screened historical label available;
     # all published holdout metrics above come from the untouched 2026 test split.
@@ -457,6 +526,7 @@ def main() -> int:
         "decision_threshold": round(float(threshold), 6),
         "test_metrics": test_metrics, "all_station_test_metrics": station_metrics,
         "focus_gauge_test_metrics": focus_metrics, "test_detected_positive_window_lead_time": lead_time_metrics,
+        "test_crossing_episode_metrics": crossing_episodes,
         "operational_eligible": False, "loaded_by_dashboard_server": True,
         "calibration_status": "Classifier probabilities are not calibrated; reliability bins and ECE are diagnostics only. Threshold selection uses the separate 2025 validation set.",
         "warning": "Research-only estimate for CWC gauge warning-level crossing within 24 hours. Overlapping issue windows are not independent events, archived seasons and station positives are sparse, and metrics must be regenerated after changes to label rules. This is not a block/grid inundation prediction or official warning.",
@@ -467,6 +537,7 @@ def main() -> int:
                       "validation_rows": len(validation), "validation_positives": int(validation[TARGET].sum()),
                       "test_rows": len(test), "test_positives": int(test[TARGET].sum()), "test_metrics": test_metrics,
                       "focus_gauge_test_metrics": focus_metrics, "lead_time_metrics": lead_time_metrics,
+                      "crossing_episode_metrics": crossing_episodes,
                       "artifact": str(artifact), "metadata": str(metadata_path)}, indent=2))
     return 0
 
