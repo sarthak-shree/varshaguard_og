@@ -1,6 +1,6 @@
 {
   "model_name": "VarshaGuard Bihar CWC rolling 24-hour warning-level crossing research model",
-  "trained_at_utc": "2026-10-28T12:52:50+00:00",
+  "trained_at_utc": "2026-10-28T13:00:05+00:00",
   "training_source": "cwc_bihar_gauge_hourly.csv",
   "source_sha256": "9e0c6c74d8305d698d66983d5e2f622ac7aa3c1544baa1dfaab9ca62fa54e86e",
   "source_upstream": "CWC Flood Forecast System hourly observations mirrored by diagram-chasing/cwc-flood-forecasts",
