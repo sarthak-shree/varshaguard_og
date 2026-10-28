@@ -22,7 +22,9 @@ def evaluate_events(predictions: pd.DataFrame, events: pd.DataFrame, lead_hours:
         raise ValueError(f"events missing {sorted(required_events - set(events.columns))}")
     pred = predictions.copy()
     pred["issue_time"] = pd.to_datetime(pred["issue_time"], utc=True, errors="coerce")
-    pred["predicted_event"] = pred["predicted_event"].map(\n        lambda value: value if isinstance(value, bool) else str(value).strip().lower() in {"true", "1", "yes", "alert", "positive"}\n    )
+    pred["predicted_event"] = pred["predicted_event"].map(
+        lambda value: value if isinstance(value, bool) else str(value).strip().lower() in {"true", "1", "yes", "alert", "positive"}
+    )
     pred = pred.dropna(subset=["station_id", "issue_time"])
     ledger = events.copy()
     ledger["event_start"] = pd.to_datetime(ledger["event_start"], utc=True, errors="coerce")
@@ -78,10 +80,28 @@ def evaluate_events(predictions: pd.DataFrame, events: pd.DataFrame, lead_hours:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--predictions", required=True, help="CSV: station_id,issue_time,predicted_event")
-    parser.add_argument("--events", help="CSV: event_id,station_id,event_start,event_end,ground_verified,station_level_match_ready")\n    parser.add_argument("--official-ledger", help="Use the repository independent flood event ledger; non-matched records remain ineligible")
+    parser.add_argument("--events", help="CSV: event_id,station_id,event_start,event_end,ground_verified,station_level_match_ready")
+    parser.add_argument("--official-ledger", help="Use the repository independent flood event ledger; non-matched records remain ineligible")
     parser.add_argument("--output", default="data/processed/event_evaluation.json")
     args = parser.parse_args()
-    if args.official_ledger:\n        raw_events = pd.read_csv(args.official_ledger)\n        events = pd.DataFrame({\n            "event_id": raw_events.get("event_id"),\n            "station_id": raw_events.get("station_id", pd.Series([""] * len(raw_events))),\n            "event_start": raw_events.get("event_start_time_ist"),\n            "event_end": raw_events.get("event_end_time_ist"),\n            "ground_verified": raw_events.get("ground_verified", False),\n            "station_level_match_ready": raw_events.get("station_level_match_ready", False),\n        })\n        if "matching_status" in raw_events:\n            matched = raw_events["matching_status"].astype(str).str.lower().eq("matched")\n            events["station_level_match_ready"] = events["station_level_match_ready"].astype(str).str.lower().isin({"true", "1", "yes"}) & matched\n    elif args.events:\n        events = pd.read_csv(args.events)\n    else:\n        parser.error("provide --events or --official-ledger")\n    report = evaluate_events(pd.read_csv(args.predictions), events)
+    if args.official_ledger:
+        raw_events = pd.read_csv(args.official_ledger)
+        events = pd.DataFrame({
+            "event_id": raw_events.get("event_id"),
+            "station_id": raw_events.get("station_id", pd.Series([""] * len(raw_events))),
+            "event_start": raw_events.get("event_start_time_ist"),
+            "event_end": raw_events.get("event_end_time_ist"),
+            "ground_verified": raw_events.get("ground_verified", False),
+            "station_level_match_ready": raw_events.get("station_level_match_ready", False),
+        })
+        if "matching_status" in raw_events:
+            matched = raw_events["matching_status"].astype(str).str.lower().eq("matched")
+            events["station_level_match_ready"] = events["station_level_match_ready"].astype(str).str.lower().isin({"true", "1", "yes"}) & matched
+    elif args.events:
+        events = pd.read_csv(args.events)
+    else:
+        parser.error("provide --events or --official-ledger")
+    report = evaluate_events(pd.read_csv(args.predictions), events)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2), encoding="utf-8")
