@@ -52,6 +52,20 @@ def normalize_public_csv(path: str | Path, source_id: str, agency: str, variable
     if missing:
         raise ValueError(f"Unrecognized schema for {source_id}; missing fields {missing}; actual columns={list(raw.columns)}")
     station = raw[columns["station_id"]].astype("string").str.strip()
+    # NWIC telemetry tables may reuse a station name across districts. Use stable
+    # geography fields when available; retain the original station name separately.
+    normalized_columns = {_key(column): column for column in raw.columns}
+    district_code_col = normalized_columns.get("district lgd code")
+    latitude_col = normalized_columns.get("latitude")
+    longitude_col = normalized_columns.get("longitude")
+    station_identity = station.fillna("").astype(str)
+    if district_code_col:
+        district_code = raw[district_code_col].fillna("").astype(str).str.strip()
+        station_identity = station_identity + "|district_lgd=" + district_code
+    if latitude_col and longitude_col:
+        lat = pd.to_numeric(raw[latitude_col], errors="coerce").round(5).astype("string").fillna("")
+        lon = pd.to_numeric(raw[longitude_col], errors="coerce").round(5).astype("string").fillna("")
+        station_identity = station_identity + "|lat=" + lat + "|lon=" + lon
     timestamp = pd.to_datetime(raw[columns["timestamp"]], errors="coerce", dayfirst=True)
     # Naive timestamps from NWIC CSV are assumed to be IST only when explicitly documented
     # in the source manifest; output retains that assumption in provenance.
@@ -65,7 +79,11 @@ def normalize_public_csv(path: str | Path, source_id: str, agency: str, variable
     station = station.fillna("").str.strip()
     valid = station.ne("") & timestamp_utc.notna() & finite
     mapping = station_mapping or {}
-    canonical = station.map(lambda item: mapping.get(f"{source_id}:{item}", mapping.get(item, f"{source_id}:{item}")))
+    canonical = station_identity.map(
+        lambda identity: mapping.get(f"{source_id}:{identity}",
+                                     mapping.get(f"{source_id}:{station.loc[station_identity.index[station_identity.eq(identity)][0]]}", 
+                                                 mapping.get(identity, f"{source_id}:{identity}")))
+    )
     normalized = pd.DataFrame({
         "station_id": canonical[valid].astype(str),
         "source_station_id": station[valid].astype(str),
