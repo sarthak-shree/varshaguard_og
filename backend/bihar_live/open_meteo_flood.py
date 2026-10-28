@@ -134,12 +134,15 @@ def get_river_discharge_forecast(district: str, force_refresh: bool = False) -> 
             }
             # Mark the response usable only when at least one requested variable has
             # a finite value; a valid-looking timeline alone can contain null data.
+            def contains_finite_number(value):
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    return math.isfinite(value)
+                if isinstance(value, list):
+                    return any(contains_finite_number(item) for item in value)
+                return False
+
             has_values = any(
-                isinstance(values, list)
-                and any(
-                    isinstance(value, (int, float)) and math.isfinite(value)
-                    for value in values
-                )
+                contains_finite_number(values)
                 for name, values in daily_data.items()
                 if name != "time"
             )
