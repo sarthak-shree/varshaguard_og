@@ -150,6 +150,7 @@ def get_rainfall_forecast(district: str, force_refresh: bool = False) -> dict:
                     "note": "Weather-model rainfall outlook for the CWC gauge location. It is not a flood probability and is not included in the CWC risk model percentage.",
                 }
 
+    result.setdefault("cache_age_seconds", 0)
     with _cache_lock:
         _cache[key] = (time.monotonic(), dict(result))
     return result
