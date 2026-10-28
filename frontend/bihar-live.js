@@ -114,6 +114,7 @@
     const meter = $("selectedRiskMeter");
     const fill = $("selectedRiskFill");
     const scale = $("selectedRiskScale");
+    if (!meter || !fill || !scale) return;
     if (!finiteNumber(percent)) {
       meter.hidden = true;
       scale.hidden = true;
@@ -258,14 +259,16 @@
       ? (finiteNumber(prediction.risk_percentage) ? Number(prediction.risk_percentage) : Number(prediction.model_probability) * 100)
       : null;
 
-    card.dataset.risk = state;
-    card.dataset.state = prediction?.status || "unavailable";
+    if (card) {
+      card.dataset.risk = state;
+      card.dataset.state = prediction?.status || "unavailable";
+    }
+    renderStageTrend(prediction);
     setText("selectedRiskDistrict", districtLabel(district.name));
     setText("selectedRiskGauge", prediction?.station_name ? t("gaugeNamed", "CWC gauge: {name}", { name: prediction.station_name }) : t("gaugeAwaiting", "CWC gauge: awaiting a recent reading"));
     setText("selectedRiskWindow", prediction?.forecast_end_ist
       ? t("nextWindow", "Next 24 hours · through {time}", { time: formatTime(prediction.forecast_end_ist) })
       : t("nextAfterReading", "Next 24 hours after the latest CWC reading"));
-    renderStageTrend(prediction);
     setText("selectedRiskStage", finiteNumber(prediction?.current_stage_m) ? Number(prediction.current_stage_m).toFixed(2) + " m" : "—");
     setText("selectedRiskGap", finiteNumber(prediction?.margin_to_warning_m)
       ? t(Number(prediction.margin_to_warning_m) < 0 ? "distanceAbove" : "distanceBelow", "{amount} m " + (Number(prediction.margin_to_warning_m) < 0 ? "above" : "below"), { amount: Math.abs(Number(prediction.margin_to_warning_m)).toFixed(2) })
@@ -284,13 +287,15 @@
       : t("coverageWaiting", "Model input coverage: waiting for data"));
 
     const badge = $("selectedRiskBadge");
-    badge.dataset.state = state;
-    if (observedDanger) badge.textContent = "▲ " + t("badgeDanger", "DANGER OBSERVED");
-    else if (observedWarning) badge.textContent = "▲ " + t("badgeWarning", "WARNING OBSERVED");
-    else if (prediction?.status === "predicted") badge.textContent = (state === "low" ? "✓ " : state === "medium" ? "◆ " : "▲ ") + t("badgeModel", "{risk} MODEL RISK", { risk: riskWord(state).toUpperCase() });
-    else if (prediction?.status === "stale") badge.textContent = "◷ " + t("badgeStale", "STALE DATA");
-    else if (prediction?.status === "insufficient_inputs") badge.textContent = "• " + t("badgeInsufficient", "NOT ENOUGH DATA");
-    else badge.textContent = "— " + t("badgeUnavailable", "NO LIVE READING");
+    if (badge) {
+      badge.dataset.state = state;
+      if (observedDanger) badge.textContent = "▲ " + t("badgeDanger", "DANGER OBSERVED");
+      else if (observedWarning) badge.textContent = "▲ " + t("badgeWarning", "WARNING OBSERVED");
+      else if (prediction?.status === "predicted") badge.textContent = (state === "low" ? "✓ " : state === "medium" ? "◆ " : "▲ ") + t("badgeModel", "{risk} MODEL RISK", { risk: riskWord(state).toUpperCase() });
+      else if (prediction?.status === "stale") badge.textContent = "◷ " + t("badgeStale", "STALE DATA");
+      else if (prediction?.status === "insufficient_inputs") badge.textContent = "• " + t("badgeInsufficient", "NOT ENOUGH DATA");
+      else badge.textContent = "— " + t("badgeUnavailable", "NO LIVE READING");
+    }
 
     if (finiteNumber(probability)) {
       setText("selectedRiskProbability", Number(probability).toFixed(1) + "%");
@@ -400,6 +405,84 @@
       }
     }
   }
+  function renderDischargeContext(districtKey) {
+    const prediction = (currentData.live?.predictions || []).find(
+      (item) => String(item.district || "").toLowerCase() === String(DISTRICTS[districtKey]?.name || "").toLowerCase()
+    );
+    const history = (prediction?.stage_history || [])
+      .filter((item) => finiteNumber(item.stage_m) && item.timestamp_ist)
+      .map((item) => ({ value: Number(item.stage_m), time: String(item.timestamp_ist) }))
+      .sort((a, b) => new Date(a.time) - new Date(b.time));
+    const stageValues = history.map((item) => item.value);
+    const stageAverage = stageValues.length >= 2
+      ? stageValues.reduce((sum, value) => sum + value, 0) / stageValues.length
+      : null;
+    setText("cwcAverageStage", stageAverage === null ? "—" : stageAverage.toFixed(2) + " m");
+    setText("cwcStageWindow", history.length >= 2
+      ? history.length + " quality-checked readings in the latest 24-hour history"
+      : "Not enough recent CWC readings to calculate an average");
+    const stageChange = history.length >= 2 ? history[history.length - 1].value - history[0].value : null;
+    setText("cwcStageTrend", stageChange === null ? "Trend: insufficient observations" :
+      "Observed change: " + (stageChange > 0.02 ? "rose " : stageChange < -0.02 ? "fell " : "was nearly steady ") +
+      (Math.abs(stageChange) < 0.03 ? "" : Math.abs(stageChange).toFixed(2) + " m") + " across the available readings");
+
+    const discharge = currentData.discharge?.[districtKey];
+    const daily = discharge?.daily || {};
+    const times = Array.isArray(daily.time) ? daily.time : [];
+    const values = Array.isArray(daily.river_discharge_mean) ? daily.river_discharge_mean
+      : Array.isArray(daily.river_discharge) ? daily.river_discharge : [];
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit"
+    }).format(new Date());
+    const forecastValues = times.map((day, index) => ({ day, value: values[index] }))
+      .filter((item) => item.day >= today && finiteNumber(item.value));
+    const dischargeAverage = forecastValues.length
+      ? forecastValues.reduce((sum, item) => sum + Number(item.value), 0) / forecastValues.length
+      : null;
+    const units = discharge?.units || {};
+    const unit = units.river_discharge_mean || units.river_discharge || "provider units";
+    setText("openMeteoAverageDischarge", dischargeAverage === null ? "—" : dischargeAverage.toFixed(1) + " " + unit);
+    setText("openMeteoDischargeWindow", forecastValues.length
+      ? "Mean of " + forecastValues.length + " daily " + (units.river_discharge_mean ? "mean" : "discharge") + " values from today onward"
+      : (discharge?.message || "No numeric Open-Meteo discharge forecast is available"));
+    const dischargeChange = forecastValues.length >= 2
+      ? Number(forecastValues[forecastValues.length - 1].value) - Number(forecastValues[0].value) : null;
+    setText("openMeteoDischargeTrend", dischargeChange === null ? "Trend: insufficient forecast values" :
+      "Forecast change: " + (dischargeChange > 0 ? "rising " : dischargeChange < 0 ? "falling " : "nearly steady ") +
+      (Math.abs(dischargeChange) < 0.001 ? "" : Math.abs(dischargeChange).toFixed(1) + " " + unit) + " from first to last displayed day");
+    const status = $("dischargeContextStatus");
+    if (status) status.textContent = stageAverage !== null && dischargeAverage !== null ? "Both sources" :
+      stageAverage !== null ? "CWC only" : dischargeAverage !== null ? "Open-Meteo only" : "Waiting";
+    setText("dischargeContextNote", "CWC average: " + (stageAverage === null ? "not available" : stageAverage.toFixed(2) + " m") +
+      ". Open-Meteo average discharge: " + (dischargeAverage === null ? "not available" : dischargeAverage.toFixed(1) + " " + unit) +
+      ". These are separate averages, not a combined number: metres of river stage and discharge flow are different physical quantities. Patna and Muzaffarpur are displayed as separate focus gauges, not assumed to be an upstream/downstream pair. The existing ML model estimates CWC warning-level crossing from gauge history and rainfall features; it is not trained to convert discharge into stage.");
+  }
+
+  async function loadDischargeContext(districtKey) {
+    if (!DISTRICTS[districtKey]) return;
+    currentData.discharge ||= {};
+    const existing = currentData.discharge[districtKey];
+    if (existing?.fetched_at_utc) {
+      const age = (Date.now() - new Date(existing.fetched_at_utc).getTime()) / 1000;
+      if (Number.isFinite(age) && age >= 0 && age < 15 * 60) {
+        if (districtKey === $("districtSelect").value) renderDischargeContext(districtKey);
+        return;
+      }
+    }
+    currentData.dischargeLoading ||= {};
+    if (currentData.dischargeLoading[districtKey]) return;
+    currentData.dischargeLoading[districtKey] = true;
+    try {
+      currentData.discharge[districtKey] = await getJson("/api/bihar-live/flood-discharge?district=" + encodeURIComponent(districtKey));
+      currentData.discharge[districtKey].fetched_at_utc ||= new Date().toISOString();
+    } catch (error) {
+      currentData.discharge[districtKey] = { available: false, message: error.message };
+    } finally {
+      delete currentData.dischargeLoading[districtKey];
+      if (districtKey === $("districtSelect").value) renderDischargeContext(districtKey);
+    }
+  }
+
   function makePopup(prediction) {
     const root = document.createElement("div");
     const title = document.createElement("strong");
@@ -463,6 +546,7 @@
     renderMap(predictions);
     updateSelectedRiskCard();
     renderSources(currentData.live, currentData.weather?.[$("districtSelect").value]);
+    renderDischargeContext($("districtSelect").value);
     selectDistrict(false);
     clearError();
   }
@@ -472,6 +556,7 @@
       const data = await getJson(API);
       updateDashboard(data);
       loadWeatherForecast($("districtSelect").value);
+      loadDischargeContext($("districtSelect").value);
       if (!data.available) showError(data.error || "CWC live data is currently unavailable.");
     } catch (error) {
       showError(error.message);
@@ -484,6 +569,7 @@
       updateSelectedRiskCard();
       renderSources(currentData.live, currentData.weather?.[$("districtSelect").value]);
       loadWeatherForecast($("districtSelect").value);
+      loadDischargeContext($("districtSelect").value);
     }
   }
   function setupMap() {
@@ -542,6 +628,7 @@
           $("districtSelect").value = nearest.key;
           selectDistrict(false);
           loadWeatherForecast(nearest.key);
+          loadDischargeContext(nearest.key);
           map.setView(point, 11, { animate: true });
           clearError();
         } else {
@@ -762,6 +849,7 @@
     $("districtSelect").addEventListener("change", () => {
       selectDistrict();
       loadWeatherForecast($("districtSelect").value);
+      loadDischargeContext($("districtSelect").value);
     });
     $("locateButton").addEventListener("click", useMyLocation);
     $("mapRefreshButton").addEventListener("click", () => selectDistrict());

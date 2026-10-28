@@ -294,3 +294,13 @@ body.bihar-live-page .topbar-assistant-btn{min-height:44px;padding:9px 12px;bord
 
 .bihar-live-page .leaflet-control-zoom a{width:40px;height:40px;line-height:40px;font-size:22px}
 @media(max-width:520px){.bihar-live-page .leaflet-control-zoom a{width:42px;height:42px;line-height:42px}}
+
+/* Separate river-stage and discharge summaries; units intentionally remain distinct. */
+.discharge-context-panel{margin-top:16px;min-width:0}
+.discharge-context-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.discharge-context-metric{display:flex;flex-direction:column;gap:7px;min-width:0;padding:16px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(135deg,#f8fbfc,#eef7f5)}
+.discharge-context-metric>span{color:var(--muted);font-size:12px;line-height:1.4}
+.discharge-context-metric>strong{color:var(--text);font-size:clamp(20px,3vw,28px);line-height:1.15;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.discharge-context-metric>small{color:var(--muted);font-size:11px;line-height:1.45}
+.discharge-context-note{margin:12px 0 0;font-size:11px;line-height:1.55}
+@media(max-width:620px){.discharge-context-grid{grid-template-columns:1fr}.discharge-context-metric{padding:13px}}

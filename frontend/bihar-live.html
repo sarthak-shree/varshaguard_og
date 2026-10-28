@@ -39,6 +39,7 @@
   <main class="layout">
     <section class="overview-grid bihar-overview">
       <div class="left-column">
+    <div class="probability-top-controls">
         <section class="panel selector-panel">
           <div class="field">
             <label for="districtSelect">Choose a district</label>
@@ -49,51 +50,29 @@
           </div>
           <button id="locateButton" class="assistant-open-btn bihar-locate" type="button">Show my location</button>
         </section>
-
-        <section class="risk-card bihar-status-card" id="selectedRiskCard" data-risk="stale" aria-labelledby="selectedRiskDistrict">
-          <div class="risk-card-topline">
-            <div>
-              <p class="small-title">24-HOUR RIVER GAUGE OUTLOOK</p>
-              <h2 id="selectedRiskDistrict">Patna</h2>
-            </div>
-            <div id="selectedRiskBadge" class="risk-trend" data-state="stale">Loading</div>
+        <section class="panel probability-selector-card" id="probabilitySelectorCard" aria-labelledby="probabilityTitle">
+          <div class="probability-heading">
+            <p class="small-title">NEXT 24 HOURS</p>
+            <h2 id="probabilityTitle">Early-warning probability</h2>
+            <p>Choose a forecast type to see the percentage returned by the backend.</p>
           </div>
-          <p id="selectedRiskGauge" class="selected-risk-gauge">CWC gauge: Gandhighat</p>
-          <p id="selectedRiskWindow" class="selected-risk-window">Forecast window: next 24 hours after the latest CWC reading</p>
-          <div class="risk-card-probability">
-            <div class="risk-card-probability-header">
-              <span id="selectedRiskProbabilityLabel">Chance this gauge reaches the CWC warning line in the next 24 hours</span>
-              <strong id="selectedRiskProbability">—</strong>
-            </div>
-            <div id="selectedRiskMeter" class="risk-card-bar" role="meter" aria-label="24-hour gauge warning risk" aria-valuemin="0" aria-valuemax="100" hidden>
-              <div id="selectedRiskFill" class="risk-card-bar-fill"></div>
-            </div>
-            <div class="risk-card-bar-scale" id="selectedRiskScale" hidden><span>0%</span><span>50%</span><span>100%</span></div>
+          <div class="probability-options" role="group" aria-label="Choose probability type">
+            <button type="button" class="probability-option is-selected" data-forecast-type="flood" aria-pressed="true">
+              <span aria-hidden="true">〰</span><strong>Flood</strong><small>Gauge warning-level risk</small>
+            </button>
+            <button type="button" class="probability-option" data-forecast-type="heavy_rainfall" aria-pressed="false">
+              <span aria-hidden="true">☂</span><strong>Heavy Rainfall</strong><small>Rain forecast context</small>
+            </button>
           </div>
-          <div class="selected-risk-data-strip" aria-live="polite">
-            <span id="selectedRiskFreshness">Latest CWC reading: waiting</span>
-            <span id="selectedRiskCoverage">Model input coverage: waiting</span>
+          <div class="probability-result" aria-live="polite">
+            <span id="probabilityResultLabel">Flood probability · next 24 hours</span>
+            <strong id="probabilityValue">—%</strong>
+            <div class="probability-meter" id="probabilityMeter" role="meter" aria-label="Forecast probability" aria-valuemin="0" aria-valuemax="100" hidden><span id="probabilityMeterFill"></span></div>
+            <span id="probabilityStatus">Loading backend forecast…</span>
           </div>
-          <p id="selectedRiskMessage" class="selected-risk-message">Waiting for live river readings.</p>
-          <p class="selected-risk-disclaimer">Research estimate only — not an official alert or a street, home, or neighborhood flood probability.</p>
-          <div class="risk-meta selected-risk-meta">
-            <div><span>Rain forecast · next 24h</span><strong id="selectedRiskRainForecast">Loading</strong></div>
-            <div><span>Latest river level</span><strong id="selectedRiskStage">—</strong></div>
-            <div><span>Distance to warning line</span><strong id="selectedRiskGap">—</strong></div>
-          </div>
-          <p id="selectedRiskWeatherNote" class="selected-risk-weather-note">The rainfall outlook is context only; it is not included in the model percentage.</p>
-          <details class="selected-risk-details">
-            <summary>How to read this estimate</summary>
-            <p class="selected-risk-how">This percentage estimates whether the selected river gauge may reach its CWC warning line in the next 24 hours. It is not a flood probability for a particular street or home.</p>
-            <a class="selected-risk-source" href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Rainfall context source: Open-Meteo ↗</a>
-            <div class="selected-risk-thresholds">
-              <div><span>Warning level</span><strong id="selectedRiskWarning">—</strong></div>
-              <div><span>Danger level</span><strong id="selectedRiskDanger">—</strong></div>
-              <div><span>Observed rain · 24h</span><strong id="selectedRiskObservedRain">—</strong></div>
-            </div>
-            <small id="selectedRiskQuality">Waiting for data quality details.</small>
-          </details>
+          <p class="probability-disclaimer" id="probabilityDisclaimer">Research estimate only. This is not an official warning or a neighborhood flood probability.</p>
         </section>
+    </div>
 
       </div>
 
@@ -132,6 +111,30 @@
       </div>
     </section>
 
+        <section class="panel discharge-context-panel" aria-labelledby="dischargeContextTitle">
+          <div class="panel-heading-row">
+            <div>
+              <h3 id="dischargeContextTitle">River level &amp; discharge context</h3>
+              <span>CWC observations and Open-Meteo discharge forecast · shown separately</span>
+            </div>
+            <span id="dischargeContextStatus" class="health-badge">Loading</span>
+          </div>
+          <div class="discharge-context-grid">
+            <article class="discharge-context-metric">
+              <span>Average observed CWC level</span>
+              <strong id="cwcAverageStage">—</strong>
+              <small id="cwcStageWindow">Waiting for recent gauge observations</small>
+              <small id="cwcStageTrend">Trend: waiting for observations</small>
+            </article>
+            <article class="discharge-context-metric">
+              <span>Average forecast river discharge</span>
+              <strong id="openMeteoAverageDischarge">—</strong>
+              <small id="openMeteoDischargeWindow">Waiting for Open-Meteo discharge forecast</small>
+              <small id="openMeteoDischargeTrend">Trend: waiting for forecast values</small>
+            </article>
+          </div>
+          <p class="plain-text discharge-context-note" id="dischargeContextNote">CWC river level is measured in metres; Open-Meteo discharge is measured in its published flow units. They are not averaged together because they are different physical quantities. These two gauges are not assumed to be an upstream/downstream pair.</p>
+        </section>
         <section class="panel stage-trend-panel" aria-labelledby="stageTrendTitle">
           <div class="panel-heading-row">
             <div>
@@ -240,5 +243,6 @@
   <script src="/assistant-voice.js"></script>
   <script src="/bihar-live-map-details.js"></script>
   <script src="/bihar-live.js"></script>
+  <script src="/probability-selector.js"></script>
 </body>
 </html>
