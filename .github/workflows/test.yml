@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,16 +20,30 @@ jobs:
       - name: Run tests
         run: pytest -q
       - name: Install historical data downloader
-        if: github.ref == 'refs/heads/p0/model-validation-and-docs'
+        if: github.ref == 'refs/heads/p0/model-validation-and-docs' && !contains(github.event.head_commit.message, '[skip cwc retrain]')
         run: pip install duckdb
       - name: Fetch current CWC historical archive
-        if: github.ref == 'refs/heads/p0/model-validation-and-docs'
+        if: github.ref == 'refs/heads/p0/model-validation-and-docs' && !contains(github.event.head_commit.message, '[skip cwc retrain]')
         run: python backend/bihar_live/research/fetch_cwc_bihar_hourly.py
       - name: Retrain and evaluate CWC model
-        if: github.ref == 'refs/heads/p0/model-validation-and-docs'
+        if: github.ref == 'refs/heads/p0/model-validation-and-docs' && !contains(github.event.head_commit.message, '[skip cwc retrain]')
         run: |
           python backend/bihar_live/research/train_cwc_gauge_rolling_24h.py | tee /tmp/cwc-model-training-summary.json
           cat /tmp/cwc-model-training-summary.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Commit regenerated CWC model and metadata
+        if: github.ref == 'refs/heads/p0/model-validation-and-docs' && !contains(github.event.head_commit.message, '[skip cwc retrain]')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add models/research/cwc_bihar_gauge_24h_stage_research.joblib models/research/cwc_bihar_gauge_24h_stage_research.metadata.json
+          if git diff --cached --quiet; then
+            echo 'Regenerated model and metadata are unchanged.'
+          else
+            git commit -m 'Refresh CWC research model and metrics [skip cwc retrain]'
+            git push origin HEAD:p0/model-validation-and-docs
+          fi
       - name: Upload reproducible training outputs
         if: always() && github.ref == 'refs/heads/p0/model-validation-and-docs'
         uses: actions/upload-artifact@v4
