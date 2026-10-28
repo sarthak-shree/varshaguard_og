@@ -96,11 +96,16 @@ def get_rainfall_forecast(district: str, force_refresh: bool = False) -> dict:
                     rain = float(precipitation[index])
                     if not math.isfinite(rain) or rain < 0:
                         continue
-                    selected.append((forecast_time, rain))
+                    chance = None
                     if isinstance(probabilities, list) and index < len(probabilities) and probabilities[index] is not None:
-                        chance = float(probabilities[index])
-                        if 0 <= chance <= 100:
-                            peak_probability = chance if peak_probability is None else max(peak_probability, chance)
+                        try:
+                            candidate = float(probabilities[index])
+                            if math.isfinite(candidate) and 0 <= candidate <= 100:
+                                chance = candidate
+                                peak_probability = chance if peak_probability is None else max(peak_probability, chance)
+                        except (TypeError, ValueError, OverflowError):
+                            chance = None
+                    selected.append((forecast_time, rain, chance))
                 except (IndexError, TypeError, ValueError, OverflowError):
                     continue
 
@@ -115,9 +120,9 @@ def get_rainfall_forecast(district: str, force_refresh: bool = False) -> dict:
                     "location": point["name"],
                     "source": "Open-Meteo",
                     "source_url": "https://open-meteo.com/en/docs",
-                    "forecast_rainfall_24h_mm": round(sum(value for _, value in selected), 1),
+                    "forecast_rainfall_24h_mm": round(sum(value for _, value, _ in selected), 1),
                     "peak_hourly_rainfall_probability_pct": round(peak_probability, 0) if peak_probability is not None else None,
-                    "wet_hours_forecast": sum(1 for _, value in selected if value >= 0.1),
+                    "wet_hours_forecast": sum(1 for _, value, _ in selected if value >= 0.1),
                     "forecast_hours_available": len(selected),
                     "forecast_start_ist": selected[0][0].isoformat(timespec="minutes"),
                     "forecast_end_ist": end.isoformat(timespec="minutes"),
@@ -126,16 +131,9 @@ def get_rainfall_forecast(district: str, force_refresh: bool = False) -> dict:
                         {
                             "time_ist": stamp.isoformat(timespec="minutes"),
                             "precipitation_mm": round(rain, 2),
-                            "precipitation_probability_pct": (
-                                round(float(probabilities[index]))
-                                if isinstance(probabilities, list)
-                                and index < len(probabilities)
-                                and probabilities[index] is not None
-                                and _valid_probability(probabilities[index])
-                                else None
-                            ),
+                            "precipitation_probability_pct": round(chance) if chance is not None else None,
                         }
-                        for index, (stamp, rain) in enumerate(selected)
+                        for stamp, rain, chance in selected
                     ],
                     "data_quality": {
                         "valid_hourly_values": len(selected),
