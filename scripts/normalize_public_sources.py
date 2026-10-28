@@ -79,11 +79,10 @@ def normalize_public_csv(path: str | Path, source_id: str, agency: str, variable
     station = station.fillna("").str.strip()
     valid = station.ne("") & timestamp_utc.notna() & finite
     mapping = station_mapping or {}
-    canonical = station_identity.map(
-        lambda identity: mapping.get(f"{source_id}:{identity}",
-                                     mapping.get(f"{source_id}:{station.loc[station_identity.index[station_identity.eq(identity)][0]]}", 
-                                                 mapping.get(identity, f"{source_id}:{identity}")))
-    )
+    canonical = station_identity.map(lambda identity: mapping.get(f"{source_id}:{identity}", mapping.get(identity)))
+    raw_station_mapping = station.map(lambda item: mapping.get(f"{source_id}:{item}", mapping.get(item)))
+    canonical = canonical.fillna(raw_station_mapping)
+    canonical = canonical.fillna(station_identity.map(lambda identity: f"{source_id}:{identity}"))
     normalized = pd.DataFrame({
         "station_id": canonical[valid].astype(str),
         "source_station_id": station[valid].astype(str),
