@@ -31,6 +31,19 @@ The training run reports precision, recall, average precision, ROC-AUC, Brier sc
 
 Six-hourly issue windows overlap. Multiple true-positive windows may refer to the same threshold-crossing episode, so window counts are not independent event counts. A gauge with only one class in the test period is explicitly marked as not reliably estimable rather than assigned a misleading station-specific score. Review positive counts and confidence limitations alongside every metric.
 
+### Latest measured holdout snapshot (28 October 2026)
+
+GitHub Actions successfully fetched the current public CWC mirror and retrained the pipeline with the stricter 23-hour coverage rule. The selected model was Random Forest. The 2026 holdout had 5,897 issue windows and 132 positive labels (2.24% prevalence).
+
+- Precision: **30.58%**; recall: **84.09%** at the 2025-validation-selected threshold of **0.160194**.
+- Average precision: **0.5640**; ROC-AUC: **0.9766**.
+- Brier score: **0.01485**, compared with **0.02196** for the training-prevalence baseline.
+- Confusion matrix: **5,513 TN, 252 FP, 21 FN, 111 TP**.
+- Expected calibration error: **0.01315** (10 equal-width bins).
+- Median time from issue time to first observed crossing among detected positive windows: **10 hours**, across 111 overlapping issue windows.
+
+Patna Gandhighat had only 8 positive test windows (recall 6/8 = 75%; precision 6/11 = 54.5%). Muzaffarpur Sikandarpur had no positive test windows, so its local sensitivity is not estimable. These are overlapping issue-window metrics, not independent flood-event counts; the aggregate results cannot establish operational safety or neighborhood-level flood prediction skill.
+
 The current classifier does not fit a probability calibration model. ECE/reliability bins are diagnostics only, and the F2 decision threshold is selected on the separate 2025 validation set. After changing source data or label rules, rerun the trainer before quoting metrics; historical numbers from older label definitions are not comparable.
 
 The model is experimental and **not operationally eligible**. Validate with more independent flood seasons and CWC/IMD/disaster-management domain experts before considering public-safety use.
