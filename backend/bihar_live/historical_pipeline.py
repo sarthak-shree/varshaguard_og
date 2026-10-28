@@ -145,11 +145,12 @@ def export_observations(db_path: str | Path = DEFAULT_DB) -> pd.DataFrame:
 
 
 def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) -> pd.DataFrame:
-    """Build exact-hour lag features and future labels; never backfill from future values.
+    """Build exact-hour lag features and exact future labels without interpolation.
 
-    Stage lag features are required for either task. Rainfall lag features may be missing
-    and are imputed inside the training pipeline; missing labels are never imputed.
-    Labels are accepted only at exact future horizons, avoiding implicit interpolation.
+    Rainfall-only sources can support rainfall targets and stage-only sources can support
+    stage targets. Cross-source joins happen only when an explicit station mapping has
+    produced the same canonical station ID. Missing features are left missing for a
+    train-fitted imputer; missing future labels are never imputed.
     """
     required = {"station_id", "observed_at", "variable", "value", "quality_flag"}
     if not required.issubset(observations.columns):
@@ -159,8 +160,8 @@ def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) ->
     frame["value"] = pd.to_numeric(frame["value"], errors="coerce")
     frame = frame.dropna(subset=["station_id", "observed_at", "value"])
     frame = frame[frame["quality_flag"].fillna("bad").str.lower().eq("good")]
-    # Conflicting cross-source values for one canonical station/time/variable are
-    # excluded instead of silently choosing or averaging one source.
+    frame = frame[frame["variable"].isin(["rainfall_mm", "stage_m"])]
+    # A canonical station/time/variable with conflicting readings is ambiguous; reject it.
     conflict_keys = []
     for key, group in frame.groupby(["station_id", "observed_at", "variable"], dropna=False):
         if group["value"].nunique(dropna=False) > 1:
@@ -178,7 +179,8 @@ def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) ->
         }
         stage_series = series.get("stage_m", pd.Series(dtype=float))
         rain_series = series.get("rainfall_mm", pd.Series(dtype=float))
-        for stamp in stage_series.index:
+        issue_times = sorted(set(stage_series.index).union(set(rain_series.index)))
+        for stamp in issue_times:
             local = stamp.tz_convert("Asia/Kolkata")
             features = {
                 "station_id": station, "issue_time_utc": stamp.isoformat(),
@@ -188,27 +190,30 @@ def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) ->
                 "dayofyear_sin": math.sin(2 * math.pi * local.dayofyear / 366),
                 "dayofyear_cos": math.cos(2 * math.pi * local.dayofyear / 366),
             }
-            valid = True
             for lag in (1, 3, 6, 12, 24):
-                target_time = stamp - pd.Timedelta(hours=lag)
-                stage_value = stage_series.get(target_time, np.nan)
-                if pd.isna(stage_value):
-                    valid = False
-                    break
-                features[f"stage_lag_{lag}h_m"] = float(stage_value)
-                rain_value = rain_series.get(target_time, np.nan)
+                stage_value = stage_series.get(stamp - pd.Timedelta(hours=lag), np.nan)
+                rain_value = rain_series.get(stamp - pd.Timedelta(hours=lag), np.nan)
+                features[f"stage_lag_{lag}h_m"] = float(stage_value) if pd.notna(stage_value) else np.nan
                 features[f"rain_lag_{lag}h_mm"] = float(rain_value) if pd.notna(rain_value) else np.nan
-            if not valid:
-                continue
-            features["stage_rate_3h_m_per_h"] = (features["stage_lag_1h_m"] - features["stage_lag_3h_m"]) / 2
-            features["stage_rate_12h_m_per_h"] = (features["stage_lag_1h_m"] - features["stage_lag_12h_m"]) / 11
+            features["stage_rate_3h_m_per_h"] = (
+                (features["stage_lag_1h_m"] - features["stage_lag_3h_m"]) / 2
+                if pd.notna(features["stage_lag_1h_m"]) and pd.notna(features["stage_lag_3h_m"]) else np.nan
+            )
+            features["stage_rate_12h_m_per_h"] = (
+                (features["stage_lag_1h_m"] - features["stage_lag_12h_m"]) / 11
+                if pd.notna(features["stage_lag_1h_m"]) and pd.notna(features["stage_lag_12h_m"]) else np.nan
+            )
             for horizon in RAIN_HORIZONS:
                 label = rain_series.get(stamp + pd.Timedelta(hours=horizon), np.nan)
                 features[f"target_rainfall_{horizon}h_mm"] = float(label) if pd.notna(label) else np.nan
             for horizon in STAGE_HORIZONS:
                 label = stage_series.get(stamp + pd.Timedelta(hours=horizon), np.nan)
                 features[f"target_stage_{horizon}h_m"] = float(label) if pd.notna(label) else np.nan
-            rows.append(features)
+            # Keep a row only when at least one usable input history exists.
+            if any(pd.notna(features[f"rain_lag_{lag}h_mm"]) for lag in (1, 3, 6, 12, 24)) or any(
+                pd.notna(features[f"stage_lag_{lag}h_m"]) for lag in (1, 3, 6, 12, 24)
+            ):
+                rows.append(features)
     return pd.DataFrame(rows).sort_values("issue_time_utc").reset_index(drop=True) if rows else pd.DataFrame()
 
 
