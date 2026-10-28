@@ -11,6 +11,36 @@ ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_OUTPUT = ROOT / "data" / "bihar_live" / "research" / "cwc_bihar_gauge_hourly.csv"
 STATIONS_URL = "https://diagram-chasing.github.io/cwc-flood-forecasts/stations.parquet"
 HOURLY_URL = "https://diagram-chasing.github.io/cwc-flood-forecasts/hourly.parquet"
+def download_parquet(url: str, destination: Path, attempts: int = 3) -> None:
+    """Download a stable local snapshot before DuckDB reads it."""
+    import time
+    import requests
+
+    temporary = destination.with_suffix(destination.suffix + ".part")
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            with requests.get(url, stream=True, timeout=(20, 180), headers={"User-Agent": "VarshaGuard/1.0"}) as response:
+                response.raise_for_status()
+                with temporary.open("wb") as stream:
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            stream.write(chunk)
+            if temporary.stat().st_size < 8:
+                raise RuntimeError(f"Downloaded file from {url} is unexpectedly small.")
+            with temporary.open("rb") as stream:
+                if stream.read(4) != b"PAR1":
+                    raise RuntimeError(f"Downloaded file from {url} is not a Parquet file.")
+            temporary.replace(destination)
+            return
+        except Exception as error:
+            last_error = error
+            temporary.unlink(missing_ok=True)
+            if attempt + 1 < attempts:
+                time.sleep(2 ** attempt)
+    raise RuntimeError(f"Failed to download {url} after {attempts} attempts: {last_error}") from last_error
+
+
 STATION_CODES = [
     "002-MGD5PTN", "003-MGD5PTN", "004-MGD4PTN", "005-MGD5PTN",
     "009-MGD5PTN", "011-MGD5PTN", "016-MGD4PTN", "017-MGD4PTN",
@@ -38,11 +68,15 @@ def main() -> int:
     except ImportError as error:
         parser.error("Install duckdb (pip install duckdb) to fetch the public Parquet source.")
 
+    hourly_path = output.with_name("cwc_hourly_source.parquet")
+    stations_path = output.with_name("cwc_stations_source.parquet")
+    download_parquet(HOURLY_URL, hourly_path)
+    download_parquet(STATIONS_URL, stations_path)
     connection = duckdb.connect()
-    connection.execute("INSTALL httpfs")
-    connection.execute("LOAD httpfs")
     station_literals = ",".join("'" + code.replace("'", "''") + "'" for code in STATION_CODES)
     output_sql = str(output).replace("'", "''")
+    hourly_sql = str(hourly_path).replace("'", "''")
+    stations_sql = str(stations_path).replace("'", "''")
     if output.exists():
         output.unlink()
     query = f"""
@@ -51,8 +85,8 @@ def main() -> int:
                 h.station_code, h.datatype_code, h.datetime AS timestamp_ist,
                 h.value, h.source_type, s.name, s.lat, s.lon,
                 s.warning_level, s.danger_level, s.highest_flow_level
-            FROM read_parquet('{HOURLY_URL}') AS h
-            JOIN read_parquet('{STATIONS_URL}') AS s USING (station_code)
+            FROM read_parquet('{hourly_sql}') AS h
+            JOIN read_parquet('{stations_sql}') AS s USING (station_code)
             WHERE h.station_code IN ({station_literals})
               AND h.datatype_code IN ('HHS', 'MPS')
               AND h.source_type = 'gauge'
@@ -67,6 +101,8 @@ def main() -> int:
         "output_csv": str(output),
         "output_bytes": output.stat().st_size,
         "output_sha256": sha256_file(output),
+        "hourly_parquet_sha256": sha256_file(hourly_path),
+        "stations_parquet_sha256": sha256_file(stations_path),
         "row_count": row_count,
         "source_upstream": "Central Water Commission Flood Forecast System",
         "mirror_repository": "diagram-chasing/cwc-flood-forecasts",
