@@ -128,7 +128,7 @@ def align_observations(normalized: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         reindexed = part.reindex(hourly_index)
         reindexed.index.name = "observed_at"
         reindexed["station_id"] = station
-        reindexed["is_exact_hour"] = reindexed.index.minute.eq(0) & reindexed.index.second.eq(0)
+        reindexed["is_exact_hour"] = (reindexed.index.minute == 0) & (reindexed.index.second == 0)
         variables = [column for column in ("rainfall_mm", "stage_m") if column in reindexed]
         total_expected += len(reindexed) * len(variables)
         total_present += int(reindexed[variables].notna().sum().sum())
