@@ -16,7 +16,8 @@ def health():
         "success": True,
         "project": "JalDrishti",
         "mode": DATA_MODE,
-        "badge": "Synthetic demo data" if DATA_MODE == "synthetic" else "Real data",
+        "badge": "Synthetic demo data" if DATA_MODE == "synthetic" else "Real-source mode; verify adapter configuration",
+        "operational": False,
         "horizon_hours": PREDICTION_HORIZON_HOURS,
         "districts": list(SUPPORTED_DISTRICTS),
     })
@@ -45,8 +46,10 @@ def fusion():
     values = {"radar": 20.0, "satellite": 18.0, "observations": 16.0, "nwp": 14.0}
     return jsonify({
         "success": True,
-        "mode": DATA_MODE,
-        "badge": "Synthetic demo data" if DATA_MODE == "synthetic" else "Real data",
+        "mode": "synthetic_demo",
+        "badge": "Fixed demonstration values; not live radar, satellite, observations, or NWP",
+        "source_status": "not_integrated",
+        "operational": False,
         "lead_hours": lead,
         **fuse(values, lead),
     })
@@ -78,4 +81,12 @@ def public_weather():
 def evaluation():
     rows = generate_observations(hours=96, seed=26071)
     model, metrics = train_evaluate(rows)
-    return jsonify({"success": True, "model": "rainfall_baseline", "backend": model.backend, **metrics})
+    return jsonify({
+        "success": True,
+        "model": "synthetic_rainfall_baseline",
+        "mode": "synthetic_demo",
+        "badge": "Synthetic evaluation only; not evidence for the live CWC gauge model",
+        "operational": False,
+        "backend": model.backend,
+        **metrics,
+    })
