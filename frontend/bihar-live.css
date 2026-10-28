@@ -304,3 +304,22 @@ body.bihar-live-page .topbar-assistant-btn{min-height:44px;padding:9px 12px;bord
 .discharge-context-metric>small{color:var(--muted);font-size:11px;line-height:1.45}
 .discharge-context-note{margin:12px 0 0;font-size:11px;line-height:1.55}
 @media(max-width:620px){.discharge-context-grid{grid-template-columns:1fr}.discharge-context-metric{padding:13px}}
+
+/* Forecast outlook: keep provider rainfall and observed-stage trend as separate products. */
+.forecast-outlook-panel{margin:16px 0;min-width:0}
+.forecast-outlook-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.forecast-outlook-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(145deg,#fbfdfd,#f1f8f6)}
+.forecast-outlook-card-title{display:flex;flex-direction:column;gap:4px;margin-bottom:13px}
+.forecast-outlook-card-title strong{font-size:14px;color:var(--text)}
+.forecast-outlook-card-title span{font-size:11px;color:var(--muted);line-height:1.4}
+.forecast-rain-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.forecast-rain-metrics>div{display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 7px;border-radius:9px;background:#fff;border:1px solid var(--line)}
+.forecast-rain-metrics span{font-size:10px;color:var(--muted)}
+.forecast-rain-metrics strong{font-size:clamp(15px,2vw,21px);line-height:1.15;color:var(--text);overflow-wrap:anywhere}
+.forecast-outlook-card .plain-text{font-size:11px;line-height:1.5;margin:12px 0 0}
+.forecast-stage-direction{display:block;font-size:21px;color:var(--text);margin:4px 0 9px}
+.forecast-stage-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.forecast-stage-value{display:flex;flex-direction:column;gap:5px;padding:9px;border-radius:9px;background:#fff;border:1px solid var(--line)}
+.forecast-stage-value span{font-size:10px;color:var(--muted)}
+.forecast-stage-value strong{font-size:16px;color:var(--text)}
+@media(max-width:760px){.forecast-outlook-grid{grid-template-columns:1fr}.forecast-rain-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
