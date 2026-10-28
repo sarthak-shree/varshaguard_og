@@ -1,6 +1,6 @@
 {
   "model_name": "VarshaGuard Bihar CWC rolling 24-hour warning-level crossing research model",
-  "trained_at_utc": "2026-10-28T11:43:11+00:00",
+  "trained_at_utc": "2026-10-28T11:45:18+00:00",
   "training_source": "cwc_bihar_gauge_hourly.csv",
   "source_sha256": "9e0c6c74d8305d698d66983d5e2f622ac7aa3c1544baa1dfaab9ca62fa54e86e",
   "source_upstream": "CWC Flood Forecast System hourly observations mirrored by diagram-chasing/cwc-flood-forecasts",
@@ -72,60 +72,60 @@
       "rain_filter": "CWC MPS only; values 0-500mm; duplicates at a station-time are summed.",
       "issue_sampling": "One issue per gauge every 6 hours at a reported HHS observation time.",
       "target_rule": "Among issue times still below the published CWC warning level, positive if any valid HHS observation in (issue time, issue time +24h] reaches that warning level.",
-      "future_coverage_rule": "Require at least 18 valid stage observations in the next 24h and a final observation at least 23h after issue time; incomplete horizons are excluded.",
+      "future_coverage_rule": "Require at least 18 valid stage observations, first observation within 3h, no gap over 6h, and final observation at least 23h after issue time; incomplete horizons are excluded.",
       "missing_future_rows_are_not_labeled_negative": true,
       "stations_used": 13,
       "station_issue_counts": {
         "002-MGD5PTN": {
-          "issue_rows": 1540,
+          "issue_rows": 1537,
           "positive_warning_crossings": 36
         },
         "003-MGD5PTN": {
-          "issue_rows": 1240,
+          "issue_rows": 1237,
           "positive_warning_crossings": 33
         },
         "004-MGD4PTN": {
-          "issue_rows": 2093,
+          "issue_rows": 2090,
           "positive_warning_crossings": 8
         },
         "005-MGD5PTN": {
-          "issue_rows": 1638,
+          "issue_rows": 1635,
           "positive_warning_crossings": 32
         },
         "009-MGD5PTN": {
-          "issue_rows": 1674,
+          "issue_rows": 1672,
           "positive_warning_crossings": 112
         },
         "011-MGD5PTN": {
-          "issue_rows": 1886,
+          "issue_rows": 1884,
           "positive_warning_crossings": 45
         },
         "016-MGD4PTN": {
-          "issue_rows": 1499,
+          "issue_rows": 1496,
           "positive_warning_crossings": 134
         },
         "017-MGD4PTN": {
-          "issue_rows": 770,
+          "issue_rows": 767,
           "positive_warning_crossings": 69
         },
         "021-MGD5PTN": {
-          "issue_rows": 1657,
+          "issue_rows": 1654,
           "positive_warning_crossings": 68
         },
         "026-MGD5PTN": {
-          "issue_rows": 2033,
+          "issue_rows": 2030,
           "positive_warning_crossings": 14
         },
         "027-MGD5PTN": {
-          "issue_rows": 1476,
+          "issue_rows": 1473,
           "positive_warning_crossings": 33
         },
         "032-MGD4PTN": {
-          "issue_rows": 1629,
+          "issue_rows": 1626,
           "positive_warning_crossings": 12
         },
         "033-MGD4PTN": {
-          "issue_rows": 1809,
+          "issue_rows": 1806,
           "positive_warning_crossings": 0
         }
       }
@@ -246,116 +246,116 @@
       "training_before_validation": true,
       "validation_before_test": true
     },
-    "training_rows": 9146,
+    "training_rows": 9135,
     "training_positive_rows": 246,
-    "validation_rows": 5901,
+    "validation_rows": 5888,
     "validation_positive_rows": 218,
-    "test_rows": 5897,
+    "test_rows": 5884,
     "test_positive_rows": 132,
-    "deployment_training_rows": 20944,
+    "deployment_training_rows": 20907,
     "deployment_positive_rows": 596
   },
   "candidate_validation_metrics": {
     "logistic_regression": {
-      "average_precision": 0.362781,
-      "validation_prevalence": 0.036943,
-      "brier_score": 0.029716,
-      "training_prevalence_baseline_brier": 0.035679,
-      "rows": 5901,
+      "average_precision": 0.367133,
+      "validation_prevalence": 0.037024,
+      "brier_score": 0.029592,
+      "training_prevalence_baseline_brier": 0.035756,
+      "rows": 5888,
       "positive_rows": 218
     },
     "random_forest": {
-      "average_precision": 0.443011,
-      "validation_prevalence": 0.036943,
-      "brier_score": 0.027507,
-      "training_prevalence_baseline_brier": 0.035679,
-      "rows": 5901,
+      "average_precision": 0.433618,
+      "validation_prevalence": 0.037024,
+      "brier_score": 0.027816,
+      "training_prevalence_baseline_brier": 0.035756,
+      "rows": 5888,
       "positive_rows": 218
     },
     "hist_gradient_boosting": {
-      "average_precision": 0.402352,
-      "validation_prevalence": 0.036943,
-      "brier_score": 0.028998,
-      "training_prevalence_baseline_brier": 0.035679,
-      "rows": 5901,
+      "average_precision": 0.407789,
+      "validation_prevalence": 0.037024,
+      "brier_score": 0.029505,
+      "training_prevalence_baseline_brier": 0.035756,
+      "rows": 5888,
       "positive_rows": 218
     }
   },
   "selected_model": "random_forest",
   "threshold_selection": "F2 maximized on temporally separate 2025 validation data",
-  "decision_threshold": 0.160194,
+  "decision_threshold": 0.206491,
   "test_metrics": {
-    "rows": 5897,
+    "rows": 5884,
     "positive_rows": 132,
-    "positive_fraction": 0.022384,
-    "threshold": 0.160194,
-    "precision": 0.305785,
-    "recall": 0.840909,
-    "average_precision": 0.564013,
-    "prevalence_baseline_average_precision": 0.022384,
-    "roc_auc": 0.976628,
-    "brier_score": 0.014853,
-    "training_prevalence_baseline_brier": 0.021955,
+    "positive_fraction": 0.022434,
+    "threshold": 0.206491,
+    "precision": 0.342007,
+    "recall": 0.69697,
+    "average_precision": 0.550613,
+    "prevalence_baseline_average_precision": 0.022434,
+    "roc_auc": 0.976041,
+    "brier_score": 0.01506,
+    "training_prevalence_baseline_brier": 0.022002,
     "confusion_matrix_labels_0_1": [
       [
-        5513,
-        252
+        5575,
+        177
       ],
       [
-        21,
-        111
+        40,
+        92
       ]
     ],
     "calibration": {
-      "expected_calibration_error": 0.013149,
+      "expected_calibration_error": 0.013087,
       "bins": [
         {
           "lower_bound": 0.0,
           "upper_bound": 0.1,
-          "rows": 5363,
-          "mean_predicted_probability": 0.009717,
-          "observed_positive_fraction": 0.002238
+          "rows": 5365,
+          "mean_predicted_probability": 0.010084,
+          "observed_positive_fraction": 0.001864
         },
         {
           "lower_bound": 0.1,
           "upper_bound": 0.2,
-          "rows": 266,
-          "mean_predicted_probability": 0.144694,
-          "observed_positive_fraction": 0.105263
+          "rows": 234,
+          "mean_predicted_probability": 0.145554,
+          "observed_positive_fraction": 0.106838
         },
         {
           "lower_bound": 0.2,
           "upper_bound": 0.3,
-          "rows": 134,
-          "mean_predicted_probability": 0.244681,
-          "observed_positive_fraction": 0.164179
+          "rows": 152,
+          "mean_predicted_probability": 0.24394,
+          "observed_positive_fraction": 0.184211
         },
         {
           "lower_bound": 0.3,
           "upper_bound": 0.4,
-          "rows": 85,
-          "mean_predicted_probability": 0.343929,
-          "observed_positive_fraction": 0.423529
+          "rows": 83,
+          "mean_predicted_probability": 0.353102,
+          "observed_positive_fraction": 0.409639
         },
         {
           "lower_bound": 0.4,
           "upper_bound": 0.5,
-          "rows": 25,
-          "mean_predicted_probability": 0.443048,
-          "observed_positive_fraction": 0.44
+          "rows": 28,
+          "mean_predicted_probability": 0.448113,
+          "observed_positive_fraction": 0.5
         },
         {
           "lower_bound": 0.5,
           "upper_bound": 0.6,
-          "rows": 20,
-          "mean_predicted_probability": 0.562338,
-          "observed_positive_fraction": 0.95
+          "rows": 21,
+          "mean_predicted_probability": 0.560375,
+          "observed_positive_fraction": 0.952381
         },
         {
           "lower_bound": 0.6,
           "upper_bound": 0.7,
-          "rows": 4,
-          "mean_predicted_probability": 0.61176,
+          "rows": 1,
+          "mean_predicted_probability": 0.612668,
           "observed_positive_fraction": 1.0
         }
       ]
@@ -363,84 +363,21 @@
   },
   "all_station_test_metrics": {
     "002-MGD5PTN": {
-      "rows": 424,
+      "rows": 423,
       "positive_rows": 8,
-      "positive_fraction": 0.018868,
-      "threshold": 0.160194,
-      "precision": 0.583333,
-      "recall": 0.875,
-      "average_precision": 0.908929,
-      "prevalence_baseline_average_precision": 0.018868,
-      "roc_auc": 0.997296,
-      "brier_score": 0.007251,
-      "training_prevalence_baseline_brier": 0.018551,
-      "confusion_matrix_labels_0_1": [
-        [
-          411,
-          5
-        ],
-        [
-          1,
-          7
-        ]
-      ],
-      "calibration": {
-        "expected_calibration_error": 0.014033,
-        "bins": [
-          {
-            "lower_bound": 0.0,
-            "upper_bound": 0.1,
-            "rows": 403,
-            "mean_predicted_probability": 0.006424,
-            "observed_positive_fraction": 0.0
-          },
-          {
-            "lower_bound": 0.1,
-            "upper_bound": 0.2,
-            "rows": 13,
-            "mean_predicted_probability": 0.142,
-            "observed_positive_fraction": 0.153846
-          },
-          {
-            "lower_bound": 0.2,
-            "upper_bound": 0.3,
-            "rows": 2,
-            "mean_predicted_probability": 0.245413,
-            "observed_positive_fraction": 0.0
-          },
-          {
-            "lower_bound": 0.4,
-            "upper_bound": 0.5,
-            "rows": 1,
-            "mean_predicted_probability": 0.478282,
-            "observed_positive_fraction": 1.0
-          },
-          {
-            "lower_bound": 0.5,
-            "upper_bound": 0.6,
-            "rows": 5,
-            "mean_predicted_probability": 0.561068,
-            "observed_positive_fraction": 1.0
-          }
-        ]
-      }
-    },
-    "003-MGD5PTN": {
-      "rows": 352,
-      "positive_rows": 8,
-      "positive_fraction": 0.022727,
-      "threshold": 0.160194,
-      "precision": 0.545455,
+      "positive_fraction": 0.018913,
+      "threshold": 0.206491,
+      "precision": 0.857143,
       "recall": 0.75,
-      "average_precision": 0.55086,
-      "prevalence_baseline_average_precision": 0.022727,
-      "roc_auc": 0.980015,
-      "brier_score": 0.014408,
-      "training_prevalence_baseline_brier": 0.02224,
+      "average_precision": 0.950284,
+      "prevalence_baseline_average_precision": 0.018913,
+      "roc_auc": 0.998795,
+      "brier_score": 0.007214,
+      "training_prevalence_baseline_brier": 0.018594,
       "confusion_matrix_labels_0_1": [
         [
-          339,
-          5
+          414,
+          1
         ],
         [
           2,
@@ -448,67 +385,123 @@
         ]
       ],
       "calibration": {
-        "expected_calibration_error": 0.009792,
+        "expected_calibration_error": 0.013868,
         "bins": [
           {
             "lower_bound": 0.0,
             "upper_bound": 0.1,
-            "rows": 337,
-            "mean_predicted_probability": 0.006696,
-            "observed_positive_fraction": 0.005935
+            "rows": 401,
+            "mean_predicted_probability": 0.006479,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 15,
+            "mean_predicted_probability": 0.148997,
+            "observed_positive_fraction": 0.133333
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 1,
+            "mean_predicted_probability": 0.285838,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 1,
+            "mean_predicted_probability": 0.457909,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 5,
+            "mean_predicted_probability": 0.558997,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "003-MGD5PTN": {
+      "rows": 351,
+      "positive_rows": 8,
+      "positive_fraction": 0.022792,
+      "threshold": 0.206491,
+      "precision": 0.555556,
+      "recall": 0.625,
+      "average_precision": 0.525562,
+      "prevalence_baseline_average_precision": 0.022792,
+      "roc_auc": 0.978499,
+      "brier_score": 0.014919,
+      "training_prevalence_baseline_brier": 0.022302,
+      "confusion_matrix_labels_0_1": [
+        [
+          339,
+          4
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.01022,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 336,
+            "mean_predicted_probability": 0.006172,
+            "observed_positive_fraction": 0.005952
           },
           {
             "lower_bound": 0.1,
             "upper_bound": 0.2,
             "rows": 5,
-            "mean_predicted_probability": 0.141287,
+            "mean_predicted_probability": 0.149066,
             "observed_positive_fraction": 0.0
           },
           {
             "lower_bound": 0.2,
             "upper_bound": 0.3,
             "rows": 2,
-            "mean_predicted_probability": 0.233908,
+            "mean_predicted_probability": 0.220633,
             "observed_positive_fraction": 0.5
           },
           {
             "lower_bound": 0.3,
             "upper_bound": 0.4,
-            "rows": 6,
-            "mean_predicted_probability": 0.372801,
-            "observed_positive_fraction": 0.666667
-          },
-          {
-            "lower_bound": 0.4,
-            "upper_bound": 0.5,
-            "rows": 2,
-            "mean_predicted_probability": 0.40581,
-            "observed_positive_fraction": 0.5
+            "rows": 8,
+            "mean_predicted_probability": 0.348822,
+            "observed_positive_fraction": 0.625
           }
         ]
       }
     },
     "004-MGD4PTN": {
-      "rows": 591,
+      "rows": 590,
       "positive_rows": 0,
-      "negative_rows": 591,
+      "negative_rows": 590,
       "note": "Holdout lacks one outcome class; station-level discrimination/calibration is not estimable reliably."
     },
     "005-MGD5PTN": {
-      "rows": 438,
+      "rows": 437,
       "positive_rows": 8,
-      "positive_fraction": 0.018265,
-      "threshold": 0.160194,
+      "positive_fraction": 0.018307,
+      "threshold": 0.206491,
       "precision": 1.0,
       "recall": 0.875,
-      "average_precision": 0.986111,
-      "prevalence_baseline_average_precision": 0.018265,
-      "roc_auc": 0.999709,
-      "brier_score": 0.00788,
-      "training_prevalence_baseline_brier": 0.017934,
+      "average_precision": 1.0,
+      "prevalence_baseline_average_precision": 0.018307,
+      "roc_auc": 1.0,
+      "brier_score": 0.007728,
+      "training_prevalence_baseline_brier": 0.017974,
       "confusion_matrix_labels_0_1": [
         [
-          430,
+          429,
           0
         ],
         [
@@ -517,139 +510,139 @@
         ]
       ],
       "calibration": {
-        "expected_calibration_error": 0.016509,
+        "expected_calibration_error": 0.018025,
         "bins": [
           {
             "lower_bound": 0.0,
             "upper_bound": 0.1,
-            "rows": 425,
-            "mean_predicted_probability": 0.006935,
+            "rows": 426,
+            "mean_predicted_probability": 0.007864,
             "observed_positive_fraction": 0.0
           },
           {
             "lower_bound": 0.1,
             "upper_bound": 0.2,
-            "rows": 7,
-            "mean_predicted_probability": 0.135694,
-            "observed_positive_fraction": 0.285714
+            "rows": 4,
+            "mean_predicted_probability": 0.116845,
+            "observed_positive_fraction": 0.25
           },
           {
             "lower_bound": 0.2,
             "upper_bound": 0.3,
-            "rows": 1,
-            "mean_predicted_probability": 0.200558,
+            "rows": 2,
+            "mean_predicted_probability": 0.220281,
             "observed_positive_fraction": 1.0
           },
           {
             "lower_bound": 0.3,
             "upper_bound": 0.4,
             "rows": 1,
-            "mean_predicted_probability": 0.33677,
+            "mean_predicted_probability": 0.347471,
             "observed_positive_fraction": 1.0
           },
           {
             "lower_bound": 0.4,
             "upper_bound": 0.5,
             "rows": 1,
-            "mean_predicted_probability": 0.498638,
+            "mean_predicted_probability": 0.496252,
             "observed_positive_fraction": 1.0
           },
           {
             "lower_bound": 0.5,
             "upper_bound": 0.6,
             "rows": 3,
-            "mean_predicted_probability": 0.576786,
+            "mean_predicted_probability": 0.573801,
             "observed_positive_fraction": 1.0
           }
         ]
       }
     },
     "009-MGD5PTN": {
-      "rows": 423,
+      "rows": 422,
       "positive_rows": 28,
-      "positive_fraction": 0.066194,
-      "threshold": 0.160194,
-      "precision": 0.342105,
-      "recall": 0.928571,
-      "average_precision": 0.364118,
-      "prevalence_baseline_average_precision": 0.066194,
-      "roc_auc": 0.917812,
-      "brier_score": 0.048067,
-      "training_prevalence_baseline_brier": 0.061813,
+      "positive_fraction": 0.066351,
+      "threshold": 0.206491,
+      "precision": 0.344828,
+      "recall": 0.714286,
+      "average_precision": 0.375487,
+      "prevalence_baseline_average_precision": 0.066351,
+      "roc_auc": 0.918872,
+      "brier_score": 0.048419,
+      "training_prevalence_baseline_brier": 0.061949,
       "confusion_matrix_labels_0_1": [
         [
-          345,
-          50
+          356,
+          38
         ],
         [
-          2,
-          26
+          8,
+          20
         ]
       ],
       "calibration": {
-        "expected_calibration_error": 0.020342,
+        "expected_calibration_error": 0.025981,
         "bins": [
           {
             "lower_bound": 0.0,
             "upper_bound": 0.1,
-            "rows": 318,
-            "mean_predicted_probability": 0.018406,
-            "observed_positive_fraction": 0.006289
+            "rows": 316,
+            "mean_predicted_probability": 0.019873,
+            "observed_positive_fraction": 0.006329
           },
           {
             "lower_bound": 0.1,
             "upper_bound": 0.2,
-            "rows": 43,
-            "mean_predicted_probability": 0.140246,
-            "observed_positive_fraction": 0.116279
+            "rows": 45,
+            "mean_predicted_probability": 0.138088,
+            "observed_positive_fraction": 0.088889
           },
           {
             "lower_bound": 0.2,
             "upper_bound": 0.3,
             "rows": 27,
-            "mean_predicted_probability": 0.237461,
-            "observed_positive_fraction": 0.333333
+            "mean_predicted_probability": 0.241477,
+            "observed_positive_fraction": 0.37037
           },
           {
             "lower_bound": 0.3,
             "upper_bound": 0.4,
-            "rows": 29,
-            "mean_predicted_probability": 0.335718,
-            "observed_positive_fraction": 0.344828
+            "rows": 27,
+            "mean_predicted_probability": 0.35998,
+            "observed_positive_fraction": 0.333333
           },
           {
             "lower_bound": 0.4,
             "upper_bound": 0.5,
-            "rows": 4,
-            "mean_predicted_probability": 0.440525,
-            "observed_positive_fraction": 0.25
+            "rows": 5,
+            "mean_predicted_probability": 0.439458,
+            "observed_positive_fraction": 0.4
           },
           {
             "lower_bound": 0.5,
             "upper_bound": 0.6,
             "rows": 2,
-            "mean_predicted_probability": 0.553012,
+            "mean_predicted_probability": 0.536688,
             "observed_positive_fraction": 0.5
           }
         ]
       }
     },
     "011-MGD5PTN": {
-      "rows": 472,
+      "rows": 471,
       "positive_rows": 12,
-      "positive_fraction": 0.025424,
-      "threshold": 0.160194,
-      "precision": 0.8,
+      "positive_fraction": 0.025478,
+      "threshold": 0.206491,
+      "precision": 0.888889,
       "recall": 0.666667,
-      "average_precision": 0.855031,
-      "prevalence_baseline_average_precision": 0.025424,
-      "roc_auc": 0.991848,
-      "brier_score": 0.011723,
-      "training_prevalence_baseline_brier": 0.024782,
+      "average_precision": 0.883009,
+      "prevalence_baseline_average_precision": 0.025478,
+      "roc_auc": 0.98947,
+      "brier_score": 0.01183,
+      "training_prevalence_baseline_brier": 0.024833,
       "confusion_matrix_labels_0_1": [
         [
           458,
-          2
+          1
         ],
         [
           4,
@@ -657,405 +650,265 @@
         ]
       ],
       "calibration": {
-        "expected_calibration_error": 0.011477,
+        "expected_calibration_error": 0.020737,
         "bins": [
           {
             "lower_bound": 0.0,
             "upper_bound": 0.1,
             "rows": 455,
-            "mean_predicted_probability": 0.009449,
-            "observed_positive_fraction": 0.006593
+            "mean_predicted_probability": 0.009754,
+            "observed_positive_fraction": 0.002198
           },
           {
             "lower_bound": 0.1,
             "upper_bound": 0.2,
-            "rows": 8,
-            "mean_predicted_probability": 0.126739,
-            "observed_positive_fraction": 0.125
+            "rows": 7,
+            "mean_predicted_probability": 0.126266,
+            "observed_positive_fraction": 0.428571
           },
           {
             "lower_bound": 0.2,
             "upper_bound": 0.3,
             "rows": 1,
-            "mean_predicted_probability": 0.203962,
+            "mean_predicted_probability": 0.219845,
             "observed_positive_fraction": 0.0
           },
           {
             "lower_bound": 0.3,
             "upper_bound": 0.4,
             "rows": 2,
-            "mean_predicted_probability": 0.359401,
+            "mean_predicted_probability": 0.364199,
             "observed_positive_fraction": 1.0
           },
           {
             "lower_bound": 0.4,
             "upper_bound": 0.5,
             "rows": 2,
-            "mean_predicted_probability": 0.481224,
+            "mean_predicted_probability": 0.484358,
             "observed_positive_fraction": 1.0
           },
           {
             "lower_bound": 0.5,
             "upper_bound": 0.6,
-            "rows": 1,
-            "mean_predicted_probability": 0.573809,
-            "observed_positive_fraction": 1.0
-          },
-          {
-            "lower_bound": 0.6,
-            "upper_bound": 0.7,
-            "rows": 3,
-            "mean_predicted_probability": 0.614987,
+            "rows": 4,
+            "mean_predicted_probability": 0.577485,
             "observed_positive_fraction": 1.0
           }
         ]
       }
     },
     "016-MGD4PTN": {
-      "rows": 425,
+      "rows": 424,
       "positive_rows": 28,
-      "positive_fraction": 0.065882,
-      "threshold": 0.160194,
-      "precision": 0.170886,
-      "recall": 0.964286,
-      "average_precision": 0.367194,
-      "prevalence_baseline_average_precision": 0.065882,
-      "roc_auc": 0.901403,
-      "brier_score": 0.05668,
-      "training_prevalence_baseline_brier": 0.062619,
+      "positive_fraction": 0.066038,
+      "threshold": 0.206491,
+      "precision": 0.193548,
+      "recall": 0.857143,
+      "average_precision": 0.354635,
+      "prevalence_baseline_average_precision": 0.066038,
+      "roc_auc": 0.89403,
+      "brier_score": 0.057442,
+      "training_prevalence_baseline_brier": 0.062755,
       "confusion_matrix_labels_0_1": [
         [
-          266,
-          131
+          296,
+          100
         ],
         [
-          1,
-          27
+          4,
+          24
         ]
       ],
       "calibration": {
-        "expected_calibration_error": 0.072851,
+        "expected_calibration_error": 0.070046,
         "bins": [
           {
             "lower_bound": 0.0,
             "upper_bound": 0.1,
-            "rows": 207,
-            "mean_predicted_probability": 0.026603,
+            "rows": 220,
+            "mean_predicted_probability": 0.028538,
             "observed_positive_fraction": 0.0
           },
           {
             "lower_bound": 0.1,
             "upper_bound": 0.2,
-            "rows": 97,
-            "mean_predicted_probability": 0.145585,
-            "observed_positive_fraction": 0.041237
+            "rows": 74,
+            "mean_predicted_probability": 0.150931,
+            "observed_positive_fraction": 0.040541
           },
           {
             "lower_bound": 0.2,
             "upper_bound": 0.3,
-            "rows": 69,
-            "mean_predicted_probability": 0.250631,
-            "observed_positive_fraction": 0.086957
+            "rows": 77,
+            "mean_predicted_probability": 0.249929,
+            "observed_positive_fraction": 0.090909
           },
           {
             "lower_bound": 0.3,
             "upper_bound": 0.4,
-            "rows": 38,
-            "mean_predicted_probability": 0.345111,
-            "observed_positive_fraction": 0.368421
+            "rows": 36,
+            "mean_predicted_probability": 0.349236,
+            "observed_positive_fraction": 0.333333
           },
           {
             "lower_bound": 0.4,
             "upper_bound": 0.5,
-            "rows": 13,
-            "mean_predicted_probability": 0.434951,
-            "observed_positive_fraction": 0.230769
+            "rows": 16,
+            "mean_predicted_probability": 0.435769,
+            "observed_positive_fraction": 0.3125
           },
           {
             "lower_bound": 0.5,
             "upper_bound": 0.6,
             "rows": 1,
-            "mean_predicted_probability": 0.500622,
+            "mean_predicted_probability": 0.537015,
             "observed_positive_fraction": 1.0
           }
         ]
       }
     },
     "017-MGD4PTN": {
-      "rows": 187,
+      "rows": 186,
       "positive_rows": 12,
-      "positive_fraction": 0.064171,
-      "threshold": 0.160194,
-      "precision": 0.243243,
-      "recall": 0.75,
-      "average_precision": 0.438931,
-      "prevalence_baseline_average_precision": 0.064171,
-      "roc_auc": 0.892857,
-      "brier_score": 0.04938,
-      "training_prevalence_baseline_brier": 0.061182,
+      "positive_fraction": 0.064516,
+      "threshold": 0.206491,
+      "precision": 0.25,
+      "recall": 0.416667,
+      "average_precision": 0.444608,
+      "prevalence_baseline_average_precision": 0.064516,
+      "roc_auc": 0.895594,
+      "brier_score": 0.049953,
+      "training_prevalence_baseline_brier": 0.061482,
       "confusion_matrix_labels_0_1": [
         [
-          147,
-          28
+          159,
+          15
         ],
         [
-          3,
-          9
+          7,
+          5
         ]
       ],
       "calibration": {
-        "expected_calibration_error": 0.053414,
+        "expected_calibration_error": 0.039774,
         "bins": [
           {
             "lower_bound": 0.0,
             "upper_bound": 0.1,
-            "rows": 132,
-            "mean_predicted_probability": 0.036195,
-            "observed_positive_fraction": 0.007576
+            "rows": 129,
+            "mean_predicted_probability": 0.034831,
+            "observed_positive_fraction": 0.007752
           },
           {
             "lower_bound": 0.1,
             "upper_bound": 0.2,
-            "rows": 36,
-            "mean_predicted_probability": 0.153562,
-            "observed_positive_fraction": 0.194444
+            "rows": 33,
+            "mean_predicted_probability": 0.155153,
+            "observed_positive_fraction": 0.151515
           },
           {
             "lower_bound": 0.2,
             "upper_bound": 0.3,
-            "rows": 16,
-            "mean_predicted_probability": 0.239424,
-            "observed_positive_fraction": 0.0625
+            "rows": 21,
+            "mean_predicted_probability": 0.228024,
+            "observed_positive_fraction": 0.142857
           },
           {
             "lower_bound": 0.3,
             "upper_bound": 0.4,
-            "rows": 2,
-            "mean_predicted_probability": 0.331362,
-            "observed_positive_fraction": 1.0
-          },
-          {
-            "lower_bound": 0.4,
-            "upper_bound": 0.5,
-            "rows": 1,
-            "mean_predicted_probability": 0.429183,
+            "rows": 3,
+            "mean_predicted_probability": 0.334614,
             "observed_positive_fraction": 1.0
           }
         ]
       }
     },
     "021-MGD5PTN": {
-      "rows": 476,
+      "rows": 475,
       "positive_rows": 12,
-      "positive_fraction": 0.02521,
-      "threshold": 0.160194,
-      "precision": 0.642857,
-      "recall": 0.75,
-      "average_precision": 0.836108,
-      "prevalence_baseline_average_precision": 0.02521,
-      "roc_auc": 0.98653,
-      "brier_score": 0.013677,
-      "training_prevalence_baseline_brier": 0.025068,
+      "positive_fraction": 0.025263,
+      "threshold": 0.206491,
+      "precision": 1.0,
+      "recall": 0.666667,
+      "average_precision": 0.794797,
+      "prevalence_baseline_average_precision": 0.025263,
+      "roc_auc": 0.983621,
+      "brier_score": 0.014179,
+      "training_prevalence_baseline_brier": 0.025119,
       "confusion_matrix_labels_0_1": [
         [
-          459,
-          5
+          463,
+          0
         ],
         [
-          3,
-          9
+          4,
+          8
         ]
       ],
       "calibration": {
-        "expected_calibration_error": 0.016424,
+        "expected_calibration_error": 0.016427,
         "bins": [
           {
             "lower_bound": 0.0,
             "upper_bound": 0.1,
-            "rows": 443,
-            "mean_predicted_probability": 0.009232,
-            "observed_positive_fraction": 0.004515
+            "rows": 445,
+            "mean_predicted_probability": 0.009671,
+            "observed_positive_fraction": 0.004494
           },
           {
             "lower_bound": 0.1,
             "upper_bound": 0.2,
-            "rows": 24,
-            "mean_predicted_probability": 0.138389,
-            "observed_positive_fraction": 0.083333
+            "rows": 21,
+            "mean_predicted_probability": 0.14199,
+            "observed_positive_fraction": 0.095238
           },
           {
             "lower_bound": 0.2,
             "upper_bound": 0.3,
-            "rows": 3,
-            "mean_predicted_probability": 0.243994,
-            "observed_positive_fraction": 0.666667
+            "rows": 4,
+            "mean_predicted_probability": 0.250142,
+            "observed_positive_fraction": 0.75
           },
           {
             "lower_bound": 0.3,
             "upper_bound": 0.4,
-            "rows": 2,
-            "mean_predicted_probability": 0.341384,
+            "rows": 1,
+            "mean_predicted_probability": 0.388753,
             "observed_positive_fraction": 1.0
           },
           {
             "lower_bound": 0.4,
             "upper_bound": 0.5,
-            "rows": 1,
-            "mean_predicted_probability": 0.479574,
+            "rows": 2,
+            "mean_predicted_probability": 0.482192,
             "observed_positive_fraction": 1.0
           },
           {
             "lower_bound": 0.5,
             "upper_bound": 0.6,
-            "rows": 3,
-            "mean_predicted_probability": 0.566396,
+            "rows": 2,
+            "mean_predicted_probability": 0.564497,
             "observed_positive_fraction": 1.0
           }
         ]
       }
     },
     "026-MGD5PTN": {
-      "rows": 576,
+      "rows": 575,
       "positive_rows": 4,
-      "positive_fraction": 0.006944,
-      "threshold": 0.160194,
-      "precision": 0.107143,
-      "recall": 0.75,
-      "average_precision": 0.47995,
-      "prevalence_baseline_average_precision": 0.006944,
-      "roc_auc": 0.975962,
-      "brier_score": 0.006696,
-      "training_prevalence_baseline_brier": 0.006896,
-      "confusion_matrix_labels_0_1": [
-        [
-          547,
-          25
-        ],
-        [
-          1,
-          3
-        ]
-      ],
-      "calibration": {
-        "expected_calibration_error": 0.017491,
-        "bins": [
-          {
-            "lower_bound": 0.0,
-            "upper_bound": 0.1,
-            "rows": 540,
-            "mean_predicted_probability": 0.00973,
-            "observed_positive_fraction": 0.001852
-          },
-          {
-            "lower_bound": 0.1,
-            "upper_bound": 0.2,
-            "rows": 19,
-            "mean_predicted_probability": 0.156444,
-            "observed_positive_fraction": 0.052632
-          },
-          {
-            "lower_bound": 0.2,
-            "upper_bound": 0.3,
-            "rows": 11,
-            "mean_predicted_probability": 0.244532,
-            "observed_positive_fraction": 0.0
-          },
-          {
-            "lower_bound": 0.3,
-            "upper_bound": 0.4,
-            "rows": 5,
-            "mean_predicted_probability": 0.349216,
-            "observed_positive_fraction": 0.2
-          },
-          {
-            "lower_bound": 0.5,
-            "upper_bound": 0.6,
-            "rows": 1,
-            "mean_predicted_probability": 0.587646,
-            "observed_positive_fraction": 1.0
-          }
-        ]
-      }
-    },
-    "027-MGD5PTN": {
-      "rows": 425,
-      "positive_rows": 8,
-      "positive_fraction": 0.018824,
-      "threshold": 0.160194,
-      "precision": 0.875,
-      "recall": 0.875,
-      "average_precision": 0.933824,
-      "prevalence_baseline_average_precision": 0.018824,
-      "roc_auc": 0.997302,
-      "brier_score": 0.00871,
-      "training_prevalence_baseline_brier": 0.018494,
-      "confusion_matrix_labels_0_1": [
-        [
-          416,
-          1
-        ],
-        [
-          1,
-          7
-        ]
-      ],
-      "calibration": {
-        "expected_calibration_error": 0.015278,
-        "bins": [
-          {
-            "lower_bound": 0.0,
-            "upper_bound": 0.1,
-            "rows": 407,
-            "mean_predicted_probability": 0.007159,
-            "observed_positive_fraction": 0.0
-          },
-          {
-            "lower_bound": 0.1,
-            "upper_bound": 0.2,
-            "rows": 12,
-            "mean_predicted_probability": 0.142349,
-            "observed_positive_fraction": 0.166667
-          },
-          {
-            "lower_bound": 0.2,
-            "upper_bound": 0.3,
-            "rows": 2,
-            "mean_predicted_probability": 0.233223,
-            "observed_positive_fraction": 1.0
-          },
-          {
-            "lower_bound": 0.5,
-            "upper_bound": 0.6,
-            "rows": 3,
-            "mean_predicted_probability": 0.547967,
-            "observed_positive_fraction": 1.0
-          },
-          {
-            "lower_bound": 0.6,
-            "upper_bound": 0.7,
-            "rows": 1,
-            "mean_predicted_probability": 0.602078,
-            "observed_positive_fraction": 1.0
-          }
-        ]
-      }
-    },
-    "032-MGD4PTN": {
-      "rows": 517,
-      "positive_rows": 4,
-      "positive_fraction": 0.007737,
-      "threshold": 0.160194,
-      "precision": 1.0,
+      "positive_fraction": 0.006957,
+      "threshold": 0.206491,
+      "precision": 0.1,
       "recall": 0.5,
-      "average_precision": 0.875,
-      "prevalence_baseline_average_precision": 0.007737,
-      "roc_auc": 0.998051,
-      "brier_score": 0.005101,
-      "training_prevalence_baseline_brier": 0.007677,
+      "average_precision": 0.434732,
+      "prevalence_baseline_average_precision": 0.006957,
+      "roc_auc": 0.975482,
+      "brier_score": 0.006893,
+      "training_prevalence_baseline_brier": 0.006908,
       "confusion_matrix_labels_0_1": [
         [
-          513,
-          0
+          553,
+          18
         ],
         [
           2,
@@ -1063,57 +916,62 @@
         ]
       ],
       "calibration": {
-        "expected_calibration_error": 0.012048,
+        "expected_calibration_error": 0.017844,
         "bins": [
           {
             "lower_bound": 0.0,
             "upper_bound": 0.1,
-            "rows": 514,
-            "mean_predicted_probability": 0.009959,
-            "observed_positive_fraction": 0.001946
+            "rows": 540,
+            "mean_predicted_probability": 0.009802,
+            "observed_positive_fraction": 0.001852
           },
           {
             "lower_bound": 0.1,
             "upper_bound": 0.2,
-            "rows": 2,
-            "mean_predicted_probability": 0.145005,
-            "observed_positive_fraction": 1.0
+            "rows": 14,
+            "mean_predicted_probability": 0.154832,
+            "observed_positive_fraction": 0.071429
           },
           {
-            "lower_bound": 0.5,
-            "upper_bound": 0.6,
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 15,
+            "mean_predicted_probability": 0.243699,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "rows": 5,
+            "mean_predicted_probability": 0.3513,
+            "observed_positive_fraction": 0.2
+          },
+          {
+            "lower_bound": 0.6,
+            "upper_bound": 0.7,
             "rows": 1,
-            "mean_predicted_probability": 0.59987,
+            "mean_predicted_probability": 0.612668,
             "observed_positive_fraction": 1.0
           }
         ]
       }
     },
-    "033-MGD4PTN": {
-      "rows": 591,
-      "positive_rows": 0,
-      "negative_rows": 591,
-      "note": "Holdout lacks one outcome class; station-level discrimination/calibration is not estimable reliably."
-    }
-  },
-  "focus_gauge_test_metrics": {
-    "003-MGD5PTN": {
-      "label": "Patna: Gandhighat",
-      "rows": 352,
+    "027-MGD5PTN": {
+      "rows": 424,
       "positive_rows": 8,
-      "positive_fraction": 0.022727,
-      "threshold": 0.160194,
-      "precision": 0.545455,
+      "positive_fraction": 0.018868,
+      "threshold": 0.206491,
+      "precision": 1.0,
       "recall": 0.75,
-      "average_precision": 0.55086,
-      "prevalence_baseline_average_precision": 0.022727,
-      "roc_auc": 0.980015,
-      "brier_score": 0.014408,
-      "training_prevalence_baseline_brier": 0.02224,
+      "average_precision": 0.921875,
+      "prevalence_baseline_average_precision": 0.018868,
+      "roc_auc": 0.997296,
+      "brier_score": 0.008986,
+      "training_prevalence_baseline_brier": 0.018537,
       "confusion_matrix_labels_0_1": [
         [
-          339,
-          5
+          416,
+          0
         ],
         [
           2,
@@ -1121,61 +979,175 @@
         ]
       ],
       "calibration": {
-        "expected_calibration_error": 0.009792,
+        "expected_calibration_error": 0.015447,
         "bins": [
           {
             "lower_bound": 0.0,
             "upper_bound": 0.1,
-            "rows": 337,
-            "mean_predicted_probability": 0.006696,
-            "observed_positive_fraction": 0.005935
+            "rows": 404,
+            "mean_predicted_probability": 0.00734,
+            "observed_positive_fraction": 0.0
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 14,
+            "mean_predicted_probability": 0.127606,
+            "observed_positive_fraction": 0.142857
+          },
+          {
+            "lower_bound": 0.2,
+            "upper_bound": 0.3,
+            "rows": 2,
+            "mean_predicted_probability": 0.241248,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "rows": 1,
+            "mean_predicted_probability": 0.490298,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 3,
+            "mean_predicted_probability": 0.552278,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "032-MGD4PTN": {
+      "rows": 516,
+      "positive_rows": 4,
+      "positive_fraction": 0.007752,
+      "threshold": 0.206491,
+      "precision": 1.0,
+      "recall": 0.25,
+      "average_precision": 0.861111,
+      "prevalence_baseline_average_precision": 0.007752,
+      "roc_auc": 0.997559,
+      "brier_score": 0.00521,
+      "training_prevalence_baseline_brier": 0.007692,
+      "confusion_matrix_labels_0_1": [
+        [
+          512,
+          0
+        ],
+        [
+          3,
+          1
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.011857,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 513,
+            "mean_predicted_probability": 0.009655,
+            "observed_positive_fraction": 0.001949
+          },
+          {
+            "lower_bound": 0.1,
+            "upper_bound": 0.2,
+            "rows": 2,
+            "mean_predicted_probability": 0.14466,
+            "observed_positive_fraction": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "rows": 1,
+            "mean_predicted_probability": 0.545339,
+            "observed_positive_fraction": 1.0
+          }
+        ]
+      }
+    },
+    "033-MGD4PTN": {
+      "rows": 590,
+      "positive_rows": 0,
+      "negative_rows": 590,
+      "note": "Holdout lacks one outcome class; station-level discrimination/calibration is not estimable reliably."
+    }
+  },
+  "focus_gauge_test_metrics": {
+    "003-MGD5PTN": {
+      "label": "Patna: Gandhighat",
+      "rows": 351,
+      "positive_rows": 8,
+      "positive_fraction": 0.022792,
+      "threshold": 0.206491,
+      "precision": 0.555556,
+      "recall": 0.625,
+      "average_precision": 0.525562,
+      "prevalence_baseline_average_precision": 0.022792,
+      "roc_auc": 0.978499,
+      "brier_score": 0.014919,
+      "training_prevalence_baseline_brier": 0.022302,
+      "confusion_matrix_labels_0_1": [
+        [
+          339,
+          4
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "calibration": {
+        "expected_calibration_error": 0.01022,
+        "bins": [
+          {
+            "lower_bound": 0.0,
+            "upper_bound": 0.1,
+            "rows": 336,
+            "mean_predicted_probability": 0.006172,
+            "observed_positive_fraction": 0.005952
           },
           {
             "lower_bound": 0.1,
             "upper_bound": 0.2,
             "rows": 5,
-            "mean_predicted_probability": 0.141287,
+            "mean_predicted_probability": 0.149066,
             "observed_positive_fraction": 0.0
           },
           {
             "lower_bound": 0.2,
             "upper_bound": 0.3,
             "rows": 2,
-            "mean_predicted_probability": 0.233908,
+            "mean_predicted_probability": 0.220633,
             "observed_positive_fraction": 0.5
           },
           {
             "lower_bound": 0.3,
             "upper_bound": 0.4,
-            "rows": 6,
-            "mean_predicted_probability": 0.372801,
-            "observed_positive_fraction": 0.666667
-          },
-          {
-            "lower_bound": 0.4,
-            "upper_bound": 0.5,
-            "rows": 2,
-            "mean_predicted_probability": 0.40581,
-            "observed_positive_fraction": 0.5
+            "rows": 8,
+            "mean_predicted_probability": 0.348822,
+            "observed_positive_fraction": 0.625
           }
         ]
       }
     },
     "004-MGD4PTN": {
       "label": "Muzaffarpur: Sikandarpur",
-      "rows": 591,
+      "rows": 590,
       "positive_rows": 0,
-      "negative_rows": 591,
+      "negative_rows": 590,
       "note": "Holdout lacks one outcome class; station-level discrimination/calibration is not estimable reliably."
     }
   },
   "test_detected_positive_window_lead_time": {
-    "detected_positive_issue_windows": 111,
+    "detected_positive_issue_windows": 92,
     "unit": "hours from issue time to first observed warning-level crossing",
-    "median_hours": 10.0,
-    "mean_hours": 10.766,
+    "median_hours": 9.0,
+    "mean_hours": 10.011,
     "minimum_hours": 1.0,
-    "maximum_hours": 24.0,
+    "maximum_hours": 23.0,
     "interpretation": "Issue-window statistic; overlapping windows are not independent flood events."
   },
   "operational_eligible": false,
