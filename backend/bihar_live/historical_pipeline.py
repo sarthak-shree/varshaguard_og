@@ -26,7 +26,7 @@ from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 import joblib
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 IST = timezone(timedelta(hours=5, minutes=30))
 DEFAULT_DB = Path(os.environ.get("VARSHAGUARD_HISTORY_DB", "data/bihar_live/history.sqlite3"))
 RAIN_HORIZONS = (1, 3, 6, 12, 24)
@@ -63,6 +63,8 @@ def connect(db_path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
             station_id TEXT NOT NULL,
             observed_at_utc TEXT NOT NULL,
             source TEXT NOT NULL,
+            source_station_id TEXT,
+            source_kind TEXT NOT NULL DEFAULT 'observed' CHECK(source_kind = 'observed'),
             variable TEXT NOT NULL CHECK(variable IN ('rainfall_mm','stage_m')),
             value REAL NOT NULL,
             unit TEXT NOT NULL,
@@ -73,6 +75,11 @@ def connect(db_path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
             PRIMARY KEY(station_id, observed_at_utc, source, variable)
         )
     """)
+    existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(observations)").fetchall()}
+    if "source_station_id" not in existing_columns:
+        conn.execute("ALTER TABLE observations ADD COLUMN source_station_id TEXT")
+    if "source_kind" not in existing_columns:
+        conn.execute("ALTER TABLE observations ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'observed'")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_obs_station_time ON observations(station_id, observed_at_utc)")
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
@@ -91,6 +98,10 @@ def ingest_observations(rows: Iterable[dict], db_path: str | Path = DEFAULT_DB) 
             variable = str(row["variable"]).strip()
             value = float(row["value"])
             unit = str(row["unit"]).strip()
+            source_kind = str(row.get("source_kind", "observed")).strip().lower()
+            if source_kind != "observed":
+                raise ValueError("forecast inputs cannot be stored as observation labels")
+            source_station_id = str(row.get("source_station_id") or row.get("station_id")).strip()
             timestamp = _utc_iso(row["observed_at"])
             quality = str(row.get("quality_flag", "good")).strip().lower()
             if not station or not source or not unit or variable not in {"rainfall_mm", "stage_m"}:
@@ -99,7 +110,7 @@ def ingest_observations(rows: Iterable[dict], db_path: str | Path = DEFAULT_DB) 
                 raise ValueError("invalid physical value")
             if quality not in {"good", "suspect", "bad", "missing", "stale"}:
                 raise ValueError("invalid quality flag")
-            values.append((station, timestamp, source, variable, value, unit, quality,
+            values.append((station, timestamp, source, source_station_id, source_kind, variable, value, unit, quality,
                            str(row.get("source_timestamp") or row["observed_at"]), now, SCHEMA_VERSION))
             accepted += 1
         except (KeyError, TypeError, ValueError, OverflowError):
@@ -108,10 +119,11 @@ def ingest_observations(rows: Iterable[dict], db_path: str | Path = DEFAULT_DB) 
         before = conn.total_changes
         conn.executemany("""
             INSERT INTO observations
-            (station_id, observed_at_utc, source, variable, value, unit, quality_flag,
+            (station_id, observed_at_utc, source, source_station_id, source_kind, variable, value, unit, quality_flag,
              source_timestamp, ingested_at_utc, schema_version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(station_id, observed_at_utc, source, variable) DO UPDATE SET
+                source_station_id=excluded.source_station_id, source_kind=excluded.source_kind,
                 value=excluded.value, unit=excluded.unit, quality_flag=excluded.quality_flag,
                 source_timestamp=excluded.source_timestamp, ingested_at_utc=excluded.ingested_at_utc,
                 schema_version=excluded.schema_version
@@ -125,7 +137,7 @@ def ingest_observations(rows: Iterable[dict], db_path: str | Path = DEFAULT_DB) 
 def export_observations(db_path: str | Path = DEFAULT_DB) -> pd.DataFrame:
     with connect(db_path) as conn:
         rows = conn.execute("""
-            SELECT station_id, observed_at_utc, source, variable, value, unit,
+            SELECT station_id, observed_at_utc, source, source_station_id, source_kind, variable, value, unit,
                    quality_flag, source_timestamp, ingested_at_utc, schema_version
             FROM observations ORDER BY station_id, observed_at_utc, variable
         """).fetchall()
@@ -147,7 +159,17 @@ def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) ->
     frame["value"] = pd.to_numeric(frame["value"], errors="coerce")
     frame = frame.dropna(subset=["station_id", "observed_at", "value"])
     frame = frame[frame["quality_flag"].fillna("bad").str.lower().eq("good")]
-    frame = frame.drop_duplicates(["station_id", "observed_at", "variable"], keep="last")
+    # Conflicting cross-source values for one canonical station/time/variable are
+    # excluded instead of silently choosing or averaging one source.
+    conflict_keys = []
+    for key, group in frame.groupby(["station_id", "observed_at", "variable"], dropna=False):
+        if group["value"].nunique(dropna=False) > 1:
+            conflict_keys.append(key)
+    if conflict_keys:
+        conflict_index = pd.MultiIndex.from_frame(frame[["station_id", "observed_at", "variable"]])
+        rejected = pd.MultiIndex.from_tuples(conflict_keys, names=["station_id", "observed_at", "variable"])
+        frame = frame.loc[~conflict_index.isin(rejected)].copy()
+    frame = frame.drop_duplicates(["station_id", "observed_at", "variable"], keep="first")
     rows = []
     for station, station_rows in frame.groupby("station_id", sort=False):
         series = {
