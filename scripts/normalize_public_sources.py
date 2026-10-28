@@ -17,8 +17,8 @@ import pandas as pd
 ALIASES = {
     "station_id": ["station_id", "station code", "station_code", "stationcode", "station", "gauge_id", "site_id", "station name"],
     "timestamp": ["timestamp", "datetime", "date time", "date_time", "observation time", "observed_at", "data time", "datatime", "date"],
-    "rainfall_mm": ["rainfall", "rainfall (mm)", "rainfall_mm", "rain (mm)", "rainfall value", "precipitation", "precipitation_mm"],
-    "stage_m": ["river water level", "river water level (m)", "water level", "water level (m)", "stage", "stage (m)", "river stage", "rwl (m)"],
+    "rainfall_mm": ["rainfall", "rainfall (mm)", "rainfall_mm", "rain (mm)", "rainfall value", "telemetry hourly rainfall (mm)", "precipitation", "precipitation_mm"],
+    "stage_m": ["river water level", "river water level (m)", "water level", "water level (m)", "stage", "stage (m)", "river stage", "river water level telemetry hourly (meter)", "rwl (m)"],
     "district": ["district", "district name"],
     "river": ["river", "river name", "basin"],
 }
