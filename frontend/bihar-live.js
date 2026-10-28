@@ -405,6 +405,76 @@
       }
     }
   }
+  function renderForecastOutlook(districtKey) {
+    const rain = currentData.rainForecast?.[districtKey];
+    const stage = currentData.stageForecast?.[districtKey];
+    const amounts = rain?.rainfall_accumulation_mm || {};
+    const fmtRain = (key) => finiteNumber(amounts[key]) ? Number(amounts[key]).toFixed(1) + " mm" : "—";
+    setText("forecastRain1h", fmtRain("next_1h"));
+    setText("forecastRain3h", fmtRain("next_3h"));
+    setText("forecastRain6h", fmtRain("next_6h"));
+    setText("forecastRain24h", fmtRain("next_24h"));
+    setText("rainForecastFreshness", rain?.fetched_at_ist
+      ? "Fetched " + formatTime(rain.fetched_at_ist) + (finiteNumber(rain.cache_age_seconds) ? " · cached " + Math.round(Number(rain.cache_age_seconds)) + "s" : "")
+      : rain?.available ? "Provider forecast available" : "Forecast unavailable");
+    setText("rainForecastNote", rain?.available
+      ? "Open-Meteo provider NWP forecast. Local independent rain-gauge validation is not yet available; this is not a heavy-rain or flood probability."
+      : (rain?.message || "Waiting for a valid hourly rainfall forecast."));
+    setText("stageForecastFreshness", stage?.source_observed_at_ist
+      ? "CWC observation " + formatTime(stage.source_observed_at_ist) +
+        (finiteNumber(stage.source_data_age_hours) ? " · " + Number(stage.source_data_age_hours).toFixed(1) + "h old" : "")
+      : "Waiting for gauge history");
+    setText("stageForecastDirection", stage?.available
+      ? (stage.trend_direction === "rising" ? "↑ Rising trend" : stage.trend_direction === "falling" ? "↓ Falling trend" : "→ Nearly steady")
+      : "Forecast unavailable");
+    const values = $("stageForecastValues");
+    if (values) {
+      values.replaceChildren();
+      if (stage?.available && Array.isArray(stage.forecasts)) {
+        stage.forecasts.forEach((item) => {
+          const cell = document.createElement("div");
+          cell.className = "forecast-stage-value";
+          const label = document.createElement("span");
+          label.textContent = "+" + item.horizon_hours + " hours";
+          const value = document.createElement("strong");
+          value.textContent = finiteNumber(item.projected_stage_m) ? Number(item.projected_stage_m).toFixed(2) + " m" : "—";
+          cell.append(label, value);
+          values.appendChild(cell);
+        });
+      } else {
+        values.textContent = stage?.message || "Not enough recent CWC readings for a trend baseline.";
+      }
+    }
+    setText("stageForecastNote", stage?.available
+      ? "Unvalidated linear extrapolation from recent CWC readings; not a trained ML model or confidence interval. Rainfall and upstream changes can invalidate the trend."
+      : "The stage baseline needs at least three distinct readings spanning two hours. No forecast is invented when data are insufficient.");
+    const status = $("forecastOutlookStatus");
+    if (status) status.textContent = rain?.available && stage?.available ? "Both sources" :
+      rain?.available ? "Rainfall only" : stage?.available ? "CWC only" : "Waiting";
+  }
+
+  async function loadForecastOutlook(districtKey) {
+    if (!DISTRICTS[districtKey]) return;
+    currentData.rainForecast ||= {};
+    currentData.stageForecast ||= {};
+    currentData.forecastLoading ||= {};
+    if (currentData.forecastLoading[districtKey]) return;
+    currentData.forecastLoading[districtKey] = true;
+    try {
+      const [rain, stage] = await Promise.allSettled([
+        getJson("/api/bihar-live/forecast/rainfall?district=" + encodeURIComponent(districtKey)),
+        getJson("/api/bihar-live/forecast/river-stage?district=" + encodeURIComponent(districtKey))
+      ]);
+      currentData.rainForecast[districtKey] = rain.status === "fulfilled"
+        ? rain.value : { available: false, message: rain.reason?.message || "Rainfall forecast unavailable." };
+      currentData.stageForecast[districtKey] = stage.status === "fulfilled"
+        ? stage.value : { available: false, message: stage.reason?.message || "River-stage forecast unavailable." };
+    } finally {
+      delete currentData.forecastLoading[districtKey];
+      if (districtKey === $("districtSelect").value) renderForecastOutlook(districtKey);
+    }
+  }
+
   function renderDischargeContext(districtKey) {
     const prediction = (currentData.live?.predictions || []).find(
       (item) => String(item.district || "").toLowerCase() === String(DISTRICTS[districtKey]?.name || "").toLowerCase()
@@ -557,6 +627,7 @@
       updateDashboard(data);
       loadWeatherForecast($("districtSelect").value);
       loadDischargeContext($("districtSelect").value);
+      loadForecastOutlook($("districtSelect").value);
       if (!data.available) showError(data.error || "CWC live data is currently unavailable.");
     } catch (error) {
       showError(error.message);
@@ -570,6 +641,7 @@
       renderSources(currentData.live, currentData.weather?.[$("districtSelect").value]);
       loadWeatherForecast($("districtSelect").value);
       loadDischargeContext($("districtSelect").value);
+      loadForecastOutlook($("districtSelect").value);
     }
   }
   function setupMap() {
@@ -629,6 +701,7 @@
           selectDistrict(false);
           loadWeatherForecast(nearest.key);
           loadDischargeContext(nearest.key);
+          loadForecastOutlook(nearest.key);
           map.setView(point, 11, { animate: true });
           clearError();
         } else {
@@ -850,6 +923,7 @@
       selectDistrict();
       loadWeatherForecast($("districtSelect").value);
       loadDischargeContext($("districtSelect").value);
+      loadForecastOutlook($("districtSelect").value);
     });
     $("locateButton").addEventListener("click", useMyLocation);
     $("mapRefreshButton").addEventListener("click", () => selectDistrict());
