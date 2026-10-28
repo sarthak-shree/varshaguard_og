@@ -10,8 +10,11 @@ Validate its schema and provenance fields from the repository root:
 
 ```bash
 python backend/bihar_live/research/validate_external_events.py
+python backend/bihar_live/research/audit_external_event_eligibility.py
 pytest -q backend/bihar_live/tests/test_external_event_ledger.py
 ```
+
+The eligibility audit is a guardrail, not a matching algorithm. It requires an independently sourced, ground-verified event with a reviewed station-level match and an explicit event onset. It also reminds users that scoring needs held-out prediction rows and a predeclared matching window.
 
 ## Seed sources and what they prove
 
@@ -42,6 +45,7 @@ The current model's documented 2026 holdout does not overlap the three ledger re
 
 - Ledger schema and provenance fields: machine-checkable.
 - Independent source records: three records, still a starter sample; coverage is incomplete.
+- Eligibility audit: implemented; all current records should be excluded from scoring until onset, ground verification and station-level matching are supported.
 - Station/reach spatial joins: not yet done; the NRSC maps need georeferenced polygon evidence or an auditable manual review.
 - Event interval/onset matching: not yet done.
 - Ground truth verification: not established for either NRSC rapid map; not established at gauge level for the situation-report row.
