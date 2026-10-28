@@ -134,9 +134,9 @@ def export_observations(db_path: str | Path = DEFAULT_DB) -> pd.DataFrame:
 def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) -> pd.DataFrame:
     """Build exact-hour lag features and future labels; never backfill from future values.
 
-    Each feature timestamp must have all required lags at exact hourly offsets. Labels
-    are accepted only at exact future horizons. Missing values stay missing and are not
-    forward-filled across gaps. Data are sorted chronologically per station.
+    Stage lag features are required for either task. Rainfall lag features may be missing
+    and are imputed inside the training pipeline; missing labels are never imputed.
+    Labels are accepted only at exact future horizons, avoiding implicit interpolation.
     """
     required = {"station_id", "observed_at", "variable", "value", "quality_flag"}
     if not required.issubset(observations.columns):
@@ -147,11 +147,15 @@ def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) ->
     frame = frame.dropna(subset=["station_id", "observed_at", "value"])
     frame = frame[frame["quality_flag"].fillna("bad").str.lower().eq("good")]
     frame = frame.drop_duplicates(["station_id", "observed_at", "variable"], keep="last")
-    wide = frame.pivot(index=["station_id", "observed_at"], columns="variable", values="value").reset_index()
     rows = []
-    for station, part in wide.groupby("station_id", sort=False):
-        part = part.sort_values("observed_at").set_index("observed_at")
-        for stamp, current in part.iterrows():
+    for station, station_rows in frame.groupby("station_id", sort=False):
+        series = {
+            variable: group.set_index("observed_at")["value"].sort_index()
+            for variable, group in station_rows.groupby("variable", sort=False)
+        }
+        stage_series = series.get("stage_m", pd.Series(dtype=float))
+        rain_series = series.get("rainfall_mm", pd.Series(dtype=float))
+        for stamp in stage_series.index:
             local = stamp.tz_convert("Asia/Kolkata")
             features = {
                 "station_id": station, "issue_time_utc": stamp.isoformat(),
@@ -162,30 +166,24 @@ def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) ->
                 "dayofyear_cos": math.cos(2 * math.pi * local.dayofyear / 366),
             }
             valid = True
-            for var, prefix in (("rainfall_mm", "rain_lag"), ("stage_m", "stage_lag")):
-                for lag in (1, 3, 6, 12, 24):
-                    target_time = stamp - pd.Timedelta(hours=lag)
-                    if target_time not in part.index:
-                        valid = False
-                        break
-                    val = part.at[target_time, var] if var in part.columns else np.nan
-                    if not np.isfinite(val):
-                        valid = False
-                        break
-                    features[f"{prefix}_{lag}h_{'mm' if prefix == 'rain_lag' else 'm'}"] = float(val)
-                if not valid:
+            for lag in (1, 3, 6, 12, 24):
+                target_time = stamp - pd.Timedelta(hours=lag)
+                stage_value = stage_series.get(target_time, np.nan)
+                if pd.isna(stage_value):
+                    valid = False
                     break
+                features[f"stage_lag_{lag}h_m"] = float(stage_value)
+                rain_value = rain_series.get(target_time, np.nan)
+                features[f"rain_lag_{lag}h_mm"] = float(rain_value) if pd.notna(rain_value) else np.nan
             if not valid:
                 continue
             features["stage_rate_3h_m_per_h"] = (features["stage_lag_1h_m"] - features["stage_lag_3h_m"]) / 2
             features["stage_rate_12h_m_per_h"] = (features["stage_lag_1h_m"] - features["stage_lag_12h_m"]) / 11
             for horizon in RAIN_HORIZONS:
-                target_time = stamp + pd.Timedelta(hours=horizon)
-                label = part["rainfall_mm"].get(target_time, np.nan) if "rainfall_mm" in part else np.nan
+                label = rain_series.get(stamp + pd.Timedelta(hours=horizon), np.nan)
                 features[f"target_rainfall_{horizon}h_mm"] = float(label) if pd.notna(label) else np.nan
             for horizon in STAGE_HORIZONS:
-                target_time = stamp + pd.Timedelta(hours=horizon)
-                label = part["stage_m"].get(target_time, np.nan) if "stage_m" in part else np.nan
+                label = stage_series.get(stamp + pd.Timedelta(hours=horizon), np.nan)
                 features[f"target_stage_{horizon}h_m"] = float(label) if pd.notna(label) else np.nan
             rows.append(features)
     return pd.DataFrame(rows).sort_values("issue_time_utc").reset_index(drop=True) if rows else pd.DataFrame()
