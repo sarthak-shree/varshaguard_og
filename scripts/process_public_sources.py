@@ -7,7 +7,11 @@ reported and skipped, never guessed around.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 import pandas as pd
 
@@ -16,7 +20,6 @@ from scripts.normalize_public_sources import normalize_public_csv
 from backend.bihar_live.historical_pipeline import build_supervised_rows, train_and_evaluate
 from scripts.evaluate_independent_events import evaluate_events
 
-ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "data" / "processed" / "public_sources"
 EVENT_LEDGER = ROOT / "data" / "bihar_live" / "research" / "independent_flood_events.csv"
 SOURCE_CONFIG = {
