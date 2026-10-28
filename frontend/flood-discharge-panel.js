@@ -49,16 +49,22 @@
 
   function numericValues(value) {
     if (typeof value === "number" && Number.isFinite(value)) return [value];
-    if (Array.isArray(value)) return value.filter((item) => typeof item === "number" && Number.isFinite(item));
+    if (Array.isArray(value)) return value.flatMap(numericValues);
     return [];
   }
 
   function fmt(value, unit) {
-    const values = numericValues(value);
+    const values = numericValues(value).sort((a, b) => a - b);
     if (!values.length) return "—";
-    const formatted = values.length === 1
-      ? values[0].toLocaleString("en-IN", { maximumFractionDigits: 1 })
-      : values.length + " ensemble values";
+    const numberFormat = (number) => number.toLocaleString("en-IN", { maximumFractionDigits: 1 });
+    let formatted;
+    if (values.length === 1) {
+      formatted = numberFormat(values[0]);
+    } else {
+      const middle = values[Math.floor((values.length - 1) / 2)];
+      formatted = numberFormat(values[0]) + "–" + numberFormat(middle) + "–" + numberFormat(values[values.length - 1]) +
+        " (" + values.length + " values: min/median/max)";
+    }
     return formatted + (unit ? " " + unit : "");
   }
 
