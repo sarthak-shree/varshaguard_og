@@ -13,6 +13,25 @@ from pathlib import Path
 import pandas as pd
 
 
+def stage_test_predictions(test_predictions: pd.DataFrame, thresholds: pd.DataFrame) -> pd.DataFrame:
+    """Convert continuous test-stage forecasts to warning-level crossings using reviewed thresholds."""
+    required_predictions = {"station_id", "issue_time_utc", "target_variable", "model_prediction"}
+    if not required_predictions.issubset(test_predictions.columns):
+        raise ValueError(f"test predictions missing {sorted(required_predictions - set(test_predictions.columns))}")
+    if not {"station_id", "warning_level_m"}.issubset(thresholds.columns):
+        raise ValueError("threshold mapping must contain station_id,warning_level_m")
+    stage_rows = test_predictions[test_predictions["target_variable"].eq("stage_m")].merge(
+        thresholds[["station_id", "warning_level_m"]], on="station_id", how="inner", validate="many_to_one"
+    )
+    stage_rows["model_prediction"] = pd.to_numeric(stage_rows["model_prediction"], errors="coerce")
+    stage_rows["warning_level_m"] = pd.to_numeric(stage_rows["warning_level_m"], errors="coerce")
+    stage_rows = stage_rows.dropna(subset=["model_prediction", "warning_level_m", "issue_time_utc"])
+    stage_rows["predicted_event"] = stage_rows["model_prediction"] >= stage_rows["warning_level_m"]
+    return stage_rows.rename(columns={"issue_time_utc": "issue_time"})[
+        ["station_id", "issue_time", "predicted_event"]
+    ]
+
+
 def evaluate_events(predictions: pd.DataFrame, events: pd.DataFrame, lead_hours: float = 24.0) -> dict:
     required_predictions = {"station_id", "issue_time", "predicted_event"}
     required_events = {"event_id", "station_id", "event_start", "event_end", "ground_verified", "station_level_match_ready"}
@@ -91,13 +110,7 @@ def main():
             parser.error("--test-predictions requires --stage-thresholds; station warning levels must not be guessed")
         test_predictions = pd.read_csv(args.test_predictions)
         thresholds = pd.read_csv(args.stage_thresholds)
-        if not {"station_id", "warning_level_m"}.issubset(thresholds.columns):
-            parser.error("stage threshold CSV must contain station_id,warning_level_m")
-        stage_rows = test_predictions[test_predictions["target_variable"].eq("stage_m")].merge(
-            thresholds[["station_id", "warning_level_m"]], on="station_id", how="inner", validate="many_to_one"
-        )
-        stage_rows["predicted_event"] = pd.to_numeric(stage_rows["model_prediction"], errors="coerce") >= pd.to_numeric(stage_rows["warning_level_m"], errors="coerce")
-        predictions = stage_rows.rename(columns={"issue_time_utc": "issue_time"})[["station_id", "issue_time", "predicted_event"]].dropna()
+        predictions = stage_test_predictions(test_predictions, thresholds)
     elif args.predictions:
         predictions = pd.read_csv(args.predictions)
     else:
