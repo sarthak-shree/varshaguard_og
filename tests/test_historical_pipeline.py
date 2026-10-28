@@ -46,7 +46,7 @@ def test_observation_store_is_idempotent_and_normalizes_timezone(tmp_path):
     assert second["database_changes"] == 6
     assert frame["observed_at_utc"].str.endswith("+00:00").all()
     with connect(db) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
 
 
 def test_ingest_rejects_invalid_rainfall_and_unknown_quality(tmp_path):
