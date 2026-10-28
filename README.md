@@ -98,6 +98,18 @@ The current forecast additions are deliberately conservative and do not claim a 
 - The dashboard keeps rainfall accumulation, observed CWC stage, and Open-Meteo discharge in separate units and panels. Stage (m) and discharge (flow per unit time) are not averaged together. Patna Gandhighat and Muzaffarpur Sikandarpur are not assumed to be an upstream/downstream pair.
 - The public source adapters use bounded in-process caches and return source timestamps/quality metadata where available. A serverless process can restart, so this is not a durable historical data warehouse.
 
+### Historical collection and chronological research training
+
+The repository now includes `backend/bihar_live/historical_pipeline.py` for idempotent observation storage, timestamp alignment, future-label construction, and chronological baseline evaluation.
+
+1. Configure `VARSHAGUARD_HISTORY_DB` to a durable database file on a persistent mounted volume. The default SQLite path is for local development; Vercel/serverless local files are ephemeral and are **not** a durable history store.
+2. On a persistent worker/host, run `python -m backend.bihar_live.historical_pipeline --collect-live` on a schedule (for example, hourly). It uses the existing CWC FFS adapter and persists quality-screened HHS stage and MPS rainfall observations with station identity, source, units, UTC-normalized timestamps, source timestamp, quality flag and schema version. The upstream endpoint only returns a recent window; repeat collection and retain the store.
+3. Alternatively, import normalized CSV rows containing `station_id,observed_at,source,variable,value,unit` and optional `quality_flag,source_timestamp` with `--import-csv path.csv`.
+4. Run `python -m backend.bihar_live.historical_pipeline --train` after enough aligned observations have accumulated. It builds exact-hour lag features and exact future labels, does not fill missing target labels, uses chronological train/validation/test partitions, selects candidate model by validation MAE, and reports final test metrics against persistence. Targets without enough labels are explicitly marked `insufficient_labels`; all outputs remain research-only.
+5. Check `/api/bihar-live/model/evaluation` for the persisted real-data evaluation status. The old generated-data example is available separately at `/api/bihar-live/model/evaluation/synthetic-demo` and is never treated as evidence of real forecast skill.
+
+Important limitations: CWC observations may be irregular rather than hourly, and the builder intentionally refuses to fabricate exact-hour labels. This means some/all targets may remain untrainable until enough timestamped records exist at the required horizons. Open-Meteo weather forecasts are not substituted for observed rainfall labels. A training report alone does not qualify a model for operational alerts; use independent event evaluation and a documented review before deployment.
+
 ### Requirements before training a new ML forecast
 
 Persist timestamped source snapshots with source/model version, coordinate/grid mapping, units, and quality flags. Build aligned training rows with future rainfall-gauge totals and future CWC stage labels at each horizon; avoid leakage by splitting chronologically by event/time, not randomly. Compare persistence and trend baselines against any LightGBM/XGBoost model on a held-out season and independent events. Report MAE/RMSE for stage and rainfall, event precision/recall and lead time for threshold crossings, calibration and false-alarm rates where appropriate. Until these steps are complete, forecast outputs remain research-only and are not official warnings.
