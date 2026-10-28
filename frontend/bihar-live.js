@@ -421,6 +421,10 @@
     setText("cwcStageWindow", history.length >= 2
       ? history.length + " quality-checked readings in the latest 24-hour history"
       : "Not enough recent CWC readings to calculate an average");
+    const stageChange = history.length >= 2 ? history[history.length - 1].value - history[0].value : null;
+    setText("cwcStageTrend", stageChange === null ? "Trend: insufficient observations" :
+      "Observed change: " + (stageChange > 0.02 ? "rose " : stageChange < -0.02 ? "fell " : "was nearly steady ") +
+      (Math.abs(stageChange) < 0.03 ? "" : Math.abs(stageChange).toFixed(2) + " m") + " across the available readings");
 
     const discharge = currentData.discharge?.[districtKey];
     const daily = discharge?.daily || {};
@@ -441,6 +445,11 @@
     setText("openMeteoDischargeWindow", forecastValues.length
       ? "Mean of " + forecastValues.length + " daily " + (units.river_discharge_mean ? "mean" : "discharge") + " values from today onward"
       : (discharge?.message || "No numeric Open-Meteo discharge forecast is available"));
+    const dischargeChange = forecastValues.length >= 2
+      ? Number(forecastValues[forecastValues.length - 1].value) - Number(forecastValues[0].value) : null;
+    setText("openMeteoDischargeTrend", dischargeChange === null ? "Trend: insufficient forecast values" :
+      "Forecast change: " + (dischargeChange > 0 ? "rising " : dischargeChange < 0 ? "falling " : "nearly steady ") +
+      (Math.abs(dischargeChange) < 0.001 ? "" : Math.abs(dischargeChange).toFixed(1) + " " + unit) + " from first to last displayed day");
     const status = $("dischargeContextStatus");
     if (status) status.textContent = stageAverage !== null && dischargeAverage !== null ? "Both sources" :
       stageAverage !== null ? "CWC only" : dischargeAverage !== null ? "Open-Meteo only" : "Waiting";
