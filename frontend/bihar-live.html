@@ -111,6 +111,28 @@
       </div>
     </section>
 
+        <section class="panel discharge-context-panel" aria-labelledby="dischargeContextTitle">
+          <div class="panel-heading-row">
+            <div>
+              <h3 id="dischargeContextTitle">River level &amp; discharge context</h3>
+              <span>CWC observations and Open-Meteo discharge forecast · shown separately</span>
+            </div>
+            <span id="dischargeContextStatus" class="health-badge">Loading</span>
+          </div>
+          <div class="discharge-context-grid">
+            <article class="discharge-context-metric">
+              <span>Average observed CWC level</span>
+              <strong id="cwcAverageStage">—</strong>
+              <small id="cwcStageWindow">Waiting for recent gauge observations</small>
+            </article>
+            <article class="discharge-context-metric">
+              <span>Average forecast river discharge</span>
+              <strong id="openMeteoAverageDischarge">—</strong>
+              <small id="openMeteoDischargeWindow">Waiting for Open-Meteo discharge forecast</small>
+            </article>
+          </div>
+          <p class="plain-text discharge-context-note" id="dischargeContextNote">CWC river level is measured in metres; Open-Meteo discharge is measured in its published flow units. They are not averaged together because they are different physical quantities. These two gauges are not assumed to be an upstream/downstream pair.</p>
+        </section>
         <section class="panel stage-trend-panel" aria-labelledby="stageTrendTitle">
           <div class="panel-heading-row">
             <div>
