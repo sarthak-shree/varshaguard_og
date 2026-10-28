@@ -101,6 +101,19 @@ def _rain_window(times_ns: np.ndarray | None, values: np.ndarray | None, issue_n
     return float(values[left:right].sum())
 
 
+def future_horizon_is_covered(issue_ns: int, future_times_ns: np.ndarray) -> bool:
+    """Reject target windows with weak start/end coverage or long observation gaps."""
+    if len(future_times_ns) < 18:
+        return False
+    if int(future_times_ns[0]) > issue_ns + 3 * 3_600_000_000_000:
+        return False
+    if int(future_times_ns[-1]) < issue_ns + 23 * 3_600_000_000_000:
+        return False
+    if np.max(np.diff(future_times_ns)) > 6 * 3_600_000_000_000:
+        return False
+    return True
+
+
 def build_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, list[str]]:
     stages, rains, station_meta, quality = _quality_observations(raw)
     station_codes = sorted(station_meta)
@@ -117,7 +130,6 @@ def build_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, list[str]]:
     rows = []
     issue_ns_step = 6 * 3_600_000_000_000
     horizon_ns = 24 * 3_600_000_000_000
-    coverage_ns = 23 * 3_600_000_000_000
     tolerance_ns = 3 * 3_600_000_000_000
     station_counts = {}
 
@@ -141,12 +153,10 @@ def build_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, list[str]]:
                 continue
             future_start = int(np.searchsorted(target_times, issue_ns, side="right"))
             future_end = int(np.searchsorted(target_times, issue_ns + horizon_ns, side="right"))
-            if future_end - future_start < 18:
-                continue
-            if int(target_times[future_end - 1]) < issue_ns + coverage_ns:
+            future_times = target_times[future_start:future_end]
+            if not future_horizon_is_covered(issue_ns, future_times):
                 continue
             future_values = target_values[future_start:future_end]
-            future_times = target_times[future_start:future_end]
             future_peak = float(future_values.max())
             crossing_positions = np.flatnonzero(future_values >= warning)
             crossing_time = (
@@ -215,7 +225,7 @@ def build_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, list[str]]:
     quality.update({
         "issue_sampling": "One issue per gauge every 6 hours at a reported HHS observation time.",
         "target_rule": "Among issue times still below the published CWC warning level, positive if any valid HHS observation in (issue time, issue time +24h] reaches that warning level.",
-        "future_coverage_rule": "Require at least 18 valid stage observations in the next 24h and a final observation at least 23h after issue time; incomplete horizons are excluded.",
+        "future_coverage_rule": "Require at least 18 valid stage observations, first observation within 3h, no gap over 6h, and final observation at least 23h after issue time; incomplete horizons are excluded.",
         "missing_future_rows_are_not_labeled_negative": True,
         "stations_used": int(len(station_meta)),
         "station_issue_counts": station_counts,
