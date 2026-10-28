@@ -60,3 +60,21 @@ def test_lead_time_is_explicit_when_no_positive_window_is_detected():
 
     assert result["detected_positive_issue_windows"] == 0
     assert "unavailable" in result["note"]
+
+def test_future_horizon_coverage_requires_start_end_and_bounded_gaps():
+    from backend.bihar_live.research.train_cwc_gauge_rolling_24h import future_horizon_is_covered
+
+    hour = 3_600_000_000_000
+    issue = 1_800_000_000_000_000_000
+    hourly = issue + np.arange(1, 25, dtype=np.int64) * hour
+    assert future_horizon_is_covered(issue, hourly)
+
+    late_start = issue + np.arange(5, 25, dtype=np.int64) * hour
+    assert not future_horizon_is_covered(issue, late_start)
+
+    long_gap = np.concatenate([issue + np.arange(1, 10, dtype=np.int64) * hour,
+                               issue + np.arange(17, 25, dtype=np.int64) * hour])
+    assert not future_horizon_is_covered(issue, long_gap)
+
+    short_end = issue + np.arange(1, 22, dtype=np.int64) * hour
+    assert not future_horizon_is_covered(issue, short_end)
