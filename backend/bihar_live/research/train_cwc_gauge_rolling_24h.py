@@ -117,7 +117,7 @@ def build_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, list[str]]:
     rows = []
     issue_ns_step = 6 * 3_600_000_000_000
     horizon_ns = 24 * 3_600_000_000_000
-    coverage_ns = 20 * 3_600_000_000_000
+    coverage_ns = 23 * 3_600_000_000_000
     tolerance_ns = 3 * 3_600_000_000_000
     station_counts = {}
 
@@ -145,7 +145,14 @@ def build_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, list[str]]:
                 continue
             if int(target_times[future_end - 1]) < issue_ns + coverage_ns:
                 continue
-            future_peak = float(target_values[future_start:future_end].max())
+            future_values = target_values[future_start:future_end]
+            future_times = target_times[future_start:future_end]
+            future_peak = float(future_values.max())
+            crossing_positions = np.flatnonzero(future_values >= warning)
+            crossing_time = (
+                pd.Timestamp(int(future_times[int(crossing_positions[0])]), unit="ns")
+                if len(crossing_positions) else pd.NaT
+            )
             issue_timestamp = pd.Timestamp(issue_ns, unit="ns")
 
             feature = {
@@ -192,6 +199,7 @@ def build_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, list[str]]:
                 feature[f"network_stage_age_{network_code}_h"] = age_hours
 
             feature[TARGET] = int(future_peak >= warning)
+            feature["target_crossing_time"] = crossing_time
             feature["issue_time"] = issue_timestamp
             feature["forecast_valid_until"] = issue_timestamp + pd.Timedelta(hours=24)
             rows.append(feature)
@@ -202,12 +210,12 @@ def build_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, list[str]]:
     if not rows:
         raise ValueError("No rolling 24-hour issue rows passed coverage and quality checks.")
     frame = pd.DataFrame(rows).sort_values("issue_time").reset_index(drop=True)
-    numeric = [column for column in frame.columns if column not in {"target_station", "issue_time", "forecast_valid_until", TARGET}]
+    numeric = [column for column in frame.columns if column not in {"target_station", "issue_time", "forecast_valid_until", "target_crossing_time", TARGET}]
     frame[numeric] = frame[numeric].apply(pd.to_numeric, errors="coerce")
     quality.update({
         "issue_sampling": "One issue per gauge every 6 hours at a reported HHS observation time.",
         "target_rule": "Among issue times still below the published CWC warning level, positive if any valid HHS observation in (issue time, issue time +24h] reaches that warning level.",
-        "future_coverage_rule": "Require at least 18 valid stage observations in the next 24h and a final observation at least 20h after issue time; missing/low-coverage horizons are excluded.",
+        "future_coverage_rule": "Require at least 18 valid stage observations in the next 24h and a final observation at least 23h after issue time; incomplete horizons are excluded.",
         "missing_future_rows_are_not_labeled_negative": True,
         "stations_used": int(len(station_meta)),
         "station_issue_counts": station_counts,
@@ -223,6 +231,48 @@ def f2_threshold(y: pd.Series, probability: np.ndarray) -> float:
     denominator = 4 * precision[:-1] + recall[:-1]
     f2 = np.divide(5 * precision[:-1] * recall[:-1], denominator, out=np.zeros_like(denominator), where=denominator > 0)
     return float(thresholds[int(np.argmax(f2))])
+
+
+def calibration_summary(y: pd.Series, probability: np.ndarray, bins: int = 10) -> dict:
+    """Summarize reliability in equal-width bins and expected calibration error."""
+    actual = y.astype(int).to_numpy()
+    probability = np.asarray(probability, dtype=float)
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    summaries = []
+    weighted_error = 0.0
+    for index in range(bins):
+        lower, upper = float(edges[index]), float(edges[index + 1])
+        mask = (probability >= lower) & ((probability <= upper) if index == bins - 1 else (probability < upper))
+        if not mask.any():
+            continue
+        observed = float(actual[mask].mean())
+        predicted = float(probability[mask].mean())
+        count = int(mask.sum())
+        weighted_error += count / len(actual) * abs(observed - predicted)
+        summaries.append({"lower_bound": round(lower, 2), "upper_bound": round(upper, 2),
+                          "rows": count, "mean_predicted_probability": round(predicted, 6),
+                          "observed_positive_fraction": round(observed, 6)})
+    return {"expected_calibration_error": round(float(weighted_error), 6), "bins": summaries}
+
+
+def lead_time_summary(rows: pd.DataFrame, probability: np.ndarray, threshold: float) -> dict:
+    """Summarize detected positive issue windows; windows are not independent events."""
+    predicted = np.asarray(probability, dtype=float) >= threshold
+    crossing = pd.to_datetime(rows["target_crossing_time"], errors="coerce")
+    issue = pd.to_datetime(rows["issue_time"], errors="coerce")
+    detected = predicted & rows[TARGET].astype(int).to_numpy().astype(bool) & crossing.notna().to_numpy()
+    hours = ((crossing[detected] - issue[detected]).dt.total_seconds() / 3600.0).to_numpy()
+    result = {"detected_positive_issue_windows": int(len(hours)),
+              "unit": "hours from issue time to first observed warning-level crossing"}
+    if not len(hours):
+        result["note"] = "No positive issue windows were detected; lead-time distribution is unavailable."
+        return result
+    result.update({"median_hours": round(float(np.median(hours)), 3),
+                   "mean_hours": round(float(np.mean(hours)), 3),
+                   "minimum_hours": round(float(np.min(hours)), 3),
+                   "maximum_hours": round(float(np.max(hours)), 3),
+                   "interpretation": "Issue-window statistic; overlapping windows are not independent flood events."})
+    return result
 
 
 def evaluate(y: pd.Series, probability: np.ndarray, threshold: float, baseline: float) -> dict:
@@ -247,6 +297,7 @@ def evaluate(y: pd.Series, probability: np.ndarray, threshold: float, baseline: 
         "brier_score": metric(brier_score_loss, actual, probability),
         "training_prevalence_baseline_brier": metric(brier_score_loss, actual, np.full(len(actual), baseline)),
         "confusion_matrix_labels_0_1": confusion_matrix(actual, predicted, labels=[0, 1]).tolist(),
+        "calibration": calibration_summary(y, probability),
     }
 
 
@@ -297,6 +348,10 @@ def main() -> int:
     for label, part in [("training", train), ("validation", validation), ("test", test)]:
         if part.empty or part[TARGET].nunique() != 2:
             parser.error(f"{label} split needs both positive and negative labels; got {len(part)} rows.")
+    if train.forecast_end.max() >= validation.issue_time.min():
+        parser.error("Training label horizons overlap validation; refusing leakage-prone split.")
+    if validation.forecast_end.max() >= test.issue_time.min():
+        parser.error("Validation label horizons overlap test; refusing leakage-prone split.")
     columns = numeric + ["target_station"]
     prevalence = float(train[TARGET].mean())
     candidates = {}
@@ -326,16 +381,26 @@ def main() -> int:
     test_model.fit(fit[columns], fit[TARGET].astype(int))
     test_probability = test_model.predict_proba(test[columns])[:, 1]
     test_metrics = evaluate(test[TARGET], test_probability, threshold, float(fit[TARGET].mean()))
-    focus_metrics = {}
-    for code, label in FOCUS_GAUGES.items():
+    station_metrics = {}
+    for code, station_rows in test.groupby("target_station", sort=True):
         mask = test.target_station.eq(code)
-        focus = test.loc[mask]
-        if focus.empty or focus[TARGET].nunique() != 2:
-            focus_metrics[code] = {"label": label, "rows": int(len(focus)), "positive_rows": int(focus[TARGET].sum()) if len(focus) else 0,
-                                   "note": "This holdout period does not contain both outcomes for this gauge; local skill cannot be estimated."}
+        positives = int(station_rows[TARGET].sum())
+        negatives = int(len(station_rows) - positives)
+        if positives == 0 or negatives == 0:
+            station_metrics[code] = {
+                "rows": int(len(station_rows)), "positive_rows": positives, "negative_rows": negatives,
+                "note": "Holdout lacks one outcome class; station-level discrimination/calibration is not estimable reliably.",
+            }
         else:
-            focus_metrics[code] = {"label": label, **evaluate(focus[TARGET], test_probability[mask.to_numpy()], threshold,
-                float(fit.loc[fit.target_station.eq(code), TARGET].mean()))}
+            station_metrics[code] = evaluate(
+                station_rows[TARGET], test_probability[mask.to_numpy()], threshold,
+                float(fit.loc[fit.target_station.eq(code), TARGET].mean()),
+            )
+    focus_metrics = {
+        code: {"label": label, **station_metrics.get(code, {"rows": 0, "note": "No holdout rows for this focus gauge."})}
+        for code, label in FOCUS_GAUGES.items()
+    }
+    lead_time_metrics = lead_time_summary(test, test_probability, threshold)
 
     # Deployment artifact uses every quality-screened historical label available;
     # all published holdout metrics above come from the untouched 2026 test split.
@@ -347,7 +412,7 @@ def main() -> int:
     metadata_path = MODEL_DIR / f"{MODEL_STEM}.metadata.json"
     joblib.dump(final_model, artifact, compress=3)
     pred_path = OUT_DIR / f"{MODEL_STEM}_holdout_predictions.csv"
-    predictions = test[["target_station", "issue_time", "forecast_valid_until", TARGET]].copy()
+    predictions = test[["target_station", "issue_time", "forecast_valid_until", "target_crossing_time", TARGET]].copy()
     predictions["predicted_probability"] = test_probability
     predictions["predicted_at_validation_f2_threshold"] = (test_probability >= threshold).astype(int)
     predictions.to_csv(pred_path, index=False)
@@ -366,8 +431,12 @@ def main() -> int:
         "features": columns, "data_quality": source_meta,
         "runtime_sklearn_version": sklearn.__version__,
         "split": {
-            "training_issue_years": "through 2024; training forecast horizons end before 2025",
+            "training_issue_years": "through 2024; label horizons end before validation starts",
             "validation_issue_year": 2025, "untouched_test_issue_year": 2026,
+            "label_horizon_boundary_checks": {
+                "training_before_validation": bool(train.forecast_end.max() < validation.issue_time.min()),
+                "validation_before_test": bool(validation.forecast_end.max() < test.issue_time.min()),
+            },
             "training_rows": int(len(train)), "training_positive_rows": int(train[TARGET].sum()),
             "validation_rows": int(len(validation)), "validation_positive_rows": int(validation[TARGET].sum()),
             "test_rows": int(len(test)), "test_positive_rows": int(test[TARGET].sum()),
@@ -376,16 +445,19 @@ def main() -> int:
         "candidate_validation_metrics": validation_metrics, "selected_model": selected,
         "threshold_selection": "F2 maximized on temporally separate 2025 validation data",
         "decision_threshold": round(float(threshold), 6),
-        "test_metrics": test_metrics, "focus_gauge_test_metrics": focus_metrics,
+        "test_metrics": test_metrics, "all_station_test_metrics": station_metrics,
+        "focus_gauge_test_metrics": focus_metrics, "test_detected_positive_window_lead_time": lead_time_metrics,
         "operational_eligible": False, "loaded_by_dashboard_server": True,
-        "warning": "Research-only probability estimate for reaching a CWC gauge warning level within 24 hours. Three years of archived hourly data provide limited independent flood seasons, and focus-gauge event counts are sparse. This is not a block/grid inundation prediction or an official warning; validate with CWC/IMD and disaster-management experts before public-safety use.",
+        "calibration_status": "Classifier probabilities are not calibrated; reliability bins and ECE are diagnostics only. Threshold selection uses the separate 2025 validation set.",
+        "warning": "Research-only estimate for CWC gauge warning-level crossing within 24 hours. Overlapping issue windows are not independent events, archived seasons and station positives are sparse, and metrics must be regenerated after changes to label rules. This is not a block/grid inundation prediction or official warning.",
         "artifact_path": str(artifact.relative_to(ROOT)), "holdout_predictions_path": str(pred_path.relative_to(ROOT)),
     }
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     print(json.dumps({"selected_model": selected, "training_rows": len(train), "training_positives": int(train[TARGET].sum()),
                       "validation_rows": len(validation), "validation_positives": int(validation[TARGET].sum()),
                       "test_rows": len(test), "test_positives": int(test[TARGET].sum()), "test_metrics": test_metrics,
-                      "focus_gauge_test_metrics": focus_metrics, "artifact": str(artifact), "metadata": str(metadata_path)}, indent=2))
+                      "focus_gauge_test_metrics": focus_metrics, "lead_time_metrics": lead_time_metrics,
+                      "artifact": str(artifact), "metadata": str(metadata_path)}, indent=2))
     return 0
 
 
