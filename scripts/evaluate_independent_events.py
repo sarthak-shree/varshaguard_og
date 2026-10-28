@@ -79,11 +79,29 @@ def evaluate_events(predictions: pd.DataFrame, events: pd.DataFrame, lead_hours:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--predictions", required=True, help="CSV: station_id,issue_time,predicted_event")
+    parser.add_argument("--predictions", help="CSV: station_id,issue_time,predicted_event")
+    parser.add_argument("--test-predictions", help="Chronological test CSV emitted by the training pipeline")
+    parser.add_argument("--stage-thresholds", help="Reviewed CSV mapping exact station_id to warning_level_m; required with --test-predictions")
     parser.add_argument("--events", help="CSV: event_id,station_id,event_start,event_end,ground_verified,station_level_match_ready")
     parser.add_argument("--official-ledger", help="Use the repository independent flood event ledger; non-matched records remain ineligible")
     parser.add_argument("--output", default="data/processed/event_evaluation.json")
     args = parser.parse_args()
+    if args.test_predictions:
+        if not args.stage_thresholds:
+            parser.error("--test-predictions requires --stage-thresholds; station warning levels must not be guessed")
+        test_predictions = pd.read_csv(args.test_predictions)
+        thresholds = pd.read_csv(args.stage_thresholds)
+        if not {"station_id", "warning_level_m"}.issubset(thresholds.columns):
+            parser.error("stage threshold CSV must contain station_id,warning_level_m")
+        stage_rows = test_predictions[test_predictions["target_variable"].eq("stage_m")].merge(
+            thresholds[["station_id", "warning_level_m"]], on="station_id", how="inner", validate="many_to_one"
+        )
+        stage_rows["predicted_event"] = pd.to_numeric(stage_rows["model_prediction"], errors="coerce") >= pd.to_numeric(stage_rows["warning_level_m"], errors="coerce")
+        predictions = stage_rows.rename(columns={"issue_time_utc": "issue_time"})[["station_id", "issue_time", "predicted_event"]].dropna()
+    elif args.predictions:
+        predictions = pd.read_csv(args.predictions)
+    else:
+        parser.error("provide --predictions or --test-predictions")
     if args.official_ledger:
         raw_events = pd.read_csv(args.official_ledger)
         events = pd.DataFrame({
@@ -101,7 +119,7 @@ def main():
         events = pd.read_csv(args.events)
     else:
         parser.error("provide --events or --official-ledger")
-    report = evaluate_events(pd.read_csv(args.predictions), events)
+    report = evaluate_events(predictions, events)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2), encoding="utf-8")
