@@ -37,8 +37,7 @@
   </header>
 
   <main class="layout">
-    <section class="overview-grid bihar-overview">
-      <div class="left-column">
+    <div class="probability-top-controls">
         <section class="panel selector-panel">
           <div class="field">
             <label for="districtSelect">Choose a district</label>
@@ -49,7 +48,6 @@
           </div>
           <button id="locateButton" class="assistant-open-btn bihar-locate" type="button">Show my location</button>
         </section>
-
         <section class="panel probability-selector-card" id="probabilitySelectorCard" aria-labelledby="probabilityTitle">
           <div class="probability-heading">
             <p class="small-title">NEXT 24 HOURS</p>
@@ -72,7 +70,9 @@
           </div>
           <p class="probability-disclaimer" id="probabilityDisclaimer">Research estimate only. This is not an official warning or a neighborhood flood probability.</p>
         </section>
-
+    </div>
+    <section class="overview-grid bihar-overview">
+      <div class="left-column">
         <section class="risk-card bihar-status-card" id="selectedRiskCard" data-risk="stale" aria-labelledby="selectedRiskDistrict">
           <div class="risk-card-topline">
             <div>
