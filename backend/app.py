@@ -116,6 +116,16 @@ class AssistantAPIError(Exception):
         self.status_code = status_code
 
 
+def _assistant_request_limits():
+    try:
+        text_limit = max(1, min(100, int(os.getenv("ASSISTANT_RATE_LIMIT", "12"))))
+        voice_limit = max(1, min(30, int(os.getenv("ASSISTANT_VOICE_RATE_LIMIT", "4"))))
+        window = max(10, min(3600, int(os.getenv("ASSISTANT_RATE_WINDOW", "60"))))
+    except ValueError:
+        text_limit, voice_limit, window = 12, 4, 60
+    return text_limit, voice_limit, window
+
+
 def request_assistant_answer(message, context, response_language=None):
     """Get a dashboard-grounded answer from the same Groq model as text chat."""
     api_key = os.environ.get("GROQ_API_KEY")
@@ -356,7 +366,8 @@ def stations():
 
 @app.route("/api/assistant", methods=["POST"])
 def assistant():
-    limited = _assistant_rate_limited("assistant", int(os.getenv("ASSISTANT_RATE_LIMIT", "12")), int(os.getenv("ASSISTANT_RATE_WINDOW", "60")))
+    text_limit, _voice_limit, rate_window = _assistant_request_limits()
+    limited = _assistant_rate_limited("assistant", text_limit, rate_window)
     if limited:
         return limited
     payload = request.get_json(silent=True) or {}
@@ -382,7 +393,8 @@ def assistant():
 @app.route("/api/assistant/voice", methods=["POST"])
 def assistant_voice():
     """Transcribe one short recording, answer with the dashboard LLM, and speak it."""
-    limited = _assistant_rate_limited("assistant_voice", int(os.getenv("ASSISTANT_VOICE_RATE_LIMIT", "4")), int(os.getenv("ASSISTANT_VOICE_RATE_WINDOW", "60")))
+    _text_limit, voice_limit, rate_window = _assistant_request_limits()
+    limited = _assistant_rate_limited("assistant_voice", voice_limit, rate_window)
     if limited:
         return limited
     audio_file = request.files.get("audio")
