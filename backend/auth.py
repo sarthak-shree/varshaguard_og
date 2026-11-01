@@ -48,7 +48,7 @@ def init_auth(app):
         database_url = "postgresql://" + database_url[len("postgres://"):]
     if database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
-    app.config["SQLALCHEMY_DATABASE_URI"] = database_url or "sqlite:///varshaguard_auth.sqlite3"
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url or ("sqlite:////tmp/varshaguard_auth.sqlite3" if os.environ.get("VERCEL") else "sqlite:///varshaguard_auth.sqlite3")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-this-secret")
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -157,7 +157,7 @@ def signup_start():
         return json_error("That username is already taken.", 409)
     if User.query.filter_by(phone=phone).first():
         return json_error("That phone number already has an account. Log in or reset your password.", 409)
-    return send_challenge(phone, "signup", username, generate_password_hash(password))
+    return send_challenge(phone, "signup", username.lower(), generate_password_hash(password))
 
 
 @auth_bp.post("/signup/verify")
