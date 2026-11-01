@@ -1,5 +1,4 @@
 import unittest
-from collections import defaultdict, deque
 
 import backend.app as backend_module
 from backend.app import app
