@@ -25,3 +25,13 @@ def test_real_mode_fails_closed():
         assert "not configured" in str(exc)
     else:
         raise AssertionError("Real adapter must not silently fall back to synthetic")
+
+
+def test_health_reports_each_source_dependency_separately():
+    app = create_app()
+    with app.test_client() as client:
+        payload = client.get("/api/bihar-live/health").get_json()
+    assert set(payload["dependencies"]) >= {
+        "cwc_stage", "imd", "imerg", "radar", "nwp", "historical_store"
+    }
+    assert payload["operational"] is False
