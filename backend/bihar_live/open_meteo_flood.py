@@ -149,6 +149,7 @@ def get_river_discharge_forecast(district: str, force_refresh: bool = False) -> 
             if not has_values:
                 result = _unavailable(key, "Open-Meteo returned a timeline but no numeric discharge values.")
 
+    result.setdefault("cache_age_seconds", 0)
     with _cache_lock:
         _cache[key] = (time.monotonic(), dict(result))
     return result

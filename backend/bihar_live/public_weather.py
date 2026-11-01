@@ -31,6 +31,14 @@ def _unavailable(district: str, message: str) -> dict:
     }
 
 
+def _valid_probability(value) -> bool:
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return math.isfinite(number) and 0 <= number <= 100
+
+
 def get_rainfall_forecast(district: str, force_refresh: bool = False) -> dict:
     """Return a live 24-hour point rainfall outlook, separate from flood probability."""
     key = str(district).strip().lower()
@@ -88,11 +96,16 @@ def get_rainfall_forecast(district: str, force_refresh: bool = False) -> dict:
                     rain = float(precipitation[index])
                     if not math.isfinite(rain) or rain < 0:
                         continue
-                    selected.append((forecast_time, rain))
+                    chance = None
                     if isinstance(probabilities, list) and index < len(probabilities) and probabilities[index] is not None:
-                        chance = float(probabilities[index])
-                        if 0 <= chance <= 100:
-                            peak_probability = chance if peak_probability is None else max(peak_probability, chance)
+                        try:
+                            candidate = float(probabilities[index])
+                            if math.isfinite(candidate) and 0 <= candidate <= 100:
+                                chance = candidate
+                                peak_probability = chance if peak_probability is None else max(peak_probability, chance)
+                        except (TypeError, ValueError, OverflowError):
+                            chance = None
+                    selected.append((forecast_time, rain, chance))
                 except (IndexError, TypeError, ValueError, OverflowError):
                     continue
 
@@ -107,16 +120,37 @@ def get_rainfall_forecast(district: str, force_refresh: bool = False) -> dict:
                     "location": point["name"],
                     "source": "Open-Meteo",
                     "source_url": "https://open-meteo.com/en/docs",
-                    "forecast_rainfall_24h_mm": round(sum(value for _, value in selected), 1),
+                    "forecast_rainfall_24h_mm": round(sum(value for _, value, _ in selected), 1),
                     "peak_hourly_rainfall_probability_pct": round(peak_probability, 0) if peak_probability is not None else None,
-                    "wet_hours_forecast": sum(1 for _, value in selected if value >= 0.1),
+                    "wet_hours_forecast": sum(1 for _, value, _ in selected if value >= 0.1),
                     "forecast_hours_available": len(selected),
                     "forecast_start_ist": selected[0][0].isoformat(timespec="minutes"),
                     "forecast_end_ist": end.isoformat(timespec="minutes"),
                     "fetched_at_ist": fetched_at.isoformat(timespec="seconds"),
+                    "hourly_forecast": [
+                        {
+                            "time_ist": stamp.isoformat(timespec="minutes"),
+                            "precipitation_mm": round(rain, 2),
+                            "precipitation_probability_pct": round(chance) if chance is not None else None,
+                        }
+                        for stamp, rain, chance in selected
+                    ],
+                    "data_quality": {
+                        "valid_hourly_values": len(selected),
+                        "expected_minimum_hourly_values": 18,
+                        "status": "usable" if len(selected) >= 18 else "partial",
+                        "provider_timezone": payload.get("timezone", "Asia/Kolkata"),
+                    },
+                    "forecast_model": "Open-Meteo provider numerical weather forecast; not a locally trained ML model",
+                    "validation": {
+                        "independent_local_rain_gauge_validation": False,
+                        "status": "provider_forecast_context_not_locally_validated",
+                    },
+                    "operational": False,
                     "note": "Weather-model rainfall outlook for the CWC gauge location. It is not a flood probability and is not included in the CWC risk model percentage.",
                 }
 
+    result.setdefault("cache_age_seconds", 0)
     with _cache_lock:
         _cache[key] = (time.monotonic(), dict(result))
     return result

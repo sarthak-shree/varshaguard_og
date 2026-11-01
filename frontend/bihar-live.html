@@ -111,6 +111,39 @@
       </div>
     </section>
 
+        <section class="panel forecast-outlook-panel" aria-labelledby="forecastOutlookTitle">
+          <div class="panel-heading-row">
+            <div>
+              <h3 id="forecastOutlookTitle">Forecast outlook</h3>
+              <span>Rainfall provider forecast and separate CWC stage trend baseline</span>
+            </div>
+            <span id="forecastOutlookStatus" class="health-badge">Loading</span>
+          </div>
+          <div class="forecast-outlook-grid">
+            <article class="forecast-outlook-card">
+              <div class="forecast-outlook-card-title">
+                <strong>Rainfall · Open-Meteo</strong>
+                <span id="rainForecastFreshness">Waiting for forecast</span>
+              </div>
+              <div class="forecast-rain-metrics">
+                <div><span>1 hour</span><strong id="forecastRain1h">—</strong></div>
+                <div><span>3 hours</span><strong id="forecastRain3h">—</strong></div>
+                <div><span>6 hours</span><strong id="forecastRain6h">—</strong></div>
+                <div><span>24 hours</span><strong id="forecastRain24h">—</strong></div>
+              </div>
+              <p id="rainForecastNote" class="plain-text">Provider numerical weather forecast; local rainfall-gauge validation is not yet available.</p>
+            </article>
+            <article class="forecast-outlook-card">
+              <div class="forecast-outlook-card-title">
+                <strong>River stage · CWC</strong>
+                <span id="stageForecastFreshness">Waiting for gauge history</span>
+              </div>
+              <strong id="stageForecastDirection" class="forecast-stage-direction">—</strong>
+              <div id="stageForecastValues" class="forecast-stage-values">Forecast unavailable until enough recent gauge readings arrive.</div>
+              <p id="stageForecastNote" class="plain-text">Trend extrapolation is a research baseline, not a trained or validated ML forecast.</p>
+            </article>
+          </div>
+        </section>
         <section class="panel discharge-context-panel" aria-labelledby="dischargeContextTitle">
           <div class="panel-heading-row">
             <div>
