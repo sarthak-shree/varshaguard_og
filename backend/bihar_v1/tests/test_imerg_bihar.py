@@ -1,4 +1,54 @@
 import unittest
+from unittest.mock import Mock, patch
+
+from backend.bihar_v1.ingestion import imd
+
+
+class IMDIngestionTests(unittest.TestCase):
+    @patch.dict("os.environ", {"IMD_API_TOKEN": "test-token"}, clear=False)
+    def test_sends_bearer_auth_and_validates_payload(self):
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = [{"district": "Patna"}]
+        response.headers = {}
+        response.raise_for_status.return_value = None
+        session = Mock()
+        session.get.return_value = response
+        payload = imd.fetch_json("districtwarning", session=session, retries=0)
+        self.assertEqual(payload, [{"district": "Patna"}])
+        self.assertEqual(
+            session.get.call_args.kwargs["headers"]["Authorization"],
+            "Bearer test-token",
+        )
+
+    def test_rejects_non_json_root(self):
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = "not-an-observation"
+        response.headers = {}
+        response.raise_for_status.return_value = None
+        session = Mock()
+        session.get.return_value = response
+        with self.assertRaises(imd.IMDIngestionError):
+            imd.fetch_json("current_wx", session=session, retries=0)
+
+    def test_retries_transient_status(self):
+        retry = Mock()
+        retry.status_code = 503
+        retry.headers = {}
+        success = Mock()
+        success.status_code = 200
+        success.headers = {}
+        success.json.return_value = {"data": []}
+        success.raise_for_status.return_value = None
+        session = Mock()
+        session.get.side_effect = [retry, success]
+        with patch("backend.bihar_v1.ingestion.imd.time.sleep"):
+            payload = imd.fetch_json("districtwarning", session=session, retries=1)
+        self.assertEqual(payload, {"data": []})
+        self.assertEqual(session.get.call_count, 2)
+
+import unittest
 
 from backend.bihar_v1.ingestion.imerg_bihar import bihar_precipitation_to_observations
 
