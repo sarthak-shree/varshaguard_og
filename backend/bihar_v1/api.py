@@ -3,7 +3,13 @@ import json
 from flask import Blueprint, jsonify, request
 
 from .config import BIHAR_V1_DATA_ROOT, PREDICTION_HORIZON_HOURS, SUPPORTED_DISTRICTS, district
-from .prediction.flood_predictor import model_path, predict as predict_flood
+from .prediction.flood_predictor import (
+    LIVE_CWC_SOURCE,
+    LIVE_CWC_TARGET,
+    live_cwc_model_available,
+    model_path,
+    predict as predict_flood,
+)
 from .prediction.inundation_predictor import predict as predict_inundation
 from .prediction.rainfall_predictor import predict as predict_rainfall
 from .services.alert_engine import build_alert
@@ -72,6 +78,15 @@ def status(slug: str):
 
     model_readiness = _load_model_readiness(info["slug"])
 
+    # Without a v1 artifact, flood forecasts come from the live CWC gauge model.
+    live_flood = not flood_model.exists() and live_cwc_model_available()
+    if flood_model.exists():
+        flood_status = "trained_artifact_available"
+    elif live_flood:
+        flood_status = "live_cwc_research_model"
+    else:
+        flood_status = "model_not_trained"
+
     return jsonify({
         "success": True,
         "district": info,
@@ -80,15 +95,17 @@ def status(slug: str):
         "models": {
             "rainfall": {"status": "model_not_trained"},
             "flood": {
-                "status": "trained_artifact_available" if flood_model.exists() else "model_not_trained",
+                "status": flood_status,
                 "artifact_available": flood_model.exists(),
+                "source": LIVE_CWC_SOURCE if live_flood else None,
+                "target": LIVE_CWC_TARGET if live_flood else None,
                 "operational_threshold": operational_threshold,
                 "operational_threshold_status": calibration_status,
             },
             "inundation": {"status": "model_not_trained"},
         },
         "data_feeds": {
-            "live_observations": "not_connected",
+            "live_observations": "cwc_ffs_research_feed" if live_flood else "not_connected",
             "status": "not_ready",
         },
         "operational_risk": "not_ready",

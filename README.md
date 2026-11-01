@@ -166,6 +166,28 @@ Important limitations: CWC observations may be irregular rather than hourly, and
 
 Persist timestamped source snapshots with source/model version, coordinate/grid mapping, units, and quality flags. Build aligned training rows with future rainfall-gauge totals and future CWC stage labels at each horizon; avoid leakage by splitting chronologically by event/time, not randomly. Compare persistence and trend baselines against any LightGBM/XGBoost model on a held-out season and independent events. Report MAE/RMSE for stage and rainfall, event precision/recall and lead time for threshold crossings, calibration and false-alarm rates where appropriate. Until these steps are complete, forecast outputs remain research-only and are not official warnings.
 
+## Bihar v1 forecast API
+
+The Bihar v1 blueprint is mounted by `backend/app.py` under `/api/bihar/v1`:
+
+```http
+GET /api/bihar/v1/patna/forecast
+GET /api/bihar/v1/muzaffarpur/forecast
+GET /api/bihar/v1/patna/status
+```
+
+The `flood` block of `/forecast` is served by the **live CWC gauge model** described above whenever no v1 river-flood artifact (`data/bihar_v1/models/<district>_flood_xgboost.joblib`, or the path in `VARSHAGUARD_<DISTRICT>_FLOOD_MODEL`) is present. If a v1 artifact exists it takes precedence, and a configured-but-missing artifact path reports `model_not_trained` instead of silently falling back. Responses carry `source: "cwc_gauge_24h_research_model"` and a `target_definition` in `flood.details`.
+
+`flood.status` values and what they mean:
+
+| status | `probability` | meaning |
+|---|---|---|
+| `ok` | 0–1 | The model's estimate that the district's CWC gauge reaches its published warning level in the next 24 hours |
+| `observed_threshold_reached` | `null` | The gauge is already at/above its warning or danger level; this is an observation, not a forecast |
+| `stale`, `insufficient_inputs`, `model_error`, `unavailable` | `null` | Inputs or the model could not support an estimate; nothing is invented |
+
+**Limits:** the target is a gauge threshold crossing, not a flood event, neighbourhood inundation, or flood depth, so it differs from the `flood_event_start_next_24h` target the v1 XGBoost wrapper expects. The probability is not calibrated, so the fused `risk` stays `not_ready` and `alert.active` stays `false` until reviewed operational thresholds are supplied. `rainfall` and `inundation` remain `model_not_trained`. `/status` does not call CWC; it only reports whether the research model files are present.
+
 ## Separate prototype scaffold endpoints
 
 The same Flask app also exposes `/api/bihar-live/health`, `/sources`, `/fusion`, `/weather`, and `/model/evaluation`.
