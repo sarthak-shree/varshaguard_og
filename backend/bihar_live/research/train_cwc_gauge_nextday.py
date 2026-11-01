@@ -107,7 +107,7 @@ def build_rows(raw):
         x["target_rainfall_72h_mm"]=r.rolling(3,min_periods=3).sum()
         x["target_rainfall_168h_mm"]=r.rolling(7,min_periods=7).sum()
         target_dates=dates+pd.Timedelta(days=1)
-        phase=target_dates.dayofyear/365.2425*2*np.pi
+        phase=target_dates.day_of_year/365.2425*2*np.pi
         x["target_month_sin"],x["target_month_cos"]=np.sin(phase),np.cos(phase)
         x=x.join(context,how="left")
         x["prediction_date"],x["target_date"]=dates,target_dates

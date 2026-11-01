@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 import os
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
@@ -297,7 +298,7 @@ def evaluation():
     stored_rows = 0
     if db_path.is_file():
         try:
-            with sqlite3.connect(str(db_path), timeout=2) as conn:
+            with closing(sqlite3.connect(str(db_path), timeout=2)) as conn:
                 stored_rows = int(conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0])
         except sqlite3.Error:
             stored_rows = 0

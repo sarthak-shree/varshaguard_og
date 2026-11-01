@@ -120,6 +120,23 @@ def live_cwc_model_available() -> bool:
     return module.MODEL_PATH.is_file() and module.METADATA_PATH.is_file()
 
 
+def uses_live_cwc(district: str, model_file: str | Path | None = None) -> bool:
+    """Whether a flood forecast for this district is served by the live CWC model.
+
+    The single decision used by both ``predict`` and the v1 ``/status`` endpoint so
+    they cannot disagree. A v1 artifact always wins, and a deployment that
+    configured a v1 model path never silently falls back to another model.
+    """
+    if model_file is not None:
+        return False
+    district_key = district.strip().lower()
+    if model_path(district_key).exists():
+        return False
+    if os.getenv(f"VARSHAGUARD_{district_key.upper()}_FLOOD_MODEL"):
+        return False
+    return live_cwc_model_available()
+
+
 def _live_unavailable(district_key: str, status: str, message: str) -> PredictionOutput:
     return PredictionOutput(
         district=district_key,
@@ -218,12 +235,10 @@ def predict(
     path = Path(model_file) if model_file else model_path(district_key)
 
     if not path.exists():
-        if model_file is None:
-            # No v1 river-flood artifact is checked in. Use the live CWC gauge
-            # model unless a deployment explicitly configured a v1 model path.
-            configured = os.getenv(f"VARSHAGUARD_{district_key.upper()}_FLOOD_MODEL")
-            if not configured and live_cwc_model_available():
-                return predict_live_cwc(district_key)
+        # No v1 river-flood artifact is checked in; use the live CWC gauge model
+        # unless a deployment explicitly configured a v1 model path.
+        if uses_live_cwc(district_key, model_file):
+            return predict_live_cwc(district_key)
         return PredictionOutput(
             district=district_key,
             probability=None,

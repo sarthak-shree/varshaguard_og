@@ -6,9 +6,9 @@ from .config import BIHAR_V1_DATA_ROOT, PREDICTION_HORIZON_HOURS, SUPPORTED_DIST
 from .prediction.flood_predictor import (
     LIVE_CWC_SOURCE,
     LIVE_CWC_TARGET,
-    live_cwc_model_available,
     model_path,
     predict as predict_flood,
+    uses_live_cwc,
 )
 from .prediction.inundation_predictor import predict as predict_inundation
 from .prediction.rainfall_predictor import predict as predict_rainfall
@@ -78,8 +78,8 @@ def status(slug: str):
 
     model_readiness = _load_model_readiness(info["slug"])
 
-    # Without a v1 artifact, flood forecasts come from the live CWC gauge model.
-    live_flood = not flood_model.exists() and live_cwc_model_available()
+    # Same decision the forecast endpoint makes, so the two cannot disagree.
+    live_flood = uses_live_cwc(info["slug"])
     if flood_model.exists():
         flood_status = "trained_artifact_available"
     elif live_flood:
@@ -122,7 +122,7 @@ def forecast(slug: str):
     flood = predict_flood(info["slug"], features)
     inundation = predict_inundation(info["slug"], features)
     risk = fuse(info["slug"], rainfall.probability, flood.probability, inundation.probability)
-    return jsonify({
+    response = jsonify({
         "success": True,
         "district": info,
         "horizon_hours": PREDICTION_HORIZON_HOURS,
@@ -132,6 +132,9 @@ def forecast(slug: str):
         "risk": risk.to_dict(),
         "alert": build_alert(risk),
     })
+    # Live flood data must never be served from a browser or proxy cache.
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
 
 
 @bp.get("/<slug>/current")

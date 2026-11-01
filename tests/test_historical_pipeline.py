@@ -1,3 +1,4 @@
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -45,7 +46,7 @@ def test_observation_store_is_idempotent_and_normalizes_timezone(tmp_path):
     assert second["stored_rows"] == 6
     assert second["database_changes"] == 6
     assert frame["observed_at_utc"].str.endswith("+00:00").all()
-    with connect(db) as conn:
+    with closing(connect(db)) as conn:
         assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
 
 

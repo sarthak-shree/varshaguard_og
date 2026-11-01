@@ -156,6 +156,22 @@ def test_forecast_endpoint_exposes_flood_but_keeps_risk_and_alert_closed(live):
     assert body["alert"]["active"] is False
 
 
+def test_forecast_response_is_not_cacheable(live):
+    response = app.test_client().get("/api/bihar/v1/patna/forecast")
+    assert "no-store" in response.headers["Cache-Control"]
+
+
+def test_status_and_forecast_agree_when_v1_model_path_is_missing(live, monkeypatch, tmp_path):
+    monkeypatch.setenv("VARSHAGUARD_PATNA_FLOOD_MODEL", str(tmp_path / "missing.joblib"))
+    client = app.test_client()
+    status = client.get("/api/bihar/v1/patna/status").get_json()["models"]["flood"]
+    forecast = client.get("/api/bihar/v1/patna/forecast").get_json()["flood"]
+    assert forecast["status"] == "model_not_trained"
+    assert status["status"] == "model_not_trained"
+    assert status["source"] is None
+    assert client.get("/api/bihar/v1/patna/status").get_json()["data_feeds"]["live_observations"] == "not_connected"
+
+
 def test_forecast_endpoint_unsupported_district_is_404(live):
     assert app.test_client().get("/api/bihar/v1/delhi/forecast").status_code == 404
 
