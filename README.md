@@ -243,3 +243,41 @@ The Flask app serves the dashboard and API from the same origin. Run tests with 
 ## Voice assistant
 
 The dashboard voice assistant records up to 20 seconds in the browser, sends audio to Groq Whisper for transcription, uses the existing Groq chat model for a response, and uses Microsoft's online Edge TTS service for spoken output. Configure `GROQ_API_KEY` on the server; `GROQ_STT_MODEL` is optional and defaults to `whisper-large-v3`. Microphone access requires HTTPS or localhost. Do not speak sensitive personal information into the assistant.
+
+
+## Engineering status and dependency truth
+
+The engineering branch work/varshaguard-hardening-pipeline-2026-11 contains a release-hardening pass:
+
+- The default test workflow has contents: read and runs tests only; historical model retraining/pushing was removed from the general test workflow.
+- IMERG point-to-district assignment has explicit outer-boundary inclusion, hole exclusion, shared-boundary ambiguity rejection, coordinate validation, and regression tests.
+- Groq text and voice endpoints have bounded per-process request limits, request-size validation, Retry-After responses, and configurable limits. This in-process limiter is only a fallback; production multi-instance Vercel deployments need a shared edge/Redis limiter.
+- Legacy API health reports Bihar Live and Bihar v1 dependencies separately. Bihar Live health reports source and historical-store states without claiming operational readiness.
+- IMD ingestion supports configured bearer/API-key authentication, bounded retries, and JSON-root validation. Provider-specific field schemas still require authenticated access documentation.
+- CWC normalization requires an explicit verified mapping and preserves stage/discharge variable and unit separation.
+
+The actual multi-source feed integrations remain incomplete: IMD credentials, CWC live feed contract, IMERG data acquisition, radar access and NWP provider contracts are deployment/provider dependencies. The current real adapters fail closed; synthetic demonstrations are not promoted to live data.
+
+The existing historical pipeline and CWC model remain research-only. No verified independent flood-event labels, DEM/Sentinel-1 mask collection, validated inundation model, fitted probability calibration, or disaster-management-approved thresholds are available in this branch. The inundation API continues to return model_not_trained; risk fusion and alerts remain inactive until these requirements are met.
+
+The map continues to display the currently supported gauge context. Ward/block-level inundation layers are not added without a validated spatial prediction raster and authoritative administrative boundaries. SMS/WhatsApp notifications, user/role authorization, alert acknowledgement, and incident history remain unimplemented; do not send public alerts from this prototype.
+
+No Vercel deployment, production endpoint verification, live alert delivery, or field pilot is claimed by these code changes. Those steps require deployment access and operational authorization.
+
+
+## Additional loop-engineering increment (PR #25)
+
+- Added a configurable IMERG CSV-export downloader at `backend.bihar_v1.ingestion.imerg_download`. It requires an explicit HTTPS URL, supports optional NASA Earthdata credentials, retries transient failures, rejects HTML/login pages and schema mismatches, caps downloads at 100 MiB, validates timestamps/coordinates/rainfall, and writes atomically.
+- Added downloader tests for valid CSV, HTTPS enforcement, HTML rejection, retries, schema mismatch protection, and optional Earthdata authentication.
+- Added an optional IMERG acquisition step to the public-source workflow. Configure the repository variable `VARSHAGUARD_IMERG_CSV_URL` with a provider-approved **CSV export** URL; set `NASA_EARTHDATA_USERNAME` and `NASA_EARTHDATA_PASSWORD` secrets only if that endpoint requires Basic Auth. Raw IMERG HDF5/NetCDF granules are not misrepresented as CSV.
+- The public-source workflow is scheduled weekly and retains downloaded/normalized data as workflow artifacts. This is repeatable acquisition and provenance, **not** a substitute for a durable production database.
+- Bihar Live health now distinguishes a configured IMERG export URL from an unconfigured parser. Configuration alone does not mean a successful download or live feed.
+- Added an atomic Upstash Redis sliding-window limiter for Groq text/voice routes. Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` in Vercel to enforce shared limits across serverless instances. If shared limiting is configured but fails, assistant requests fail closed with HTTP 503. Without those variables, only the process-local fallback is active.
+
+### Still blocked / not claimed complete
+
+- No provider-approved IMERG CSV export URL or Earthdata credentials were supplied in this session, so a live download has not been run. Configure these in repository/Vercel settings; never commit credentials.
+- CWC public data snapshots can be acquired from the existing public-source workflow, but the authenticated live gauge feed contract is still not established.
+- Radar/NWP source contracts, authoritative Bihar district boundaries, DEM/Sentinel-1 processing, independently verified flood event labels, validated inundation model, calibration, and expert-approved warning thresholds remain unresolved.
+- Workflow artifacts are retained for 30 days; production-grade historical retention still requires a configured persistent database/object store. Do not train or publish operational alerts from unreviewed artifacts.
+- Configure the two Upstash variables in Vercel before treating distributed rate limiting as active. The code supports it; account configuration is not changed by this PR.

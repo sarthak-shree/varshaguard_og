@@ -14,7 +14,7 @@ def test_health_exposes_mode_badge():
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["mode"] == DATA_MODE
-    assert payload["badge"] == "Synthetic demo data"
+    assert payload["operational"] is False
 
 def test_real_mode_fails_closed():
     from backend.bihar_live.adapters.sources import build_adapters
@@ -25,3 +25,13 @@ def test_real_mode_fails_closed():
         assert "not configured" in str(exc)
     else:
         raise AssertionError("Real adapter must not silently fall back to synthetic")
+
+
+def test_health_reports_each_source_dependency_separately():
+    app = create_app()
+    with app.test_client() as client:
+        payload = client.get("/api/bihar-live/health").get_json()
+    assert set(payload["dependencies"]) >= {
+        "cwc_stage", "imd", "imerg", "radar", "nwp", "historical_store"
+    }
+    assert payload["operational"] is False

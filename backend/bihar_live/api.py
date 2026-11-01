@@ -19,16 +19,38 @@ bp = Blueprint("bihar_live", __name__, url_prefix="/api/bihar-live")
 
 @bp.get("/health")
 def health():
+    """Report independent dependency states without describing scaffolds as live."""
+    root = Path(os.environ.get(
+        "JALDRISHTI_DATA_ROOT",
+        Path(__file__).resolve().parents[2] / "data" / "bihar_live",
+    ))
+    history_db = Path(os.environ.get("VARSHAGUARD_HISTORY_DB", root / "history.sqlite3"))
+    adapters = build_adapters(DATA_MODE)
+    adapter_status = {}
+    for name, adapter in adapters.items():
+        adapter_status[name] = {
+            "status": "synthetic_only" if DATA_MODE == "synthetic" else "not_configured",
+            "description": getattr(adapter, "description", None),
+        }
     return jsonify({
         "success": True,
         "project": "JalDrishti",
         "mode": DATA_MODE,
-        "badge": "Synthetic demo data" if DATA_MODE == "synthetic" else "Real-source mode; verify adapter configuration",
+        "badge": "Synthetic demo data" if DATA_MODE == "synthetic" else "Real-source mode; integrations must be verified",
         "operational": False,
         "horizon_hours": PREDICTION_HORIZON_HOURS,
         "districts": list(SUPPORTED_DISTRICTS),
+        "dependencies": {
+            "cwc_stage": {"status": "research_feed_available_separately", "endpoint": "/api/bihar-live/model/live"},
+            "imd": {"status": "authenticated_adapter_available", "configured": bool(os.getenv("IMD_API_TOKEN") or os.getenv("IMD_API_KEY"))},
+            "imerg": {"status": "configured_csv_export" if os.getenv("VARSHAGUARD_IMERG_CSV_URL") else "parser_available_download_not_configured", "download_configured": bool(os.getenv("VARSHAGUARD_IMERG_CSV_URL"))},
+            "radar": adapter_status.get("radar", {"status": "not_configured"}),
+            "nwp": adapter_status.get("nwp", {"status": "not_configured"}),
+            "historical_store": {"status": "available" if history_db.is_file() else "not_configured", "path": str(history_db)},
+            "source_adapters": adapter_status,
+        },
+        "readiness": "synthetic_demo" if DATA_MODE == "synthetic" else "integration_unverified",
     })
-
 
 @bp.get("/sources")
 def sources():

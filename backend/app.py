@@ -1,7 +1,12 @@
 import asyncio
 import base64
+import hashlib
 import json
+import uuid
 import os
+import threading
+import time
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 
 import requests
@@ -45,6 +50,93 @@ app.config["MAX_CONTENT_LENGTH"] = 4_000_000
 app.register_blueprint(bihar_live_bp)
 app.register_blueprint(bihar_v1_bp)
 
+# Per-process fallback limiter. For multi-instance production deployments configure
+# a shared gateway/Redis limiter; serverless instances do not share this memory.
+_RATE_LIMIT_LOCK = threading.Lock()
+_RATE_LIMIT_BUCKETS = defaultdict(deque)
+
+
+def _client_key() -> str:
+    # Only trust proxy headers when explicitly enabled behind a trusted proxy.
+    if os.environ.get("TRUST_PROXY_HEADERS", "").lower() == "true":
+        forwarded = request.headers.get("X-Forwarded-For", "").split(",", 1)[0].strip()
+        if forwarded:
+            return forwarded[:64]
+    return (request.remote_addr or "unknown")[:64]
+
+
+def _rate_limit_exceeded(bucket: str, limit: int, window_seconds: int) -> bool:
+    now = time.monotonic()
+    key = (bucket, _client_key())
+    with _RATE_LIMIT_LOCK:
+        events = _RATE_LIMIT_BUCKETS[key]
+        cutoff = now - window_seconds
+        while events and events[0] <= cutoff:
+            events.popleft()
+        if len(events) >= limit:
+            return True
+        events.append(now)
+        # Bound stale key growth in long-lived single-process deployments.
+        if len(_RATE_LIMIT_BUCKETS) > 10_000:
+            for stale_key in list(_RATE_LIMIT_BUCKETS)[:2_000]:
+                if not _RATE_LIMIT_BUCKETS[stale_key]:
+                    _RATE_LIMIT_BUCKETS.pop(stale_key, None)
+        return False
+
+
+def _upstash_rate_limit_exceeded(bucket: str, limit: int, window_seconds: int) -> bool | None:
+    """Use an atomic Redis sliding window when Upstash REST credentials are configured.
+
+    Returns None when shared limiting is not configured (local fallback), and raises
+    when configured shared limiting is unavailable so an outage cannot silently bypass it.
+    """
+    base_url = os.getenv("UPSTASH_REDIS_REST_URL", "").strip().rstrip("/")
+    token = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
+    if not base_url and not token:
+        return None
+    if not base_url or not token or not base_url.startswith("https://"):
+        raise RuntimeError("Shared rate-limit configuration is incomplete")
+    now_ms = int(time.time() * 1000)
+    window_ms = int(window_seconds * 1000)
+    cutoff_ms = now_ms - window_ms
+    client_digest = hashlib.sha256(_client_key().encode("utf-8")).hexdigest()
+    redis_key = f"varshaguard:ratelimit:{bucket}:{client_digest}"
+    script = (
+        "redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1]); "
+        "local count = redis.call('ZCARD', KEYS[1]); "
+        "if count >= tonumber(ARGV[5]) then return 0 end; "
+        "redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3]); "
+        "redis.call('PEXPIRE', KEYS[1], ARGV[4]); return 1"
+    )
+    response = requests.post(
+        base_url,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json=["EVAL", script, "1", redis_key, str(cutoff_ms), str(now_ms),
+              f"{now_ms}:{uuid.uuid4().hex}", str(window_ms), str(limit)],
+        timeout=2,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    result = payload.get("result") if isinstance(payload, dict) else None
+    if result not in (0, 1, False, True):
+        raise RuntimeError("Shared rate-limit service returned an invalid response")
+    return result in (0, False)
+
+
+def _assistant_rate_limited(bucket: str, limit: int, window_seconds: int):
+    try:
+        shared_result = _upstash_rate_limit_exceeded(bucket, limit, window_seconds)
+    except Exception:
+        return error_response("Assistant protection is temporarily unavailable", 503)
+    exceeded = _rate_limit_exceeded(bucket, limit, window_seconds) if shared_result is None else shared_result
+    if not exceeded:
+        return None
+    response = error_response("Too many assistant requests. Please try again later.", 429)
+    response.headers["Retry-After"] = str(window_seconds)
+    return response
+
+
+
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
@@ -68,6 +160,17 @@ class AssistantAPIError(Exception):
     def __init__(self, message, status_code=502):
         super().__init__(message)
         self.status_code = status_code
+
+
+def _assistant_request_limits():
+    """Return bounded text/voice rate-limit settings from deployment environment."""
+    try:
+        text_limit = max(1, min(100, int(os.getenv("ASSISTANT_RATE_LIMIT", "12"))))
+        voice_limit = max(1, min(30, int(os.getenv("ASSISTANT_VOICE_RATE_LIMIT", "4"))))
+        window = max(10, min(3600, int(os.getenv("ASSISTANT_RATE_WINDOW", "60"))))
+    except ValueError:
+        text_limit, voice_limit, window = 12, 4, 60
+    return text_limit, voice_limit, window
 
 
 def request_assistant_answer(message, context, response_language=None):
@@ -170,16 +273,52 @@ def get_region_from_request():
 def health():
     model_info = load_model()
     data_available = os.path.exists(DATA_PATH)
-    ready = model_info["ok"] and data_available
+    ready = bool(model_info.get("ok")) and data_available
+    try:
+        bihar_live_status = {
+            "status": "available",
+            "dependencies": {
+                "mode": os.getenv("JALDRISHTI_DATA_MODE", "synthetic"),
+                "historical_store": "configured" if os.path.exists(
+                    os.getenv("VARSHAGUARD_HISTORY_DB", "data/bihar_live/history.sqlite3")
+                ) else "not_configured",
+                "feeds": "see_individual_source_health",
+            },
+            "health_endpoint": "/api/bihar-live/health",
+        }
+    except Exception as exc:
+        bihar_live_status = {"status": "unavailable", "error": type(exc).__name__}
+    try:
+        from backend.bihar_v1.config import IMD_BASE_URL, CWC_BASE_URL, IMERG_BASE_URL
+        imd_auth = bool(os.getenv("IMD_API_TOKEN") or os.getenv("IMD_API_KEY"))
+        bihar_v1_status = {
+            "status": "available",
+            "dependencies": {
+                "imd": "configured" if IMD_BASE_URL and imd_auth else "credentials_missing",
+                "cwc": "configured" if CWC_BASE_URL else "provider_endpoint_missing",
+                "imerg": "configured" if IMERG_BASE_URL else "download_endpoint_missing",
+            },
+            "health_endpoint": "/api/bihar/v1/health",
+        }
+    except Exception as exc:
+        bihar_v1_status = {"status": "unavailable", "error": type(exc).__name__}
     return no_store_json({
-        "status": "ok" if ready else "error",
+        "status": "ok" if ready else "degraded",
         "service": "VARSHAGUARD API",
-        "model": "LOADED" if model_info["ok"] else "ERROR",
-        "model_error": model_info["error"],
-        "data": "AVAILABLE" if data_available else "ERROR",
+        "dependencies": {
+            "legacy_model": {
+                "status": "available" if model_info.get("ok") else "unavailable",
+                "error": model_info.get("error"),
+            },
+            "legacy_dataset": {
+                "status": "available" if data_available else "unavailable",
+            },
+            "bihar_live": bihar_live_status,
+            "bihar_v1": bihar_v1_status,
+        },
         "prediction": "READY" if ready else "ERROR",
+        "operational": False,
     })
-
 
 @app.route("/api/regions")
 def regions():
@@ -275,9 +414,17 @@ def stations():
 
 @app.route("/api/assistant", methods=["POST"])
 def assistant():
+    text_limit, _voice_limit, rate_window = _assistant_request_limits()
+    limited = _assistant_rate_limited("assistant", text_limit, rate_window)
+    if limited:
+        return limited
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return error_response("JSON object required", 400)
     message = str(payload.get("message", "")).strip()
     context = payload.get("context") or {}
+    if len(message) > 2000 or not isinstance(context, dict) or not isinstance(payload.get("context", {}), dict) or len(json.dumps(context, ensure_ascii=False)) > 16000:
+        return error_response("Message or dashboard context is too large", 413)
 
     if not message:
         return error_response("Message is required", 400)
@@ -294,6 +441,10 @@ def assistant():
 @app.route("/api/assistant/voice", methods=["POST"])
 def assistant_voice():
     """Transcribe one short recording, answer with the dashboard LLM, and speak it."""
+    _text_limit, voice_limit, rate_window = _assistant_request_limits()
+    limited = _assistant_rate_limited("assistant_voice", voice_limit, rate_window)
+    if limited:
+        return limited
     audio_file = request.files.get("audio")
     if audio_file is None or not audio_file.filename:
         return error_response("Record a short question before sending it", 400)
