@@ -2,6 +2,13 @@ from backend.app import app
 from backend.bihar_live.research import live_prediction
 
 
+def authenticated_client():
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["user_id"] = 1  # authenticated test session for protected API routes
+    return client
+
+
 def test_probability_endpoint_returns_only_supported_flood_probability(monkeypatch):
     monkeypatch.setattr(live_prediction, "get_live_predictions", lambda: {
         "success": True,
@@ -17,7 +24,7 @@ def test_probability_endpoint_returns_only_supported_flood_probability(monkeypat
             "message": "Research estimate only.",
         }],
     })
-    response = app.test_client().get("/api/bihar-live/probability?district=patna&type=flood")
+    response = authenticated_client().get("/api/bihar-live/probability?district=patna&type=flood")
     body = response.get_json()
 
     assert response.status_code == 200
@@ -29,7 +36,7 @@ def test_probability_endpoint_returns_only_supported_flood_probability(monkeypat
 
 
 def test_probability_endpoint_does_not_invent_heavy_rain_probability():
-    response = app.test_client().get("/api/bihar-live/probability?district=patna&type=heavy_rainfall")
+    response = authenticated_client().get("/api/bihar-live/probability?district=patna&type=heavy_rainfall")
     body = response.get_json()
 
     assert response.status_code == 200
@@ -39,7 +46,7 @@ def test_probability_endpoint_does_not_invent_heavy_rain_probability():
 
 
 def test_probability_endpoint_rejects_unknown_district():
-    response = app.test_client().get("/api/bihar-live/probability?district=oslo&type=flood")
+    response = authenticated_client().get("/api/bihar-live/probability?district=oslo&type=flood")
     assert response.status_code == 400
 
 
@@ -60,7 +67,7 @@ def test_probability_endpoint_withholds_probability_when_gauge_is_already_at_war
     original = live_prediction.get_live_predictions
     live_prediction.get_live_predictions = lambda: monkeypatch_payload
     try:
-        body = app.test_client().get("/api/bihar-live/probability?district=patna&type=flood").get_json()
+        body = authenticated_client().get("/api/bihar-live/probability?district=patna&type=flood").get_json()
     finally:
         live_prediction.get_live_predictions = original
 
