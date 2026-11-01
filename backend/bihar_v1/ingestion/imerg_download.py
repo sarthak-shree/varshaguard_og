@@ -108,3 +108,18 @@ def download_csv_export(
     finally:
         if temporary.exists():
             temporary.unlink()
+
+
+def main() -> int:
+    import argparse
+    import json
+    parser = argparse.ArgumentParser(description="Download and validate a configured IMERG CSV export")
+    parser.add_argument("--output", default="data/raw/imerg/imerg_export.csv")
+    args = parser.parse_args()
+    result = download_csv_export(args.output)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
