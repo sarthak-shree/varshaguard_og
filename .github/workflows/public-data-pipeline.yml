@@ -6,6 +6,7 @@ on:
     - cron: "17 2 * * 1" # Weekly source snapshot acquisition.
   pull_request:
     branches:
+      - main
       - feat/forecasting-data-pipeline
     paths:
       - "scripts/fetch_public_sources.py"
