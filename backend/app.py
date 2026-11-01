@@ -1,11 +1,11 @@
 import asyncio
 import base64
-import threading
-import time
-from collections import defaultdict, deque
 import json
 import os
 from datetime import datetime, timezone
+import threading
+import time
+from collections import defaultdict, deque
 
 import requests
 from flask import Flask, jsonify, request, send_from_directory, make_response
@@ -114,6 +114,16 @@ class AssistantAPIError(Exception):
     def __init__(self, message, status_code=502):
         super().__init__(message)
         self.status_code = status_code
+
+
+def _assistant_request_limits():
+    try:
+        text_limit = max(1, min(100, int(os.getenv("ASSISTANT_RATE_LIMIT", "12"))))
+        voice_limit = max(1, min(30, int(os.getenv("ASSISTANT_VOICE_RATE_LIMIT", "4"))))
+        window = max(10, min(3600, int(os.getenv("ASSISTANT_RATE_WINDOW", "60"))))
+    except ValueError:
+        text_limit, voice_limit, window = 12, 4, 60
+    return text_limit, voice_limit, window
 
 
 def _assistant_request_limits():
