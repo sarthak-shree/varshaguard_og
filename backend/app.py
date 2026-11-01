@@ -1,6 +1,8 @@
 import asyncio
 import base64
+import hashlib
 import json
+import uuid
 import os
 import threading
 import time
@@ -82,8 +84,52 @@ def _rate_limit_exceeded(bucket: str, limit: int, window_seconds: int) -> bool:
         return False
 
 
+def _upstash_rate_limit_exceeded(bucket: str, limit: int, window_seconds: int) -> bool | None:
+    """Use an atomic Redis sliding window when Upstash REST credentials are configured.
+
+    Returns None when shared limiting is not configured (local fallback), and raises
+    when configured shared limiting is unavailable so an outage cannot silently bypass it.
+    """
+    base_url = os.getenv("UPSTASH_REDIS_REST_URL", "").strip().rstrip("/")
+    token = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
+    if not base_url and not token:
+        return None
+    if not base_url or not token or not base_url.startswith("https://"):
+        raise RuntimeError("Shared rate-limit configuration is incomplete")
+    now_ms = int(time.time() * 1000)
+    window_ms = int(window_seconds * 1000)
+    cutoff_ms = now_ms - window_ms
+    client_digest = hashlib.sha256(_client_key().encode("utf-8")).hexdigest()
+    redis_key = f"varshaguard:ratelimit:{bucket}:{client_digest}"
+    script = (
+        "redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1]); "
+        "local count = redis.call('ZCARD', KEYS[1]); "
+        "if count >= tonumber(ARGV[5]) then return 0 end; "
+        "redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3]); "
+        "redis.call('PEXPIRE', KEYS[1], ARGV[4]); return 1"
+    )
+    response = requests.post(
+        base_url,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json=["EVAL", script, "1", redis_key, str(cutoff_ms), str(now_ms),
+              f"{now_ms}:{uuid.uuid4().hex}", str(window_ms), str(limit)],
+        timeout=2,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    result = payload.get("result") if isinstance(payload, dict) else None
+    if result not in (0, 1, False, True):
+        raise RuntimeError("Shared rate-limit service returned an invalid response")
+    return result in (0, False)
+
+
 def _assistant_rate_limited(bucket: str, limit: int, window_seconds: int):
-    if not _rate_limit_exceeded(bucket, limit, window_seconds):
+    try:
+        shared_result = _upstash_rate_limit_exceeded(bucket, limit, window_seconds)
+    except Exception:
+        return error_response("Assistant protection is temporarily unavailable", 503)
+    exceeded = _rate_limit_exceeded(bucket, limit, window_seconds) if shared_result is None else shared_result
+    if not exceeded:
         return None
     response = error_response("Too many assistant requests. Please try again later.", 429)
     response.headers["Retry-After"] = str(window_seconds)
