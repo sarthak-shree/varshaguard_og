@@ -38,7 +38,7 @@ class ApiTests(unittest.TestCase):
         response = Mock()
         response.raise_for_status.return_value = None
         response.json.return_value = {"result": 1}
-        with patch.dict("os.environ", {
+        with app.test_request_context("/", environ_base={"REMOTE_ADDR": "127.0.0.1"}), patch.dict("os.environ", {
             "UPSTASH_REDIS_REST_URL": "https://redis.example.test",
             "UPSTASH_REDIS_REST_TOKEN": "test-token",
         }), patch("backend.app.requests.post", return_value=response) as post:
