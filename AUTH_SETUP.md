@@ -18,7 +18,7 @@ Required backend environment variables:
 - `DATABASE_URL`: persistent PostgreSQL connection string (recommended for deployment)
 - `COOKIE_SECURE=true` on HTTPS production. For local HTTP development only, set `COOKIE_SECURE=false`.
 
-The app can fall back to SQLite for local development. On Vercel, the fallback uses `/tmp` only so the function can start; that database is ephemeral and not suitable for real accounts. Do not launch without persistent PostgreSQL configured in `DATABASE_URL`, or account data can disappear between instances/redeploys. Provision persistent PostgreSQL and use its connection string as `DATABASE_URL`.
+The app can fall back to SQLite for local development. On Vercel, startup deliberately fails if `DATABASE_URL` or `SECRET_KEY` is missing. Provision persistent PostgreSQL and configure its connection string as `DATABASE_URL`; serverless local files are ephemeral and must not store real accounts.
 
 Example local environment (use your own values; do not commit a real .env file):
 
