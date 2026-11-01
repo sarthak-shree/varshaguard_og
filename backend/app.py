@@ -244,12 +244,13 @@ def health():
         bihar_live_status = {"status": "unavailable", "error": type(exc).__name__}
     try:
         from backend.bihar_v1.config import IMD_BASE_URL, CWC_BASE_URL, IMERG_BASE_URL
+        imd_auth = bool(os.getenv("IMD_API_TOKEN") or os.getenv("IMD_API_KEY"))
         bihar_v1_status = {
             "status": "available",
             "dependencies": {
-                "imd": "configured" if IMD_BASE_URL else "not_configured",
-                "cwc": "configured" if CWC_BASE_URL else "not_configured",
-                "imerg": "configured" if IMERG_BASE_URL else "not_configured",
+                "imd": "configured" if IMD_BASE_URL and imd_auth else "credentials_missing",
+                "cwc": "configured" if CWC_BASE_URL else "provider_endpoint_missing",
+                "imerg": "configured" if IMERG_BASE_URL else "download_endpoint_missing",
             },
             "health_endpoint": "/api/bihar/v1/health",
         }
