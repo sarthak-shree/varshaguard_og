@@ -49,6 +49,19 @@ except ImportError:
 init_auth(app)
 
 
+@app.before_request
+def require_account_for_api():
+    """Keep dashboard API endpoints behind the same server-side session as the UI."""
+    path = request.path
+    if path.startswith("/api/") and not path.startswith("/api/auth/") and path != "/api/health":
+        if not request.cookies.get(app.config.get("SESSION_COOKIE_NAME", "session")):
+            return error_response("Sign in required.", 401)
+        # Flask's signed session cookie must be decoded by the session interface.
+        from flask import session
+        if not session.get("user_id"):
+            return error_response("Sign in required.", 401)
+
+
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
