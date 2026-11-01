@@ -19,16 +19,42 @@ bp = Blueprint("bihar_live", __name__, url_prefix="/api/bihar-live")
 
 @bp.get("/health")
 def health():
+    """Report every Bihar Live dependency independently; never collapse failures."""
+    root = Path(os.environ.get(
+        "JALDRISHTI_DATA_ROOT",
+        Path(__file__).resolve().parents[2] / "data" / "bihar_live",
+    ))
+    history_db = Path(os.environ.get("VARSHAGUARD_HISTORY_DB", root / "history.sqlite3"))
+    history_status = "available" if history_db.is_file() else "not_configured"
+    adapters = build_adapters(DATA_MODE)
+    source_status = {}
+    for name, adapter in adapters.items():
+        if DATA_MODE == "synthetic":
+            status = "synthetic_only"
+        else:
+            status = "configured" if getattr(adapter, "is_configured", False) else "not_configured"
+        source_status[name] = {
+            "status": status,
+            "description": getattr(adapter, "description", None),
+        }
     return jsonify({
         "success": True,
         "project": "JalDrishti",
         "mode": DATA_MODE,
-        "badge": "Synthetic demo data" if DATA_MODE == "synthetic" else "Real-source mode; verify adapter configuration",
         "operational": False,
         "horizon_hours": PREDICTION_HORIZON_HOURS,
         "districts": list(SUPPORTED_DISTRICTS),
+        "dependencies": {
+            "cwc_stage": source_status.get("observations", {"status": "not_configured"}),
+            "imd": source_status.get("imd", {"status": "not_configured"}),
+            "imerg": source_status.get("satellite", {"status": "not_configured"}),
+            "radar": source_status.get("radar", {"status": "not_configured"}),
+            "nwp": source_status.get("nwp", {"status": "not_configured"}),
+            "historical_store": {"status": history_status, "path": str(history_db)},
+            "source_adapters": source_status,
+        },
+        "readiness": "synthetic_demo" if DATA_MODE == "synthetic" else "integration_unverified",
     })
-
 
 @bp.get("/sources")
 def sources():
