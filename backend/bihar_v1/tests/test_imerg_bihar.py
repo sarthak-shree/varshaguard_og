@@ -1,7 +1,7 @@
 import unittest
-import pytest
-
 from unittest.mock import Mock, patch
+
+import pytest
 
 from backend.bihar_v1.ingestion.cwc import CWCIngestionError, normalize_river_observation
 
@@ -25,8 +25,6 @@ def test_cwc_normalizer_keeps_stage_and_discharge_units_separate():
             field_map=mapping, variable="discharge_m3s", unit="m",
         )
 
-
-from unittest.mock import Mock, patch
 
 from backend.bihar_v1.ingestion import imd
 
@@ -75,7 +73,6 @@ class IMDIngestionTests(unittest.TestCase):
         self.assertEqual(payload, {"data": []})
         self.assertEqual(session.get.call_count, 2)
 
-import unittest
 
 from backend.bihar_v1.ingestion.imerg_bihar import bihar_precipitation_to_observations
 
