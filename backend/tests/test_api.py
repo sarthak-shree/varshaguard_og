@@ -24,7 +24,13 @@ class ApiTests(unittest.TestCase):
 
     def test_assistant_rate_limit_returns_retry_after(self):
         backend_module._RATE_LIMIT_BUCKETS.clear()
-        with patch.object(backend_module, "_assistant_request_limits", return_value=(1, 1, 60)), patch.object(backend_module, "request_assistant_answer", return_value="test answer"):\n            first = self.client.post("/api/assistant", json={"message": "hello"})\n            second = self.client.post("/api/assistant", json={"message": "hello"})\n        self.assertEqual(first.status_code, 200)\n        self.assertEqual(second.status_code, 429)\n        self.assertEqual(second.headers.get("Retry-After"), "60")\n        backend_module._RATE_LIMIT_BUCKETS.clear()
+        with patch.object(backend_module, "_assistant_request_limits", return_value=(1, 1, 60)), patch.object(backend_module, "request_assistant_answer", return_value="test answer"):
+            first = self.client.post("/api/assistant", json={"message": "hello"})
+            second = self.client.post("/api/assistant", json={"message": "hello"})
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 429)
+        self.assertEqual(second.headers.get("Retry-After"), "60")
+        backend_module._RATE_LIMIT_BUCKETS.clear()
 
 
     def test_shared_rate_limit_uses_upstash_when_configured(self):
@@ -43,10 +49,10 @@ class ApiTests(unittest.TestCase):
 
     def test_shared_rate_limit_fails_closed_on_provider_error(self):
         backend_module._RATE_LIMIT_BUCKETS.clear()
-        with unittest.mock.patch.dict("os.environ", {
+        with patch.dict("os.environ", {
             "UPSTASH_REDIS_REST_URL": "https://redis.example.test",
             "UPSTASH_REDIS_REST_TOKEN": "test-token",
-        }), unittest.mock.patch("backend.app.requests.post", side_effect=RuntimeError("offline")):
+        }), patch("backend.app.requests.post", side_effect=RuntimeError("offline")):
             response = self.client.post("/api/assistant", json={"message": "hello"})
         self.assertEqual(response.status_code, 503)
         self.assertIn("protection", response.get_json()["error"])
