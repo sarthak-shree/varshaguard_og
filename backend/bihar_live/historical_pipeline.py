@@ -12,6 +12,7 @@ import json
 import math
 import os
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
@@ -119,7 +120,8 @@ def ingest_observations(rows: Iterable[dict], db_path: str | Path = DEFAULT_DB) 
             accepted += 1
         except (KeyError, TypeError, ValueError, OverflowError):
             rejected += 1
-    with connect(db_path) as conn:
+    # `conn` as a context manager commits/rolls back but does not close; closing() does.
+    with closing(connect(db_path)) as conn, conn:
         before = conn.total_changes
         conn.executemany("""
             INSERT INTO observations
@@ -139,7 +141,7 @@ def ingest_observations(rows: Iterable[dict], db_path: str | Path = DEFAULT_DB) 
 
 
 def export_observations(db_path: str | Path = DEFAULT_DB) -> pd.DataFrame:
-    with connect(db_path) as conn:
+    with closing(connect(db_path)) as conn:
         rows = conn.execute("""
             SELECT station_id, observed_at_utc, source, source_station_id, source_kind, variable, value, unit,
                    quality_flag, source_timestamp, ingested_at_utc, schema_version
@@ -193,8 +195,8 @@ def build_supervised_rows(observations: pd.DataFrame, max_gap_hours: int = 1) ->
             "issue_time_ist": local.map(lambda x: x.isoformat()),
             "hour_sin": np.sin(2 * np.pi * local.hour / 24),
             "hour_cos": np.cos(2 * np.pi * local.hour / 24),
-            "dayofyear_sin": np.sin(2 * np.pi * local.dayofyear / 366),
-            "dayofyear_cos": np.cos(2 * np.pi * local.dayofyear / 366),
+            "dayofyear_sin": np.sin(2 * np.pi * local.day_of_year / 366),
+            "dayofyear_cos": np.cos(2 * np.pi * local.day_of_year / 366),
         }, index=hourly_index)
         for lag in (1, 3, 6, 12, 24):
             result[f"stage_lag_{lag}h_m"] = stage.shift(lag).to_numpy()

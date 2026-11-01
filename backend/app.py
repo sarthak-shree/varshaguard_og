@@ -20,6 +20,7 @@ try:
     )
     from .risk import get_risk, get_warning
     from .bihar_live.api import bp as bihar_live_bp
+    from .bihar_v1.api import bp as bihar_v1_bp
 except ImportError:
     from model import load_model
     from prediction import (
@@ -32,6 +33,7 @@ except ImportError:
     )
     from risk import get_risk, get_warning
     from bihar_live.api import bp as bihar_live_bp
+    from bihar_v1.api import bp as bihar_v1_bp
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
@@ -41,6 +43,7 @@ app = Flask(__name__)
 CORS(app)
 app.config["MAX_CONTENT_LENGTH"] = 4_000_000
 app.register_blueprint(bihar_live_bp)
+app.register_blueprint(bihar_v1_bp)
 
 
 def now_iso():
