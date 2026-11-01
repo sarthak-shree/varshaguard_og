@@ -43,7 +43,7 @@ def health():
         "dependencies": {
             "cwc_stage": {"status": "research_feed_available_separately", "endpoint": "/api/bihar-live/model/live"},
             "imd": {"status": "authenticated_adapter_available", "configured": bool(os.getenv("IMD_API_TOKEN") or os.getenv("IMD_API_KEY"))},
-            "imerg": {"status": "parser_available_download_not_connected"},
+            "imerg": {"status": "configured_csv_export" if os.getenv("VARSHAGUARD_IMERG_CSV_URL") else "parser_available_download_not_configured", "download_configured": bool(os.getenv("VARSHAGUARD_IMERG_CSV_URL"))},
             "radar": adapter_status.get("radar", {"status": "not_configured"}),
             "nwp": adapter_status.get("nwp", {"status": "not_configured"}),
             "historical_store": {"status": "available" if history_db.is_file() else "not_configured", "path": str(history_db)},
