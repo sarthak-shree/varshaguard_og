@@ -116,6 +116,17 @@ class AssistantAPIError(Exception):
         self.status_code = status_code
 
 
+def _assistant_request_limits():
+    """Return bounded text/voice rate-limit settings from deployment environment."""
+    try:
+        text_limit = max(1, min(100, int(os.getenv("ASSISTANT_RATE_LIMIT", "12"))))
+        voice_limit = max(1, min(30, int(os.getenv("ASSISTANT_VOICE_RATE_LIMIT", "4"))))
+        window = max(10, min(3600, int(os.getenv("ASSISTANT_RATE_WINDOW", "60"))))
+    except ValueError:
+        text_limit, voice_limit, window = 12, 4, 60
+    return text_limit, voice_limit, window
+
+
 def request_assistant_answer(message, context, response_language=None):
     """Get a dashboard-grounded answer from the same Groq model as text chat."""
     api_key = os.environ.get("GROQ_API_KEY")
