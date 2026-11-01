@@ -263,3 +263,21 @@ The existing historical pipeline and CWC model remain research-only. No verified
 The map continues to display the currently supported gauge context. Ward/block-level inundation layers are not added without a validated spatial prediction raster and authoritative administrative boundaries. SMS/WhatsApp notifications, user/role authorization, alert acknowledgement, and incident history remain unimplemented; do not send public alerts from this prototype.
 
 No Vercel deployment, production endpoint verification, live alert delivery, or field pilot is claimed by these code changes. Those steps require deployment access and operational authorization.
+
+
+## Additional loop-engineering increment (PR #25)
+
+- Added a configurable IMERG CSV-export downloader at `backend.bihar_v1.ingestion.imerg_download`. It requires an explicit HTTPS URL, supports optional NASA Earthdata credentials, retries transient failures, rejects HTML/login pages and schema mismatches, caps downloads at 100 MiB, validates timestamps/coordinates/rainfall, and writes atomically.
+- Added downloader tests for valid CSV, HTTPS enforcement, HTML rejection, retries, schema mismatch protection, and optional Earthdata authentication.
+- Added an optional IMERG acquisition step to the public-source workflow. Configure the repository variable `VARSHAGUARD_IMERG_CSV_URL` with a provider-approved **CSV export** URL; set `NASA_EARTHDATA_USERNAME` and `NASA_EARTHDATA_PASSWORD` secrets only if that endpoint requires Basic Auth. Raw IMERG HDF5/NetCDF granules are not misrepresented as CSV.
+- The public-source workflow is scheduled weekly and retains downloaded/normalized data as workflow artifacts. This is repeatable acquisition and provenance, **not** a substitute for a durable production database.
+- Bihar Live health now distinguishes a configured IMERG export URL from an unconfigured parser. Configuration alone does not mean a successful download or live feed.
+- Added an atomic Upstash Redis sliding-window limiter for Groq text/voice routes. Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` in Vercel to enforce shared limits across serverless instances. If shared limiting is configured but fails, assistant requests fail closed with HTTP 503. Without those variables, only the process-local fallback is active.
+
+### Still blocked / not claimed complete
+
+- No provider-approved IMERG CSV export URL or Earthdata credentials were supplied in this session, so a live download has not been run. Configure these in repository/Vercel settings; never commit credentials.
+- CWC public data snapshots can be acquired from the existing public-source workflow, but the authenticated live gauge feed contract is still not established.
+- Radar/NWP source contracts, authoritative Bihar district boundaries, DEM/Sentinel-1 processing, independently verified flood event labels, validated inundation model, calibration, and expert-approved warning thresholds remain unresolved.
+- Workflow artifacts are retained for 30 days; production-grade historical retention still requires a configured persistent database/object store. Do not train or publish operational alerts from unreviewed artifacts.
+- Configure the two Upstash variables in Vercel before treating distributed rate limiting as active. The code supports it; account configuration is not changed by this PR.
