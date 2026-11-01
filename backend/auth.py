@@ -44,13 +44,18 @@ class OTPChallenge(db.Model):
 
 def init_auth(app):
     database_url = os.environ.get("DATABASE_URL", "").strip()
+    secret_key = os.environ.get("SECRET_KEY", "").strip()
+    if os.environ.get("VERCEL") and not database_url:
+        raise RuntimeError("Set DATABASE_URL to persistent PostgreSQL before deploying authentication on Vercel.")
+    if os.environ.get("VERCEL") and not secret_key:
+        raise RuntimeError("Set a strong SECRET_KEY before deploying authentication on Vercel.")
     if database_url.startswith("postgres://"):
         database_url = "postgresql://" + database_url[len("postgres://"):]
     if database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url or ("sqlite:////tmp/varshaguard_auth.sqlite3" if os.environ.get("VERCEL") else "sqlite:///varshaguard_auth.sqlite3")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-this-secret")
+    app.config["SECRET_KEY"] = secret_key or "dev-only-change-this-secret"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("COOKIE_SECURE", "true").lower() == "true"
