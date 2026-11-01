@@ -32,6 +32,32 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(second.headers.get("Retry-After"), "60")
         backend_module._RATE_LIMIT_BUCKETS.clear()
 
+
+    def test_shared_rate_limit_uses_upstash_when_configured(self):
+        backend_module._RATE_LIMIT_BUCKETS.clear()
+        response = unittest.mock.Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"result": 1}
+        with unittest.mock.patch.dict("os.environ", {
+            "UPSTASH_REDIS_REST_URL": "https://redis.example.test",
+            "UPSTASH_REDIS_REST_TOKEN": "test-token",
+        }), unittest.mock.patch("backend.app.requests.post", return_value=response) as post:
+            result = backend_module._upstash_rate_limit_exceeded("assistant", 3, 60)
+        self.assertFalse(result)
+        self.assertIn("EVAL", post.call_args.kwargs["json"])
+        self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], "Bearer test-token")
+
+    def test_shared_rate_limit_fails_closed_on_provider_error(self):
+        backend_module._RATE_LIMIT_BUCKETS.clear()
+        with unittest.mock.patch.dict("os.environ", {
+            "UPSTASH_REDIS_REST_URL": "https://redis.example.test",
+            "UPSTASH_REDIS_REST_TOKEN": "test-token",
+        }), unittest.mock.patch("backend.app.requests.post", side_effect=RuntimeError("offline")):
+            response = self.client.post("/api/assistant", json={"message": "hello"})
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("protection", response.get_json()["error"])
+        backend_module._RATE_LIMIT_BUCKETS.clear()
+
     def test_regions(self):
         response = self.client.get("/api/regions")
         self.assertEqual(response.status_code, 200)
