@@ -19,39 +19,35 @@ bp = Blueprint("bihar_live", __name__, url_prefix="/api/bihar-live")
 
 @bp.get("/health")
 def health():
-    """Report every Bihar Live dependency independently; never collapse failures."""
+    """Report independent dependency states without describing scaffolds as live."""
     root = Path(os.environ.get(
         "JALDRISHTI_DATA_ROOT",
         Path(__file__).resolve().parents[2] / "data" / "bihar_live",
     ))
     history_db = Path(os.environ.get("VARSHAGUARD_HISTORY_DB", root / "history.sqlite3"))
-    history_status = "available" if history_db.is_file() else "not_configured"
     adapters = build_adapters(DATA_MODE)
-    source_status = {}
+    adapter_status = {}
     for name, adapter in adapters.items():
-        if DATA_MODE == "synthetic":
-            status = "synthetic_only"
-        else:
-            status = "configured" if getattr(adapter, "is_configured", False) else "not_configured"
-        source_status[name] = {
-            "status": status,
+        adapter_status[name] = {
+            "status": "synthetic_only" if DATA_MODE == "synthetic" else "not_configured",
             "description": getattr(adapter, "description", None),
         }
     return jsonify({
         "success": True,
         "project": "JalDrishti",
         "mode": DATA_MODE,
+        "badge": "Synthetic demo data" if DATA_MODE == "synthetic" else "Real-source mode; integrations must be verified",
         "operational": False,
         "horizon_hours": PREDICTION_HORIZON_HOURS,
         "districts": list(SUPPORTED_DISTRICTS),
         "dependencies": {
-            "cwc_stage": {"status": "not_integrated", "detail": "CWC stage feed is exposed by the separate Bihar Live research adapter"},
-            "imd": {"status": "not_integrated", "detail": "IMD adapter requires authenticated provider configuration"},
-            "imerg": {"status": "not_integrated", "detail": "IMERG downloader and district polygons are not connected to this service"},
-            "radar": {"status": "not_configured"},
-            "nwp": {"status": "not_configured"},
-            "historical_store": {"status": history_status, "path": str(history_db)},
-            "source_adapters": source_status,
+            "cwc_stage": {"status": "research_feed_available_separately", "endpoint": "/api/bihar-live/model/live"},
+            "imd": {"status": "authenticated_adapter_available", "configured": bool(os.getenv("IMD_API_TOKEN") or os.getenv("IMD_API_KEY"))},
+            "imerg": {"status": "parser_available_download_not_connected"},
+            "radar": adapter_status.get("radar", {"status": "not_configured"}),
+            "nwp": adapter_status.get("nwp", {"status": "not_configured"}),
+            "historical_store": {"status": "available" if history_db.is_file() else "not_configured", "path": str(history_db)},
+            "source_adapters": adapter_status,
         },
         "readiness": "synthetic_demo" if DATA_MODE == "synthetic" else "integration_unverified",
     })
