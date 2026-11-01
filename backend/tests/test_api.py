@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import Mock, patch
 
 import backend.app as backend_module
 from backend.app import app
@@ -23,25 +24,18 @@ class ApiTests(unittest.TestCase):
 
     def test_assistant_rate_limit_returns_retry_after(self):
         backend_module._RATE_LIMIT_BUCKETS.clear()
-        backend_module._assistant_request_limits = lambda: (1, 1, 60)
-        backend_module.request_assistant_answer = lambda message, context: "test answer"
-        first = self.client.post("/api/assistant", json={"message": "hello"})
-        second = self.client.post("/api/assistant", json={"message": "hello"})
-        self.assertEqual(first.status_code, 200)
-        self.assertEqual(second.status_code, 429)
-        self.assertEqual(second.headers.get("Retry-After"), "60")
-        backend_module._RATE_LIMIT_BUCKETS.clear()
+        with patch.object(backend_module, "_assistant_request_limits", return_value=(1, 1, 60)), patch.object(backend_module, "request_assistant_answer", return_value="test answer"):\n            first = self.client.post("/api/assistant", json={"message": "hello"})\n            second = self.client.post("/api/assistant", json={"message": "hello"})\n        self.assertEqual(first.status_code, 200)\n        self.assertEqual(second.status_code, 429)\n        self.assertEqual(second.headers.get("Retry-After"), "60")\n        backend_module._RATE_LIMIT_BUCKETS.clear()
 
 
     def test_shared_rate_limit_uses_upstash_when_configured(self):
         backend_module._RATE_LIMIT_BUCKETS.clear()
-        response = unittest.mock.Mock()
+        response = Mock()
         response.raise_for_status.return_value = None
         response.json.return_value = {"result": 1}
-        with unittest.mock.patch.dict("os.environ", {
+        with patch.dict("os.environ", {
             "UPSTASH_REDIS_REST_URL": "https://redis.example.test",
             "UPSTASH_REDIS_REST_TOKEN": "test-token",
-        }), unittest.mock.patch("backend.app.requests.post", return_value=response) as post:
+        }), patch("backend.app.requests.post", return_value=response) as post:
             result = backend_module._upstash_rate_limit_exceeded("assistant", 3, 60)
         self.assertFalse(result)
         self.assertIn("EVAL", post.call_args.kwargs["json"])
