@@ -42,6 +42,12 @@ CORS(app)
 app.config["MAX_CONTENT_LENGTH"] = 4_000_000
 app.register_blueprint(bihar_live_bp)
 
+try:
+    from .auth import init_auth
+except ImportError:
+    from auth import init_auth
+init_auth(app)
+
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
