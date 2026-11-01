@@ -1,4 +1,31 @@
 import unittest
+import pytest
+
+from unittest.mock import Mock, patch
+
+from backend.bihar_v1.ingestion.cwc import CWCIngestionError, normalize_river_observation
+
+
+def test_cwc_normalizer_requires_explicit_verified_mapping():
+    with pytest.raises(CWCIngestionError, match="field_map"):
+        normalize_river_observation([{"station": "A"}])
+
+
+def test_cwc_normalizer_keeps_stage_and_discharge_units_separate():
+    mapping = {"station_id": "station", "district": "district", "timestamp": "at", "value": "stage"}
+    result = normalize_river_observation(
+        [{"station": "Gandhighat", "district": "Patna", "at": "2026-10-01T00:00:00+05:30", "stage": "42.1"}],
+        field_map=mapping,
+    )
+    assert result[0]["value"] == 42.1
+    assert result[0]["unit"] == "m"
+    with pytest.raises(CWCIngestionError, match="unit"):
+        normalize_river_observation(
+            [{"station": "A", "district": "Patna", "at": "2026-10-01T00:00:00Z", "stage": 1}],
+            field_map=mapping, variable="discharge_m3s", unit="m",
+        )
+
+
 from unittest.mock import Mock, patch
 
 from backend.bihar_v1.ingestion import imd
