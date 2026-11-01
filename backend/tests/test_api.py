@@ -8,6 +8,8 @@ class ApiTests(unittest.TestCase):
     def setUpClass(cls):
         app.config.update(TESTING=True)
         cls.client = app.test_client()
+        with cls.client.session_transaction() as session:
+            session["user_id"] = 1  # authenticated test session for protected API routes
 
     def test_health_contract(self):
         response = self.client.get("/api/health")
