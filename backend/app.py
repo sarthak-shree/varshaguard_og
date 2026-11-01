@@ -45,6 +45,53 @@ app.config["MAX_CONTENT_LENGTH"] = 4_000_000
 app.register_blueprint(bihar_live_bp)
 app.register_blueprint(bihar_v1_bp)
 
+import threading
+import time
+from collections import defaultdict, deque
+
+# Per-process fallback limiter. For multi-instance production deployments configure
+# a shared gateway/Redis limiter; serverless instances do not share this memory.
+_RATE_LIMIT_LOCK = threading.Lock()
+_RATE_LIMIT_BUCKETS = defaultdict(deque)
+
+
+def _client_key() -> str:
+    # Only trust proxy headers when explicitly enabled behind a trusted proxy.
+    if os.environ.get("TRUST_PROXY_HEADERS", "").lower() == "true":
+        forwarded = request.headers.get("X-Forwarded-For", "").split(",", 1)[0].strip()
+        if forwarded:
+            return forwarded[:64]
+    return (request.remote_addr or "unknown")[:64]
+
+
+def _rate_limit_exceeded(bucket: str, limit: int, window_seconds: int) -> bool:
+    now = time.monotonic()
+    key = (bucket, _client_key())
+    with _RATE_LIMIT_LOCK:
+        events = _RATE_LIMIT_BUCKETS[key]
+        cutoff = now - window_seconds
+        while events and events[0] <= cutoff:
+            events.popleft()
+        if len(events) >= limit:
+            return True
+        events.append(now)
+        # Bound stale key growth in long-lived single-process deployments.
+        if len(_RATE_LIMIT_BUCKETS) > 10_000:
+            for stale_key in list(_RATE_LIMIT_BUCKETS)[:2_000]:
+                if not _RATE_LIMIT_BUCKETS[stale_key]:
+                    _RATE_LIMIT_BUCKETS.pop(stale_key, None)
+        return False
+
+
+def _assistant_rate_limited(bucket: str, limit: int, window_seconds: int):
+    if not _rate_limit_exceeded(bucket, limit, window_seconds):
+        return None
+    response = error_response("Too many assistant requests. Please try again later.", 429)
+    response.headers["Retry-After"] = str(window_seconds)
+    return response
+
+
+
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
@@ -170,16 +217,31 @@ def get_region_from_request():
 def health():
     model_info = load_model()
     data_available = os.path.exists(DATA_PATH)
-    ready = model_info["ok"] and data_available
+    ready = bool(model_info.get("ok")) and data_available
     return no_store_json({
-        "status": "ok" if ready else "error",
+        "status": "ok" if ready else "degraded",
         "service": "VARSHAGUARD API",
-        "model": "LOADED" if model_info["ok"] else "ERROR",
-        "model_error": model_info["error"],
-        "data": "AVAILABLE" if data_available else "ERROR",
+        "dependencies": {
+            "legacy_model": {
+                "status": "available" if model_info.get("ok") else "unavailable",
+                "error": model_info.get("error"),
+            },
+            "legacy_dataset": {
+                "status": "available" if data_available else "unavailable",
+                "path_configured": bool(DATA_PATH),
+            },
+            "bihar_live": {
+                "status": "independently_reported",
+                "health_endpoint": "/api/bihar-live/health",
+            },
+            "bihar_v1": {
+                "status": "independently_reported",
+                "health_endpoint": "/api/bihar/v1/health",
+            },
+        },
         "prediction": "READY" if ready else "ERROR",
+        "operational": False,
     })
-
 
 @app.route("/api/regions")
 def regions():
@@ -275,9 +337,16 @@ def stations():
 
 @app.route("/api/assistant", methods=["POST"])
 def assistant():
+    limited = _assistant_rate_limited("assistant", int(os.getenv("ASSISTANT_RATE_LIMIT", "12")), int(os.getenv("ASSISTANT_RATE_WINDOW", "60")))
+    if limited:
+        return limited
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return error_response("JSON object required", 400)
     message = str(payload.get("message", "")).strip()
     context = payload.get("context") or {}
+    if len(message) > 2000 or not isinstance(context, dict) or len(json.dumps(context, ensure_ascii=False)) > 16000:
+        return error_response("Message or dashboard context is too large", 413)
 
     if not message:
         return error_response("Message is required", 400)
@@ -294,6 +363,9 @@ def assistant():
 @app.route("/api/assistant/voice", methods=["POST"])
 def assistant_voice():
     """Transcribe one short recording, answer with the dashboard LLM, and speak it."""
+    limited = _assistant_rate_limited("assistant_voice", int(os.getenv("ASSISTANT_VOICE_RATE_LIMIT", "4")), int(os.getenv("ASSISTANT_VOICE_RATE_WINDOW", "60")))
+    if limited:
+        return limited
     audio_file = request.files.get("audio")
     if audio_file is None or not audio_file.filename:
         return error_response("Record a short question before sending it", 400)
