@@ -217,6 +217,33 @@ def health():
     model_info = load_model()
     data_available = os.path.exists(DATA_PATH)
     ready = bool(model_info.get("ok")) and data_available
+    try:
+        bihar_live_status = {
+            "status": "available",
+            "dependencies": {
+                "mode": os.getenv("JALDRISHTI_DATA_MODE", "synthetic"),
+                "historical_store": "configured" if os.path.exists(
+                    os.getenv("VARSHAGUARD_HISTORY_DB", "data/bihar_live/history.sqlite3")
+                ) else "not_configured",
+                "feeds": "see_individual_source_health",
+            },
+            "health_endpoint": "/api/bihar-live/health",
+        }
+    except Exception as exc:
+        bihar_live_status = {"status": "unavailable", "error": type(exc).__name__}
+    try:
+        from backend.bihar_v1.config import IMD_BASE_URL, CWC_BASE_URL, IMERG_BASE_URL
+        bihar_v1_status = {
+            "status": "available",
+            "dependencies": {
+                "imd": "configured" if IMD_BASE_URL else "not_configured",
+                "cwc": "configured" if CWC_BASE_URL else "not_configured",
+                "imerg": "configured" if IMERG_BASE_URL else "not_configured",
+            },
+            "health_endpoint": "/api/bihar/v1/health",
+        }
+    except Exception as exc:
+        bihar_v1_status = {"status": "unavailable", "error": type(exc).__name__}
     return no_store_json({
         "status": "ok" if ready else "degraded",
         "service": "VARSHAGUARD API",
@@ -227,16 +254,9 @@ def health():
             },
             "legacy_dataset": {
                 "status": "available" if data_available else "unavailable",
-                "path_configured": bool(DATA_PATH),
             },
-            "bihar_live": {
-                "status": "independently_reported",
-                "health_endpoint": "/api/bihar-live/health",
-            },
-            "bihar_v1": {
-                "status": "independently_reported",
-                "health_endpoint": "/api/bihar/v1/health",
-            },
+            "bihar_live": bihar_live_status,
+            "bihar_v1": bihar_v1_status,
         },
         "prediction": "READY" if ready else "ERROR",
         "operational": False,
