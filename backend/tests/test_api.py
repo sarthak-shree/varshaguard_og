@@ -14,8 +14,9 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.get_json()
         self.assertIn(body["status"], {"ok", "error"})
-        self.assertIn(body["model"], {"LOADED", "ERROR"})
-        self.assertIn(body["data"], {"AVAILABLE", "ERROR"})
+        self.assertIn("legacy_model", body["dependencies"])
+        self.assertIn("bihar_live", body["dependencies"])
+        self.assertIn("bihar_v1", body["dependencies"])
         self.assertIn(body["prediction"], {"READY", "ERROR"})
 
     def test_regions(self):
