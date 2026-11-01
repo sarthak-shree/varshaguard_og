@@ -3,30 +3,63 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Sign in securely to VarshaGuard.">
-<title>Sign in — VarshaGuard</title>
+<meta name="description" content="Create an account or sign in securely to VarshaGuard.">
+<title>Account access — VarshaGuard</title>
 <style>
 :root{color-scheme:dark;--bg:#07111f;--panel:#101f31;--line:#29415a;--text:#eff7ff;--muted:#a8bdd0;--accent:#58d7c2;--danger:#ffaaa5}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 15% 10%,#153c50 0,transparent 42%),radial-gradient(ellipse at 85% 90%,#172b4b 0,transparent 42%),var(--bg);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
-.card{width:min(100%,460px);padding:clamp(24px,6vw,40px);border:1px solid var(--line);border-radius:24px;background:rgba(16,31,49,.94);box-shadow:0 24px 80px #0005}
-.brand{font-size:13px;letter-spacing:.18em;color:var(--accent);font-weight:800}.brand span{color:#fff}h1{font-size:32px;line-height:1.15;margin:14px 0 8px}p{color:var(--muted);margin:0 0 24px}.btn,input{width:100%;min-height:48px;border-radius:12px;font:inherit}.btn{border:1px solid var(--line);background:#172b40;color:var(--text);font-weight:700;cursor:pointer;margin:8px 0}.btn.primary{background:var(--accent);color:#06201e;border-color:transparent}.btn:disabled{opacity:.6;cursor:wait}input{background:#091727;border:1px solid var(--line);color:var(--text);padding:0 14px;margin:6px 0 10px}label{display:block;font-size:14px;font-weight:650;margin-top:14px}.divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;margin:12px 0}.divider:before,.divider:after{content:"";height:1px;background:var(--line);flex:1}#authStatus{min-height:24px;margin:12px 0 0;font-size:13px;color:var(--accent);overflow-wrap:anywhere}#authStatus[data-error="true"]{color:var(--danger)}.foot{font-size:12px;margin:20px 0 0}.otp-row{display:flex;gap:8px}.otp-row input{flex:1;min-width:0}.otp-row .btn{width:130px;flex-shrink:0}a{color:var(--accent)}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;background:radial-gradient(ellipse at 15% 10%,#153c50 0,transparent 42%),radial-gradient(ellipse at 85% 90%,#172b4b 0,transparent 42%),var(--bg);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
+.card{width:min(100%,480px);padding:clamp(22px,5vw,38px);border:1px solid var(--line);border-radius:24px;background:rgba(16,31,49,.96);box-shadow:0 24px 80px #0005}.brand{font-size:13px;letter-spacing:.18em;color:var(--accent);font-weight:800}.brand span{color:#fff}h1{font-size:30px;line-height:1.15;margin:14px 0 8px}p{color:var(--muted);margin:0 0 20px}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:20px 0}.tab,.btn,input{width:100%;min-height:46px;border-radius:11px;font:inherit}.tab{border:1px solid var(--line);background:#091727;color:var(--muted);cursor:pointer}.tab[aria-selected=true]{background:#173d43;color:var(--accent);border-color:var(--accent)}.btn{border:1px solid var(--line);background:#172b40;color:var(--text);font-weight:700;cursor:pointer;margin:8px 0}.btn.primary{background:var(--accent);color:#06201e;border-color:transparent}.btn:disabled{opacity:.6;cursor:wait}input{background:#091727;border:1px solid var(--line);color:var(--text);padding:0 13px;margin:5px 0 10px}label{display:block;font-size:14px;font-weight:650;margin-top:12px}.hint{font-size:12px;margin:4px 0 10px}.hidden{display:none!important}#authStatus{min-height:24px;margin:14px 0 0;font-size:13px;color:var(--accent);overflow-wrap:anywhere}#authStatus[data-error=true]{color:var(--danger)}.foot{font-size:12px;margin:20px 0 0}.form-panel{display:none}.form-panel.active{display:block}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 </head>
 <body>
 <main class="card">
   <div class="brand">VARSHA<span>GUARD</span> ↗</div>
-  <h1>Sign in to your dashboard</h1>
-  <p>Use Google or verify your phone number with a one-time SMS code. No password required.</p>
-  <button class="btn primary" id="googleLogin" type="button">Continue with Google</button>
-  <div class="divider">OR USE PHONE OTP</div>
-  <label for="phoneNumber">Phone number</label>
-  <input id="phoneNumber" type="tel" autocomplete="tel" placeholder="+919876543210" inputmode="tel">
-  <button class="btn" id="sendOtp" type="button">Send OTP by SMS</button>
-  <label for="otpCode">Six-digit OTP</label>
-  <div class="otp-row"><input id="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="123456" hidden><button class="btn primary" id="verifyOtp" type="button" hidden>Verify OTP</button></div>
-  <div id="recaptcha-container"></div>
-  <p id="authStatus" role="status" aria-live="polite">Loading secure sign-in…</p>
-  <p class="foot">Prototype access only. Configure Firebase Authentication before enabling sign-in. Phone OTP is delivered by SMS, not WhatsApp.</p>
+  <h1>Welcome to VarshaGuard</h1>
+  <p>Use a username and password. WhatsApp OTP verifies new accounts and password resets.</p>
+  <div class="tabs" role="tablist" aria-label="Account actions">
+    <button class="tab" role="tab" data-tab="login" aria-selected="true" type="button">Log in</button>
+    <button class="tab" role="tab" data-tab="signup" aria-selected="false" type="button">Sign up</button>
+    <button class="tab" role="tab" data-tab="forgot" aria-selected="false" type="button">Forgot password</button>
+  </div>
+
+  <section class="form-panel active" id="panel-login">
+    <form id="loginForm">
+      <label for="loginUsername">Username</label><input id="loginUsername" name="username" autocomplete="username" minlength="3" maxlength="24" required>
+      <label for="loginPassword">Password</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+      <button class="btn primary" type="submit">Log in</button>
+    </form>
+  </section>
+
+  <section class="form-panel" id="panel-signup">
+    <form id="signupForm">
+      <label for="signupUsername">Unique username</label><input id="signupUsername" name="username" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" required placeholder="letters, numbers, underscore">
+      <p class="hint">3–24 characters; letters, numbers and underscores only.</p>
+      <label for="signupPhone">WhatsApp phone number</label><input id="signupPhone" name="phone" type="tel" autocomplete="tel" required placeholder="+919876543210">
+      <label for="signupPassword">Password</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required>
+      <p class="hint">Use at least 10 characters.</p>
+      <button class="btn primary" type="submit" id="signupSend">Send WhatsApp OTP</button>
+    </form>
+    <form id="signupVerifyForm" class="hidden">
+      <label for="signupCode">WhatsApp verification code</label><input id="signupCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,10}" required placeholder="Enter code from WhatsApp">
+      <button class="btn primary" type="submit">Verify OTP and create account</button>
+      <button class="btn" type="button" id="signupBack">Change details</button>
+    </form>
+  </section>
+
+  <section class="form-panel" id="panel-forgot">
+    <form id="forgotForm">
+      <label for="forgotPhone">WhatsApp number linked to your account</label><input id="forgotPhone" name="phone" type="tel" autocomplete="tel" required placeholder="+919876543210">
+      <button class="btn primary" type="submit">Send reset OTP</button>
+    </form>
+    <form id="forgotVerifyForm" class="hidden">
+      <label for="forgotCode">WhatsApp verification code</label><input id="forgotCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,10}" required placeholder="Enter code from WhatsApp">
+      <label for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required>
+      <button class="btn primary" type="submit">Verify OTP and reset password</button>
+    </form>
+  </section>
+
+  <p id="authStatus" role="status" aria-live="polite">Checking authentication service…</p>
+  <p class="foot">WhatsApp OTP requires configured Twilio Verify credentials and a WhatsApp-enabled sender. Do not share your verification code.</p>
 </main>
 <script type="module" src="/auth.js"></script>
 </body>
