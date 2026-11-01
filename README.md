@@ -243,3 +243,23 @@ The Flask app serves the dashboard and API from the same origin. Run tests with 
 ## Voice assistant
 
 The dashboard voice assistant records up to 20 seconds in the browser, sends audio to Groq Whisper for transcription, uses the existing Groq chat model for a response, and uses Microsoft's online Edge TTS service for spoken output. Configure `GROQ_API_KEY` on the server; `GROQ_STT_MODEL` is optional and defaults to `whisper-large-v3`. Microphone access requires HTTPS or localhost. Do not speak sensitive personal information into the assistant.
+
+
+## Engineering status and dependency truth
+
+The engineering branch work/varshaguard-hardening-pipeline-2026-11 contains a release-hardening pass:
+
+- The default test workflow has contents: read and runs tests only; historical model retraining/pushing was removed from the general test workflow.
+- IMERG point-to-district assignment has explicit outer-boundary inclusion, hole exclusion, shared-boundary ambiguity rejection, coordinate validation, and regression tests.
+- Groq text and voice endpoints have bounded per-process request limits, request-size validation, Retry-After responses, and configurable limits. This in-process limiter is only a fallback; production multi-instance Vercel deployments need a shared edge/Redis limiter.
+- Legacy API health reports Bihar Live and Bihar v1 dependencies separately. Bihar Live health reports source and historical-store states without claiming operational readiness.
+- IMD ingestion supports configured bearer/API-key authentication, bounded retries, and JSON-root validation. Provider-specific field schemas still require authenticated access documentation.
+- CWC normalization requires an explicit verified mapping and preserves stage/discharge variable and unit separation.
+
+The actual multi-source feed integrations remain incomplete: IMD credentials, CWC live feed contract, IMERG data acquisition, radar access and NWP provider contracts are deployment/provider dependencies. The current real adapters fail closed; synthetic demonstrations are not promoted to live data.
+
+The existing historical pipeline and CWC model remain research-only. No verified independent flood-event labels, DEM/Sentinel-1 mask collection, validated inundation model, fitted probability calibration, or disaster-management-approved thresholds are available in this branch. The inundation API continues to return model_not_trained; risk fusion and alerts remain inactive until these requirements are met.
+
+The map continues to display the currently supported gauge context. Ward/block-level inundation layers are not added without a validated spatial prediction raster and authoritative administrative boundaries. SMS/WhatsApp notifications, user/role authorization, alert acknowledgement, and incident history remain unimplemented; do not send public alerts from this prototype.
+
+No Vercel deployment, production endpoint verification, live alert delivery, or field pilot is claimed by these code changes. Those steps require deployment access and operational authorization.
