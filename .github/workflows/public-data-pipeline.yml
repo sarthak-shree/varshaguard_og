@@ -27,7 +27,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install data pipeline dependencies
-        run: python -m pip install --upgrade pip pandas scikit-learn joblib
+        run: python -m pip install --upgrade pip pandas scikit-learn joblib requests
       - name: Download official source snapshots and inspect CSV schemas
         run: python scripts/fetch_public_sources.py --all
       - name: Normalize source files, quantify coverage, and evaluate eligible targets
