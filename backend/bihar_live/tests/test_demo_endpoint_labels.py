@@ -14,14 +14,14 @@ def test_fusion_endpoint_never_claims_live_multi_source_data():
     assert "not live" in payload["badge"]
 
 
-def test_evaluation_endpoint_marks_metrics_as_synthetic_only():
+def test_evaluation_endpoint_reports_real_history_status_not_synthetic_metrics():
     app = create_app()
     with app.test_client() as client:
         response = client.get("/api/bihar-live/model/evaluation")
 
     assert response.status_code == 200
     payload = response.get_json()
-    assert payload["mode"] == "synthetic_demo"
-    assert payload["model"] == "synthetic_rainfall_baseline"
+    assert payload["mode"] == "historical_chronological_evaluation"
+    assert payload["status"] == "insufficient_data"
     assert payload["operational"] is False
-    assert "not evidence" in payload["badge"]
+    assert payload["evaluation_available"] is False

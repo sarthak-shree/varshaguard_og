@@ -1,5 +1,9 @@
 """Bihar Live API for gauge data, research inference, and prototype baselines."""
 from datetime import datetime, timezone
+import json
+import os
+import sqlite3
+from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
@@ -287,14 +291,45 @@ def flood_discharge():
 
 @bp.get("/model/evaluation")
 def evaluation():
+    """Return persisted chronological forecast evaluation; never substitute synthetic scores."""
+    report_path = Path(os.environ.get("VARSHAGUARD_EVALUATION_REPORT", "models/forecast_research/training_evaluation.json"))
+    db_path = Path(os.environ.get("VARSHAGUARD_HISTORY_DB", "data/bihar_live/history.sqlite3"))
+    stored_rows = 0
+    if db_path.is_file():
+        try:
+            with sqlite3.connect(str(db_path), timeout=2) as conn:
+                stored_rows = int(conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0])
+        except sqlite3.Error:
+            stored_rows = 0
+    if not report_path.is_file():
+        return jsonify({
+            "success": True, "mode": "historical_chronological_evaluation",
+            "status": "insufficient_data", "operational": False,
+            "stored_observation_rows": stored_rows, "evaluation_available": False,
+            "message": "No persisted training evaluation exists yet. Collect timestamped CWC observations on persistent storage, align future labels, then run the historical pipeline training command.",
+            "required_command": "python -m backend.bihar_live.historical_pipeline --collect-live --train",
+            "data_store_config": "Set VARSHAGUARD_HISTORY_DB to a durable mounted path; ephemeral serverless files are not persistent.",
+        })
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return jsonify({"success": False, "status": "invalid_evaluation_report", "operational": False}), 500
+    return jsonify({
+        "success": True, "mode": "historical_chronological_evaluation",
+        "evaluation_available": True, "stored_observation_rows": stored_rows,
+        "operational": False, "report": report,
+        "message": "Research evaluation only; not an operational forecast model.",
+    })
+
+
+@bp.get("/model/evaluation/synthetic-demo")
+def synthetic_evaluation_demo():
+    """Explicitly isolated synthetic demonstration; never evidence for live forecast skill."""
     rows = generate_observations(hours=96, seed=26071)
     model, metrics = train_evaluate(rows)
     return jsonify({
-        "success": True,
-        "model": "synthetic_rainfall_baseline",
+        "success": True, "model": "synthetic_rainfall_baseline",
         "mode": "synthetic_demo",
         "badge": "Synthetic evaluation only; not evidence for the live CWC gauge model",
-        "operational": False,
-        "backend": model.backend,
-        **metrics,
+        "operational": False, "backend": model.backend, **metrics,
     })
