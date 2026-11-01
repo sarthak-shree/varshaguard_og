@@ -1,5 +1,8 @@
 import asyncio
 import base64
+import threading
+import time
+from collections import defaultdict, deque
 import json
 import os
 from datetime import datetime, timezone
@@ -44,10 +47,6 @@ CORS(app)
 app.config["MAX_CONTENT_LENGTH"] = 4_000_000
 app.register_blueprint(bihar_live_bp)
 app.register_blueprint(bihar_v1_bp)
-
-import threading
-import time
-from collections import defaultdict, deque
 
 # Per-process fallback limiter. For multi-instance production deployments configure
 # a shared gateway/Redis limiter; serverless instances do not share this memory.
@@ -345,7 +344,7 @@ def assistant():
         return error_response("JSON object required", 400)
     message = str(payload.get("message", "")).strip()
     context = payload.get("context") or {}
-    if len(message) > 2000 or not isinstance(context, dict) or len(json.dumps(context, ensure_ascii=False)) > 16000:
+    if len(message) > 2000 or not isinstance(context, dict) or not isinstance(payload.get("context", {}), dict) or len(json.dumps(context, ensure_ascii=False)) > 16000:
         return error_response("Message or dashboard context is too large", 413)
 
     if not message:
