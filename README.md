@@ -69,7 +69,7 @@ The server never trusts the browser: it checks Google's token signature, expiry,
 3. *Credentials > Create credentials > OAuth client ID > Web application*. Under **Authorized JavaScript origins** add every address the site runs on, for example `http://localhost:5000` and `https://<your-app>.vercel.app` (and any custom domain). No redirect URI is needed.
 4. Copy the client ID into `GOOGLE_CLIENT_ID`.
 
-**Run locally.** Set `GOOGLE_CLIENT_ID` (and optionally `SECRET_KEY`) in `.env` or your shell, then `python backend/app.py`. With no `DATABASE_URL`, accounts go in a SQLite file (`.auth_dev.sqlite3`).
+**Run locally.** Set `GOOGLE_CLIENT_ID` in your terminal (the app does not read a `.env` file), then start the server. PowerShell: `$env:GOOGLE_CLIENT_ID="..."; python backend/app.py`. Mac/Linux: `GOOGLE_CLIENT_ID="..." python backend/app.py`. `SECRET_KEY` is optional locally (sessions reset on restart without it). With no `DATABASE_URL`, accounts go in a SQLite file (`.auth_dev.sqlite3`).
 
 **Deploy on Vercel.** The filesystem there is temporary, so accounts need a hosted Postgres (Neon or Supabase). Add these environment variables (see `.env.example`):
 
