@@ -27,6 +27,9 @@
     .probability-option.is-selected small { color:#426b5b; }
     .probability-result { display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:.75rem .65rem;border:1px solid rgba(255,255,255,.22);border-radius:9px;background:rgba(0,0,0,.12);text-align:center; }
     #probabilitySelectorCard.is-locked .probability-result > *:not(.probability-lock-overlay) { filter:blur(7px); user-select:none; pointer-events:none; }
+    #probabilitySelectorCard.is-locked .probability-heading,
+    #probabilitySelectorCard.is-locked .probability-options,
+    #probabilitySelectorCard.is-locked .probability-disclaimer { filter:blur(4px); pointer-events:none; user-select:none; }
     #probabilitySelectorCard .probability-lock-overlay { display:none; width:100%; padding:16px 12px; border-radius:10px; background:rgba(7,48,37,.78); text-align:center; }
     #probabilitySelectorCard.is-locked .probability-lock-overlay { display:block; }
     #probabilitySelectorCard.is-locked .probability-result { position:relative; }
@@ -34,7 +37,7 @@
     .probability-lock-overlay strong { display:block; font-size:.9rem; }
     .probability-lock-overlay p { margin:5px 0 12px; font-size:.75rem; color:rgba(255,255,255,.82); }
     .probability-login-button { border:0; border-radius:999px; padding:10px 18px; background:#fff; color:#126b5b; font-weight:800; cursor:pointer; }
-    .probability-auth-note { color:rgba(255,255,255,.8); font-size:.7rem; margin-top:8px; }
+
     #probabilityResultLabel { font-size:.72rem;line-height:1.35;color:rgba(255,255,255,.85); }
     #probabilityValue { font-size:clamp(2rem,4vw,2.8rem);line-height:1.05;letter-spacing:-.04em;font-variant-numeric:tabular-nums; }
     #probabilityStatus { font-size:.72rem;line-height:1.4;overflow-wrap:anywhere; }
@@ -61,7 +64,8 @@
   const lockOverlay = document.createElement("div");
   lockOverlay.className = "probability-lock-overlay";
   lockOverlay.innerHTML = '<span class="probability-lock-icon" aria-hidden="true">🔒</span><strong>Sign in to view heavy-rainfall predictions.</strong><p>Sign in to unlock forecast details for your selected district.</p><button class="probability-login-button" type="button">Login / Sign Up</button>';
-  card.querySelector(".probability-result")?.appendChild(lockOverlay);
+  const resultPanel = card.querySelector(".probability-result");
+  resultPanel?.appendChild(lockOverlay);
   lockOverlay.querySelector("button").addEventListener("click", () => {
     window.location.href = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search + "#probabilitySelectorCard");
   });
@@ -83,7 +87,6 @@
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden) checkAuth(); });
   window.addEventListener("pageshow", checkAuth);
-  window.addEventListener("focus", checkAuth);
 
   const setStatus = (message) => { $("probabilityStatus").textContent = message; };
 
@@ -196,7 +199,6 @@
   });
   if (districtSelect) districtSelect.addEventListener("change", refresh);
   card.addEventListener("click", (event) => { if (event.target.closest(".probability-login-button")) event.stopPropagation(); });
-  document.addEventListener("DOMContentLoaded", () => { checkAuth(); refresh(); });
   checkAuth();
   window.setInterval(refresh, 5 * 60 * 1000);
 })();

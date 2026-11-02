@@ -241,6 +241,7 @@
 
         const response = await fetch("/api/assistant/voice", {
           method: "POST",
+          credentials: "same-origin",
           body: formData,
         });
         const data = await response.json().catch(() => ({}));

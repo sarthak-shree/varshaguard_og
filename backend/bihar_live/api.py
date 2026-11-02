@@ -73,6 +73,8 @@ def fusion():
 
 @bp.get("/model/live")
 def live_model():
+    """Return live model detail only to signed-in users."""
+
     login_error = _login_required()
     if login_error:
         return login_error
@@ -174,6 +176,8 @@ def rainfall_forecast():
 
 @bp.get("/forecast/river-stage")
 def river_stage_forecast():
+    """Return a river-stage trend to signed-in users."""
+
     login_error = _login_required()
     if login_error:
         return login_error
@@ -215,6 +219,8 @@ def river_stage_forecast():
 
 @bp.get("/probability")
 def probability():
+    """Return protected probability detail."""
+
     login_error = _login_required()
     if login_error:
         return login_error
@@ -313,6 +319,8 @@ def flood_discharge():
 
 @bp.get("/model/evaluation")
 def evaluation():
+    """Return protected model evaluation details."""
+
     login_error = _login_required()
     if login_error:
         return login_error
@@ -350,6 +358,8 @@ def evaluation():
 
 @bp.get("/model/evaluation/synthetic-demo")
 def synthetic_evaluation_demo():
+    """Return protected synthetic demo evaluation."""
+
     login_error = _login_required()
     if login_error:
         return login_error

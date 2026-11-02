@@ -173,6 +173,7 @@ function setupAssistant() {
             const response = await fetch("/api/assistant", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
                 body: JSON.stringify({ message: question, context }),
             });
             const data = await response.json();

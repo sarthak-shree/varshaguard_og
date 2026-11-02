@@ -301,10 +301,9 @@ def assistant():
 
 @app.route("/api/assistant/voice", methods=["POST"])
 def assistant_voice():
+    """Transcribe one short recording, answer with the dashboard LLM, and speak it."""
     if "uid" not in session:
         return error_response("Please sign in to use VarshaGuard AI.", 401)
-
-    """Transcribe one short recording, answer with the dashboard LLM, and speak it."""
     audio_file = request.files.get("audio")
     if audio_file is None or not audio_file.filename:
         return error_response("Record a short question before sending it", 400)

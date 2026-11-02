@@ -262,3 +262,34 @@ def test_verify_falls_back_to_email_name_when_google_sends_none(real_verify):
 def test_clean_pg_url_drops_unknown_options():
     url = "postgresql://u:p@host:5432/db?sslmode=require&supa=base-pooler.x&connect_timeout=5"
     assert store.clean_pg_url(url) == "postgresql://u:p@host:5432/db?sslmode=require&connect_timeout=5"
+
+
+# ---------- protected VarshaGuard features ----------
+def test_ai_and_prediction_details_require_sign_in(env):
+    from backend.app import app as production_app
+
+    client = production_app.test_client()
+    # Ensure no accidental auth cookie is present on the separate app client.
+    endpoints = [
+        ("/api/assistant", "post", {"message": "hello", "context": {}}),
+        ("/api/assistant/voice", "post", {}),
+        ("/api/bihar-live/model/live", "get", None),
+        ("/api/bihar-live/forecast/river-stage?district=patna", "get", None),
+        ("/api/bihar-live/probability?district=patna&type=flood", "get", None),
+        ("/api/bihar-live/model/evaluation", "get", None),
+        ("/api/bihar-live/model/evaluation/synthetic-demo", "get", None),
+    ]
+    for path, method, payload in endpoints:
+        response = getattr(client, method)(path, json=payload) if method == "post" else client.get(path)
+        assert response.status_code == 401, (path, response.status_code)
+        assert response.json["success"] is False
+
+
+def test_bihar_public_weather_endpoints_remain_public():
+    from backend.app import app as production_app
+
+    client = production_app.test_client()
+    for path in ("/api/bihar-live/health", "/api/bihar-live/weather?district=patna",
+                 "/api/bihar-live/forecast/rainfall?district=patna"):
+        response = client.get(path)
+        assert response.status_code != 401, path

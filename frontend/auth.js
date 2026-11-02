@@ -67,7 +67,7 @@
   window.vgGoogleReady = function () { scriptReady = true; showButton(); };
   if (window.google && window.google.accounts) { scriptReady = true; }
 
-  // Already signed in? Skip the page.
+  // If already signed in, continue to the requested same-site destination.
   fetch("/api/auth/me", { credentials: "same-origin" })
     .then(function (res) { if (res.ok) window.location.replace(nextUrl()); })
     .catch(function () {});
