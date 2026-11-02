@@ -145,6 +145,16 @@ function setupAssistant() {
         event.preventDefault();
         const question = input.value.trim();
         if (!question) return;
+        try {
+            const auth = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
+            if (!auth.ok) {
+                window.location.href = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search + "#assistantModal");
+                return;
+            }
+        } catch {
+            appendAssistantMessage("Could not verify your sign-in. Please check your connection and try again.", "error");
+            return;
+        }
 
         appendAssistantMessage(question, "user");
         input.value = "";

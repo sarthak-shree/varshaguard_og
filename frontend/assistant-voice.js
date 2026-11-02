@@ -283,6 +283,16 @@
 
     button.addEventListener("click", async () => {
       if (busy || starting) return;
+      try {
+        const auth = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
+        if (!auth.ok) {
+          window.location.href = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search + "#assistantModal");
+          return;
+        }
+      } catch {
+        setStatus("Could not verify your sign-in. Please check your connection and try again.", "error");
+        return;
+      }
       if (recorder && recorder.state === "recording") {
         discardRecording = false;
         setStatus("Preparing your question…", "thinking");

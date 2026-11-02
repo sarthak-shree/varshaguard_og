@@ -6,7 +6,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 
 from .config import DATA_MODE, PREDICTION_HORIZON_HOURS, SUPPORTED_DISTRICTS
 from .adapters.sources import build_adapters
@@ -15,6 +15,15 @@ from .fusion import fuse, weights_for_lead
 from .models.training import train_evaluate
 
 bp = Blueprint("bihar_live", __name__, url_prefix="/api/bihar-live")
+
+def _login_required():
+    if "uid" not in session:
+        response = jsonify({"success": False, "error": "Sign in to view prediction details.", "login_required": True})
+        response.status_code = 401
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
+    return None
+
 
 
 @bp.get("/health")
@@ -64,6 +73,10 @@ def fusion():
 
 @bp.get("/model/live")
 def live_model():
+    login_error = _login_required()
+    if login_error:
+        return login_error
+
     # Load the CWC connection only when this live endpoint is requested.
     from .research.live_prediction import get_live_predictions
 
@@ -161,6 +174,10 @@ def rainfall_forecast():
 
 @bp.get("/forecast/river-stage")
 def river_stage_forecast():
+    login_error = _login_required()
+    if login_error:
+        return login_error
+
     """Return a transparent trend extrapolation from recent CWC stage observations."""
     district = request.args.get("district", "patna").strip().lower()
     if district not in SUPPORTED_DISTRICTS:
@@ -198,6 +215,10 @@ def river_stage_forecast():
 
 @bp.get("/probability")
 def probability():
+    login_error = _login_required()
+    if login_error:
+        return login_error
+
     """Return only a supported 24-hour probability summary for the frontend."""
     district = request.args.get("district", "patna").strip().lower()
     forecast_type = request.args.get("type", "flood").strip().lower()
@@ -292,6 +313,10 @@ def flood_discharge():
 
 @bp.get("/model/evaluation")
 def evaluation():
+    login_error = _login_required()
+    if login_error:
+        return login_error
+
     """Return persisted chronological forecast evaluation; never substitute synthetic scores."""
     report_path = Path(os.environ.get("VARSHAGUARD_EVALUATION_REPORT", "models/forecast_research/training_evaluation.json"))
     db_path = Path(os.environ.get("VARSHAGUARD_HISTORY_DB", "data/bihar_live/history.sqlite3"))
@@ -325,6 +350,10 @@ def evaluation():
 
 @bp.get("/model/evaluation/synthetic-demo")
 def synthetic_evaluation_demo():
+    login_error = _login_required()
+    if login_error:
+        return login_error
+
     """Explicitly isolated synthetic demonstration; never evidence for live forecast skill."""
     rows = generate_observations(hours=96, seed=26071)
     model, metrics = train_evaluate(rows)

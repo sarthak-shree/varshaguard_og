@@ -4,6 +4,9 @@
   const districtSelect = $("districtSelect");
   const card = $("probabilitySelectorCard");
   if (!card) return;
+  let isSignedIn = false;
+  let authReady = false;
+  let authRequest = 0;
 
   const style = document.createElement("style");
   style.textContent = `
@@ -23,6 +26,15 @@
     .probability-option.is-selected { background:#fff;color:#176b4b;border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,.2); }
     .probability-option.is-selected small { color:#426b5b; }
     .probability-result { display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:.75rem .65rem;border:1px solid rgba(255,255,255,.22);border-radius:9px;background:rgba(0,0,0,.12);text-align:center; }
+    #probabilitySelectorCard.is-locked .probability-result > *:not(.probability-lock-overlay) { filter:blur(7px); user-select:none; pointer-events:none; }
+    #probabilitySelectorCard .probability-lock-overlay { display:none; width:100%; padding:16px 12px; border-radius:10px; background:rgba(7,48,37,.78); text-align:center; }
+    #probabilitySelectorCard.is-locked .probability-lock-overlay { display:block; }
+    #probabilitySelectorCard.is-locked .probability-result { position:relative; }
+    .probability-lock-icon { display:block; font-size:25px; margin-bottom:5px; }
+    .probability-lock-overlay strong { display:block; font-size:.9rem; }
+    .probability-lock-overlay p { margin:5px 0 12px; font-size:.75rem; color:rgba(255,255,255,.82); }
+    .probability-login-button { border:0; border-radius:999px; padding:10px 18px; background:#fff; color:#126b5b; font-weight:800; cursor:pointer; }
+    .probability-auth-note { color:rgba(255,255,255,.8); font-size:.7rem; margin-top:8px; }
     #probabilityResultLabel { font-size:.72rem;line-height:1.35;color:rgba(255,255,255,.85); }
     #probabilityValue { font-size:clamp(2rem,4vw,2.8rem);line-height:1.05;letter-spacing:-.04em;font-variant-numeric:tabular-nums; }
     #probabilityStatus { font-size:.72rem;line-height:1.4;overflow-wrap:anywhere; }
@@ -46,6 +58,33 @@
 
   let selectedType = "flood";
   let requestSequence = 0;
+  const lockOverlay = document.createElement("div");
+  lockOverlay.className = "probability-lock-overlay";
+  lockOverlay.innerHTML = '<span class="probability-lock-icon" aria-hidden="true">🔒</span><strong>Sign in to view heavy-rainfall predictions.</strong><p>Sign in to unlock forecast details for your selected district.</p><button class="probability-login-button" type="button">Login / Sign Up</button>';
+  card.querySelector(".probability-result")?.appendChild(lockOverlay);
+  lockOverlay.querySelector("button").addEventListener("click", () => {
+    window.location.href = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search + "#probabilitySelectorCard");
+  });
+  function applyAuthState() {
+    const locked = !isSignedIn && selectedType === "heavy_rainfall";
+    card.classList.toggle("is-locked", locked);
+    card.setAttribute("aria-label", locked ? "Heavy-rainfall details locked. Sign in to view." : "Forecast details");
+  }
+  async function checkAuth() {
+    const requestId = ++authRequest;
+    try {
+      const response = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
+      if (requestId !== authRequest) return;
+      isSignedIn = response.ok;
+    } catch { isSignedIn = false; }
+    authReady = true;
+    applyAuthState();
+    if (selectedType === "heavy_rainfall") refresh();
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkAuth(); });
+  window.addEventListener("pageshow", checkAuth);
+  window.addEventListener("focus", checkAuth);
+
   const setStatus = (message) => { $("probabilityStatus").textContent = message; };
 
   function renderUnavailable(data, type) {
@@ -91,6 +130,16 @@
     const sequence = ++requestSequence;
     const district = districtSelect && districtSelect.value ? districtSelect.value : "patna";
     const type = selectedType;
+    applyAuthState();
+    if (!authReady) return;
+    if (!isSignedIn && type === "heavy_rainfall") {
+      $("probabilityResultLabel").textContent = "Heavy-rainfall forecast details";
+      $("probabilityValue").textContent = "—%";
+      $("probabilityMeter").hidden = true;
+      $("probabilityMeterFill").style.width = "0%";
+      setStatus("Sign in to unlock forecast details.");
+      return;
+    }
     $("probabilityResultLabel").textContent = type === "flood"
       ? "CWC gauge warning-level probability · next 24 hours"
       : "Peak hourly precipitation chance · next 24 hours";
@@ -146,7 +195,8 @@
     });
   });
   if (districtSelect) districtSelect.addEventListener("change", refresh);
-  document.addEventListener("DOMContentLoaded", refresh);
-  refresh();
+  card.addEventListener("click", (event) => { if (event.target.closest(".probability-login-button")) event.stopPropagation(); });
+  document.addEventListener("DOMContentLoaded", () => { checkAuth(); refresh(); });
+  checkAuth();
   window.setInterval(refresh, 5 * 60 * 1000);
 })();
