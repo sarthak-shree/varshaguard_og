@@ -29,7 +29,7 @@
     .probability-option.is-selected { background:#fff;color:#145d48;border-color:#fff;box-shadow:0 5px 18px rgba(0,0,0,.12); }
     .probability-option.is-selected small { color:#4b6b5e; }
     .probability-result { position:relative;display:flex;flex-direction:column;align-items:center;gap:.45rem;padding:1rem .8rem;border:1px solid rgba(255,255,255,.22);border-radius:13px;background:rgba(0,0,0,.13);text-align:center;min-height:140px;justify-content:center; }
-    .probability-result__content { display:contents; }
+    .probability-result__content { display:flex;flex-direction:column;align-items:center;gap:.45rem;width:100%;min-width:0; }
     #probabilitySelectorCard.is-locked .probability-result__content { filter:blur(8px);user-select:none;pointer-events:none; }
     #probabilitySelectorCard .probability-lock-overlay { display:none;position:absolute;inset:0;z-index:2;align-items:center;justify-content:center;flex-direction:column;padding:15px;border-radius:13px;background:rgba(5,44,35,.72);text-align:center;backdrop-filter:blur(3px); }
     #probabilitySelectorCard.is-locked .probability-lock-overlay { display:flex; }
@@ -150,14 +150,29 @@
     setStatus("Loading backend forecast…");
     try {
       if (type === "heavy_rainfall") {
-        const response = await fetch("/api/bihar-live/weather?district=" + encodeURIComponent(district), {
-          cache: "no-store", headers: { Accept: "application/json" }
+        const response = await fetch("/api/bihar-live/probability?district=" + encodeURIComponent(district) + "&type=heavy_rainfall", {
+          credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }
         });
+        if (response.status === 401) {
+          isSignedIn = false;
+          applyAuthState();
+          setStatus("Your session has expired. Sign in again to load the protected rainfall forecast.");
+          return;
+        }
         const data = await response.json();
         if (sequence !== requestSequence) return;
-        if (!response.ok || !data || data.success === false) throw new Error(data && data.error || "The weather service is unavailable.");
-        renderWeatherContext(data, district);
-        $("probabilityDisclaimer").textContent = "This percentage is the weather provider's chance of precipitation during the peak forecast hour—not the probability of heavy rainfall, flooding, or an official alert. The 24-hour rainfall total is shown below.";
+        if (!response.ok || !data || data.success === false) throw new Error(data && data.error || "The rainfall service is unavailable.");
+        if (data.available && Number.isFinite(Number(data.probability_percent))) {
+          const percent = Math.max(0, Math.min(100, Number(data.probability_percent)));
+          $("probabilityValue").textContent = percent.toFixed(1) + "%";
+          $("probabilityMeter").hidden = false;
+          $("probabilityMeter").setAttribute("aria-valuenow", percent.toFixed(1));
+          $("probabilityMeterFill").style.width = percent + "%";
+          setStatus((data.location || district) + " · protected forecast details loaded. Research estimate only.");
+        } else {
+          renderUnavailable(data, type);
+        }
+        $("probabilityDisclaimer").textContent = data.message || "A validated heavy-rainfall probability model is not available yet. No heavy-rainfall probability is fabricated.";
         return;
       }
 

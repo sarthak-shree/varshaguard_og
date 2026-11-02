@@ -255,8 +255,8 @@
     const state = signalState(prediction);
     const observedWarning = prediction?.status === "warning_level_reached";
     const observedDanger = prediction?.status === "danger_level_reached";
-    const probability = prediction?.status === "predicted" && finiteNumber(prediction.model_probability)
-      ? (finiteNumber(prediction.risk_percentage) ? Number(prediction.risk_percentage) : Number(prediction.model_probability) * 100)
+    const probability = prediction?.status === "predicted" && finiteNumber(prediction.risk_percentage)
+      ? Number(prediction.risk_percentage)
       : null;
 
     if (card) {

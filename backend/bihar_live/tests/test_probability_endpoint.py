@@ -35,11 +35,14 @@ def test_probability_endpoint_returns_only_supported_flood_probability(monkeypat
     assert body["operational"] is False
 
 
-def test_probability_endpoint_does_not_invent_heavy_rain_probability():
+def test_probability_endpoint_requires_login_for_heavy_rainfall():
     response = app.test_client().get("/api/bihar-live/probability?district=patna&type=heavy_rainfall")
-    body = response.get_json()
+    assert response.status_code == 401
+    assert response.get_json()["login_required"] is True
 
-    assert response.status_code == 200
+
+def test_probability_endpoint_does_not_invent_heavy_rain_probability():
+    body = _signed_in_client().get("/api/bihar-live/probability?district=patna&type=heavy_rainfall").get_json()
     assert body["available"] is False
     assert body["probability_percent"] is None
     assert body["status"] == "model_not_available"
