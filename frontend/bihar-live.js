@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const API = "/api/bihar-live/model/live";
+  const API = "/api/bihar-live/public/live";
   const DISTRICTS = {
     patna: { name: "Patna", center: [25.5941, 85.1376] },
     muzaffarpur: { name: "Muzaffarpur", center: [26.1209, 85.3647] }

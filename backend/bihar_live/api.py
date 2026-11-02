@@ -85,6 +85,37 @@ def live_model():
     return jsonify(get_live_predictions())
 
 
+
+@bp.get("/public/live")
+def public_live():
+    """Return public flood-risk and river-observation data, excluding model evaluation internals."""
+    from .research.live_prediction import get_live_predictions
+
+    payload = get_live_predictions()
+    public_fields = {
+        "district", "station_name", "status", "risk_level", "risk_percentage",
+        "risk_basis", "signal", "message", "forecast_date", "forecast_end_ist",
+        "observed_at_ist", "data_age_hours", "current_stage_m", "warning_level_m",
+        "danger_level_m", "stage_history", "latitude", "longitude",
+    }
+    predictions = [
+        {key: value for key, value in item.items() if key in public_fields}
+        for item in payload.get("predictions", [])
+    ]
+    response = jsonify({
+        "success": True,
+        "available": bool(payload.get("available")),
+        "mode": payload.get("mode", "unavailable"),
+        "generated_at_ist": payload.get("generated_at_ist"),
+        "source": payload.get("source", {}),
+        "error": payload.get("error"),
+        "limitations": payload.get("limitations", []),
+        "predictions": predictions,
+    })
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
+
+
 @bp.get("/data-quality")
 def data_quality():
     """Report source freshness and availability without conflating provider feeds."""
