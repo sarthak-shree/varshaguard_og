@@ -623,26 +623,57 @@
 
   async function loadDashboard() {
     try {
-      const data = await getJson(API);
-      updateDashboard(data);
+      const [health, status, river] = await Promise.all([
+        getJson("/api/bihar-live/health"),
+        getJson("/api/bihar-live/data-quality?district=" + encodeURIComponent($("districtSelect").value)),
+        getJson("/api/bihar-live/forecast/river-stage?district=" + encodeURIComponent($("districtSelect").value))
+      ]);
+      currentData.publicHealth = health;
+      currentData.dataQuality = status;
+      currentData.publicRiverTrend = river;
+      updatePublicRiverUi(status, river);
       loadWeatherForecast($("districtSelect").value);
       loadDischargeContext($("districtSelect").value);
       loadForecastOutlook($("districtSelect").value);
-      if (!data.available) showError(data.error || "CWC live data is currently unavailable.");
+      loadPublicFloodPrediction($("districtSelect").value);
     } catch (error) {
       showError(error.message);
-      currentData.live = {
-        available: false,
-        error: "No current estimate is shown because the CWC service could not be reached.",
-        predictions: [],
-      };
-      renderMap([]);
-      updateSelectedRiskCard();
-      renderSources(currentData.live, currentData.weather?.[$("districtSelect").value]);
-      loadWeatherForecast($("districtSelect").value);
-      loadDischargeContext($("districtSelect").value);
-      loadForecastOutlook($("districtSelect").value);
+      updatePublicRiverUi({ sources: {} }, { available: false });
     }
+  }
+  async function loadPublicFloodPrediction(districtKey) {
+    try {
+      const result = await getJson("/api/bihar-live/probability?district=" + encodeURIComponent(districtKey) + "&type=flood");
+      currentData.publicFlood ||= {};
+      currentData.publicFlood[districtKey] = result;
+      renderPublicFlood(result);
+    } catch(error) {
+      showError(error.message);
+    }
+  }
+  function updatePublicRiverUi(quality, trend) {
+    const stage = quality?.sources?.cwc_stage;
+    setText("cwcAverageStage", stage?.available ? (stage.current_stage_m ?? "Available") : "Unavailable");
+    setText("cwcStageWindow", stage?.observed_at_ist ? "Observed " + formatTime(stage.observed_at_ist) : "No fresh CWC observation");
+    setText("stageForecastDirection", trend?.available ? (trend.direction || "Trend estimate") : "Trend unavailable");
+    setText("stageForecastFreshness", trend?.source_observed_at_ist ? "CWC source " + formatTime(trend.source_observed_at_ist) : "Waiting for gauge history");
+    setText("stageForecastValues", trend?.message || "River trend is a research baseline, not an operational alert.");
+  }
+  function renderPublicFlood(data) {
+    const card = $("probabilitySelectorCard");
+    if (!card || $("districtSelect").value === "") return;
+    if (data.available && finiteNumber(data.probability_percent)) {
+      $("probabilityValue").textContent = Number(data.probability_percent).toFixed(1) + "%";
+      $("probabilityMeter").hidden = false;
+      $("probabilityMeterFill").style.width = Math.max(0,Math.min(100,Number(data.probability_percent))) + "%";
+      $("probabilityResultLabel").textContent = "CWC gauge flood-risk estimate · next 24 hours";
+      $("probabilityStatus").textContent = data.location + " · Research estimate only.";
+    } else {
+      $("probabilityValue").textContent = "—%";
+      $("probabilityMeter").hidden = true;
+      $("probabilityStatus").textContent = data.message || "No reliable flood-risk probability is available.";
+    }
+    $("probabilityDisclaimer").textContent = "Flood-risk probability is public. River stage remains visible separately. This is a gauge-level research estimate, not a street-level warning.";
   }
   function setupMap() {
     if (!window.L || !$("map")) return;
@@ -656,8 +687,7 @@
 
   function selectDistrict(moveMap = true) {
     const district = DISTRICTS[$("districtSelect").value];
-    updateSelectedRiskCard();
-    renderMap(currentData.live?.predictions || []);
+    loadDashboard();
     renderSources(currentData.live || {}, currentData.weather?.[$("districtSelect").value]);
     if (moveMap && map) {
       const prediction = selectedPrediction();

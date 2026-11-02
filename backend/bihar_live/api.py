@@ -176,13 +176,7 @@ def rainfall_forecast():
 
 @bp.get("/forecast/river-stage")
 def river_stage_forecast():
-    """Return a river-stage trend to signed-in users."""
-
-    login_error = _login_required()
-    if login_error:
-        return login_error
-
-    """Return a transparent trend extrapolation from recent CWC stage observations."""
+    """Return a public river-stage trend based on CWC observations."""
     district = request.args.get("district", "patna").strip().lower()
     if district not in SUPPORTED_DISTRICTS:
         return jsonify({"success": False, "error": "Choose Patna or Muzaffarpur."}), 400
@@ -219,19 +213,18 @@ def river_stage_forecast():
 
 @bp.get("/probability")
 def probability():
-    """Return protected probability detail."""
-
-    login_error = _login_required()
-    if login_error:
-        return login_error
-
-    """Return only a supported 24-hour probability summary for the frontend."""
+    """Return public flood probability and protected heavy-rainfall details."""
     district = request.args.get("district", "patna").strip().lower()
     forecast_type = request.args.get("type", "flood").strip().lower()
     if district not in SUPPORTED_DISTRICTS:
         return jsonify({"success": False, "error": "Choose Patna or Muzaffarpur."}), 400
     if forecast_type not in {"flood", "heavy_rainfall"}:
         return jsonify({"success": False, "error": "Choose flood or heavy_rainfall."}), 400
+
+    if forecast_type == "heavy_rainfall":
+        login_error = _login_required()
+        if login_error:
+            return login_error
 
     if forecast_type == "heavy_rainfall":
         response = jsonify({
@@ -320,12 +313,9 @@ def flood_discharge():
 @bp.get("/model/evaluation")
 def evaluation():
     """Return protected model evaluation details."""
-
     login_error = _login_required()
     if login_error:
         return login_error
-
-    """Return persisted chronological forecast evaluation; never substitute synthetic scores."""
     report_path = Path(os.environ.get("VARSHAGUARD_EVALUATION_REPORT", "models/forecast_research/training_evaluation.json"))
     db_path = Path(os.environ.get("VARSHAGUARD_HISTORY_DB", "data/bihar_live/history.sqlite3"))
     stored_rows = 0
@@ -359,12 +349,9 @@ def evaluation():
 @bp.get("/model/evaluation/synthetic-demo")
 def synthetic_evaluation_demo():
     """Return protected synthetic demo evaluation."""
-
     login_error = _login_required()
     if login_error:
         return login_error
-
-    """Explicitly isolated synthetic demonstration; never evidence for live forecast skill."""
     rows = generate_observations(hours=96, seed=26071)
     model, metrics = train_evaluate(rows)
     return jsonify({
