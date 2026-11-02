@@ -327,6 +327,30 @@ def public_weather():
     return response
 
 
+
+@bp.get("/protected/heavy-rainfall-context")
+def protected_heavy_rainfall_context():
+    """Return provider rainfall context only after sign-in; this is not a heavy-rainfall risk score."""
+    login_error = _login_required()
+    if login_error:
+        return login_error
+    district = request.args.get("district", "patna").strip().lower()
+    if district not in SUPPORTED_DISTRICTS:
+        return jsonify({"success": False, "error": "Choose Patna or Muzaffarpur."}), 400
+    from .public_weather import get_rainfall_forecast
+    result = get_rainfall_forecast(district)
+    result["type"] = "heavy_rainfall_context"
+    result["probability_percent"] = None
+    result["risk_score_available"] = False
+    result["message"] = (
+        "A validated heavy-rainfall probability model is not available. "
+        "The provider's precipitation chance and rainfall totals are weather context only."
+    )
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
+
+
 @bp.get("/flood-discharge")
 def flood_discharge():
     """Return Open-Meteo daily discharge context, separate from model probability."""

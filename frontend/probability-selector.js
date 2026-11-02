@@ -150,7 +150,7 @@
     setStatus("Loading backend forecast…");
     try {
       if (type === "heavy_rainfall") {
-        const response = await fetch("/api/bihar-live/probability?district=" + encodeURIComponent(district) + "&type=heavy_rainfall", {
+        const response = await fetch("/api/bihar-live/protected/heavy-rainfall-context?district=" + encodeURIComponent(district), {
           credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }
         });
         if (response.status === 401) {
@@ -162,17 +162,8 @@
         const data = await response.json();
         if (sequence !== requestSequence) return;
         if (!response.ok || !data || data.success === false) throw new Error(data && data.error || "The rainfall service is unavailable.");
-        if (data.available && Number.isFinite(Number(data.probability_percent))) {
-          const percent = Math.max(0, Math.min(100, Number(data.probability_percent)));
-          $("probabilityValue").textContent = percent.toFixed(1) + "%";
-          $("probabilityMeter").hidden = false;
-          $("probabilityMeter").setAttribute("aria-valuenow", percent.toFixed(1));
-          $("probabilityMeterFill").style.width = percent + "%";
-          setStatus((data.location || district) + " · protected forecast details loaded. Research estimate only.");
-        } else {
-          renderUnavailable(data, type);
-        }
-        $("probabilityDisclaimer").textContent = data.message || "A validated heavy-rainfall probability model is not available yet. No heavy-rainfall probability is fabricated.";
+        renderWeatherContext(data, district);
+        $("probabilityDisclaimer").textContent = data.message || "Provider precipitation chance and rainfall totals are weather context only, not a validated heavy-rainfall risk score.";
         return;
       }
 
