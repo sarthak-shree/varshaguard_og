@@ -286,8 +286,6 @@ def test_ai_and_prediction_details_require_sign_in(production_client):
         ("/api/assistant", "post", {"message": "hello", "context": {}}),
         ("/api/assistant/voice", "post", {}),
         ("/api/bihar-live/model/live", "get", None),
-        ("/api/bihar-live/forecast/river-stage?district=patna", "get", None),
-        ("/api/bihar-live/probability?district=patna&type=flood", "get", None),
         ("/api/bihar-live/model/evaluation", "get", None),
         ("/api/bihar-live/model/evaluation/synthetic-demo", "get", None),
     ]
@@ -308,3 +306,19 @@ def test_bihar_public_weather_endpoints_remain_public(production_client, monkeyp
     })
     assert production_client.get("/api/bihar-live/weather?district=patna").status_code != 401
     assert production_client.get("/api/bihar-live/forecast/rainfall?district=patna").status_code != 401
+
+
+def test_flood_probability_and_river_stage_are_public():
+    from backend.app import app as production_app
+
+    client = production_app.test_client()
+    flood = client.get("/api/bihar-live/probability?district=patna&type=flood")
+    river = client.get("/api/bihar-live/forecast/river-stage?district=patna")
+    assert flood.status_code != 401
+    assert river.status_code != 401
+
+
+def test_heavy_rainfall_probability_requires_sign_in(production_client):
+    response = production_client.get("/api/bihar-live/probability?district=patna&type=heavy_rainfall")
+    assert response.status_code == 401
+    assert response.json["login_required"] is True
