@@ -9,8 +9,12 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 def _client():
     app = Flask(__name__)
+    app.secret_key = "test-secret"
     app.register_blueprint(bp)
-    return app.test_client()
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["uid"] = 1
+    return client
 
 
 def test_rainfall_forecast_route_returns_derived_accumulations(monkeypatch):

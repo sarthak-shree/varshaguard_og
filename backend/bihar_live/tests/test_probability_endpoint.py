@@ -2,6 +2,13 @@ from backend.app import app
 from backend.bihar_live.research import live_prediction
 
 
+def _signed_in_client():
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["uid"] = 1
+    return client
+
+
 def test_probability_endpoint_returns_only_supported_flood_probability(monkeypatch):
     monkeypatch.setattr(live_prediction, "get_live_predictions", lambda: {
         "success": True,
@@ -17,7 +24,7 @@ def test_probability_endpoint_returns_only_supported_flood_probability(monkeypat
             "message": "Research estimate only.",
         }],
     })
-    response = app.test_client().get("/api/bihar-live/probability?district=patna&type=flood")
+    response = _signed_in_client().get("/api/bihar-live/probability?district=patna&type=flood")
     body = response.get_json()
 
     assert response.status_code == 200
