@@ -27,9 +27,6 @@
     .probability-option.is-selected small { color:#426b5b; }
     .probability-result { display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:.75rem .65rem;border:1px solid rgba(255,255,255,.22);border-radius:9px;background:rgba(0,0,0,.12);text-align:center; }
     #probabilitySelectorCard.is-locked .probability-result > *:not(.probability-lock-overlay) { filter:blur(7px); user-select:none; pointer-events:none; }
-    #probabilitySelectorCard.is-locked .probability-heading,
-    #probabilitySelectorCard.is-locked .probability-options,
-    #probabilitySelectorCard.is-locked .probability-disclaimer { filter:blur(4px); pointer-events:none; user-select:none; }
     #probabilitySelectorCard .probability-lock-overlay { display:none; width:100%; padding:16px 12px; border-radius:10px; background:rgba(7,48,37,.78); text-align:center; }
     #probabilitySelectorCard.is-locked .probability-lock-overlay { display:block; }
     #probabilitySelectorCard.is-locked .probability-result { position:relative; }
@@ -86,7 +83,6 @@
     if (selectedType === "heavy_rainfall") refresh();
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden) checkAuth(); });
-  window.addEventListener("pageshow", checkAuth);
 
   const setStatus = (message) => { $("probabilityStatus").textContent = message; };
 
@@ -199,6 +195,6 @@
   });
   if (districtSelect) districtSelect.addEventListener("change", refresh);
   card.addEventListener("click", (event) => { if (event.target.closest(".probability-login-button")) event.stopPropagation(); });
-  checkAuth();
+  checkAuth().then(refresh);
   window.setInterval(refresh, 5 * 60 * 1000);
 })();
