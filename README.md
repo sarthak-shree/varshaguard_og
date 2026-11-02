@@ -49,6 +49,40 @@ This endpoint calls the [Open-Meteo Flood API](https://open-meteo.com/en/docs/fl
 
 **Interpretation limit:** this is modelled river-discharge context, not a flood probability, CWC warning-level prediction, neighborhood inundation estimate, or official alert. It is deliberately kept separate from the CWC classifier and does not change its probability. Use the provider's returned units and metadata; do not assume the API's discharge series is directly interchangeable with a CWC gauge stage reading.
 
+## Sign in with Google
+
+People sign in with their Google account. The first sign-in creates the account, so there is no separate sign-up, no password and no code to send. The page is `frontend/login.html` (+ `auth.css`, `auth.js`); the top bar of the dashboards shows **Log in**, or the user's photo, name and **Log out** once signed in. The existing dashboards stay public: nothing is gated behind login yet.
+
+```http
+GET  /api/auth/config            public Google client ID for the login page
+POST /api/auth/google            {"credential": "<Google ID token>"}  -> signs in, sets the session cookie
+GET  /api/auth/me
+POST /api/auth/logout
+```
+
+The server never trusts the browser: it checks Google's token signature, expiry, issuer, that it was issued for **this site's client ID**, and that Google has verified the email. Code lives in `backend/accounts/` (`google_auth.py` token check, `store.py` database, `api.py` routes).
+
+**One-time setup in Google Cloud Console** (free, about 10 minutes):
+
+1. Open https://console.cloud.google.com/apis/credentials, create or pick a project.
+2. *OAuth consent screen*: choose **External**, fill in the app name (VarshaGuard) and your email. While the app is in "Testing", add the Google accounts that may sign in as test users, or press **Publish app** so anyone can (basic name/email/photo sign-in needs no Google review).
+3. *Credentials > Create credentials > OAuth client ID > Web application*. Under **Authorized JavaScript origins** add every address the site runs on, for example `http://localhost:5000` and `https://<your-app>.vercel.app` (and any custom domain). No redirect URI is needed.
+4. Copy the client ID into `GOOGLE_CLIENT_ID`.
+
+**Run locally.** Set `GOOGLE_CLIENT_ID` in your terminal (the app does not read a `.env` file), then start the server. PowerShell: `$env:GOOGLE_CLIENT_ID="..."; python backend/app.py`. Mac/Linux: `GOOGLE_CLIENT_ID="..." python backend/app.py`. `SECRET_KEY` is optional locally (sessions reset on restart without it). With no `DATABASE_URL`, accounts go in a SQLite file (`.auth_dev.sqlite3`).
+
+**Deploy on Vercel.** The filesystem there is temporary, so accounts need a hosted Postgres (Neon or Supabase). Add these environment variables (see `.env.example`):
+
+| Variable | What it is |
+|---|---|
+| `SECRET_KEY` | Long random string. Login is switched off without it. |
+| `GOOGLE_CLIENT_ID` | From step 4 above. Login is switched off without it. |
+| `DATABASE_URL` | Postgres connection string (`POSTGRES_URL` also works). The `vg_accounts` table is created automatically. |
+
+The session cookie is HttpOnly, SameSite=Lax and Secure in production, and lasts 30 days. Stored per account: Google's account id, email, name and photo link.
+
+Tests: `pytest tests/test_accounts_auth.py` (SQLite). Set `TEST_DATABASE_URL` to a throwaway Postgres to run the same tests there too.
+
 ## Model training and validation
 
 Training entry point:

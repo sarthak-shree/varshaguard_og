@@ -312,3 +312,11 @@ footer{max-width:1320px;margin:auto;padding:0 22px 28px;color:var(--muted);font-
 
 .brand-wordmark .brand-varsha{color:#102f52}
 .brand-wordmark .brand-guard{color:#08a9b5}
+
+/* Login / signup link in the top bar (see auth-nav.js) */
+.auth-nav{display:inline-flex;align-items:center;gap:10px;min-height:34px;padding:7px 12px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--text);font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap}
+a.auth-nav:hover{border-color:var(--cyan);color:var(--cyan)}
+.auth-nav-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;flex:0 0 auto}
+.auth-nav-name{max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.auth-nav-out{padding:0;border:0;background:none;color:var(--cyan);font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+@media (max-width:760px){.auth-nav{min-height:44px}.auth-nav-name{max-width:90px}}

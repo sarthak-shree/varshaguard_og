@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Sign in — VarshaGuard</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/auth.css">
+  <link rel="stylesheet" href="/mobile.css">
+</head>
+<body class="auth-page">
+  <header class="topbar">
+    <div>
+      <h1 class="brand-lockup">
+        <a href="/" aria-label="VarshaGuard main dashboard">
+          <img class="brand-logo" src="https://raw.githubusercontent.com/sarthak-shree/varshaguard_og/main/frontend/assets/ChatGPT%20Image%20Sep%2022%2C%202026%2C%2009_03_22%20PM.png" alt="VarshaGuard logo">
+          <span class="brand-wordmark"><span class="brand-varsha">VARSHA</span><span class="brand-guard">GUARD &#8623;</span></span>
+        </a>
+      </h1>
+      <p><span>SIH26071</span> &bull; AI/ML-Based Heavy Rainfall Early Warning &amp; Inundation Prediction System</p>
+    </div>
+    <div class="topbar-actions">
+      <a class="auth-nav" href="/">← Back to dashboard</a>
+    </div>
+  </header>
+
+  <main class="auth-wrap">
+    <section class="auth-card" aria-labelledby="authTitle">
+      <div class="eyebrow">SECURE SIGN-IN</div>
+      <h2 id="authTitle">Sign in to VarshaGuard</h2>
+      <p class="auth-sub">Use your Google account. New here? An account is created the first time you sign in.</p>
+
+      <div class="auth-google" id="googleButton" aria-live="polite">
+        <span class="auth-loading">Loading Google sign-in…</span>
+      </div>
+      <p class="auth-msg" id="authMsg" role="alert"></p>
+
+      <p class="auth-foot">Prototype WIP · We only receive your name, email and profile photo from Google. No password is created.</p>
+    </section>
+  </main>
+
+  <script src="/auth.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer onload="window.vgGoogleReady && window.vgGoogleReady()"></script>
+</body>
+</html>
