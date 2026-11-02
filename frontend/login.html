@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Log in or sign up — VarshaGuard</title>
+  <title>Sign in — VarshaGuard</title>
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/auth.css">
   <link rel="stylesheet" href="/mobile.css">
@@ -28,65 +28,19 @@
   <main class="auth-wrap">
     <section class="auth-card" aria-labelledby="authTitle">
       <div class="eyebrow">SECURE SIGN-IN</div>
+      <h2 id="authTitle">Sign in to VarshaGuard</h2>
+      <p class="auth-sub">Use your Google account. New here? An account is created the first time you sign in.</p>
 
-      <div class="auth-tabs" role="tablist" id="authTabs">
-        <button class="auth-tab is-active" role="tab" aria-selected="true" data-mode="login" type="button">Log in</button>
-        <button class="auth-tab" role="tab" aria-selected="false" data-mode="signup" type="button">Sign up</button>
+      <div class="auth-google" id="googleButton" aria-live="polite">
+        <span class="auth-loading">Loading Google sign-in…</span>
       </div>
+      <p class="auth-msg" id="authMsg" role="alert"></p>
 
-      <!-- Step 1: number -->
-      <form id="phoneForm" novalidate>
-        <h2 id="authTitle">Welcome back</h2>
-        <p class="auth-sub" id="authSubtitle">Enter your WhatsApp number and we'll send you a one-time code.</p>
-
-        <div class="auth-field" id="nameField" hidden>
-          <label for="authName">Your name</label>
-          <input id="authName" type="text" autocomplete="name" maxlength="60" placeholder="e.g. Sarthak Kumar">
-        </div>
-
-        <div class="auth-field">
-          <label for="authPhone">WhatsApp number</label>
-          <div class="auth-phone">
-            <span class="auth-prefix">+91</span>
-            <input id="authPhone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="98765 43210">
-          </div>
-        </div>
-
-        <button class="auth-btn" id="sendBtn" type="submit">Send code on WhatsApp</button>
-        <p class="auth-msg" id="phoneMsg" role="alert"></p>
-      </form>
-
-      <!-- Step 2: code -->
-      <form id="otpForm" hidden novalidate>
-        <h2>Enter the code</h2>
-        <p class="auth-sub">We sent a 6-digit code to <strong id="sentTo"></strong> on WhatsApp. It works for 5 minutes.</p>
-
-        <div class="auth-otp" id="otpBoxes" role="group" aria-label="6-digit code">
-          <input inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Digit 1">
-          <input inputmode="numeric" maxlength="1" aria-label="Digit 2">
-          <input inputmode="numeric" maxlength="1" aria-label="Digit 3">
-          <input inputmode="numeric" maxlength="1" aria-label="Digit 4">
-          <input inputmode="numeric" maxlength="1" aria-label="Digit 5">
-          <input inputmode="numeric" maxlength="1" aria-label="Digit 6">
-        </div>
-
-        <button class="auth-btn" id="verifyBtn" type="submit">Verify &amp; continue</button>
-        <p class="auth-msg" id="otpMsg" role="alert"></p>
-
-        <div class="auth-row">
-          <button class="auth-link" id="changeBtn" type="button">← Change number</button>
-          <span>
-            <span id="timerText">Resend in <b id="timer">30</b>s</span>
-            <button class="auth-link" id="resendBtn" type="button" hidden>Resend code</button>
-          </span>
-        </div>
-        <p class="auth-dev" id="devNote" hidden>Dev mode: WhatsApp isn't connected, so the code is printed in the terminal running the server.</p>
-      </form>
-
-      <p class="auth-foot">Prototype WIP · We use your number only to sign you in.</p>
+      <p class="auth-foot">Prototype WIP · We only receive your name, email and profile photo from Google. No password is created.</p>
     </section>
   </main>
 
   <script src="/auth.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer onload="window.vgGoogleReady && window.vgGoogleReady()"></script>
 </body>
 </html>

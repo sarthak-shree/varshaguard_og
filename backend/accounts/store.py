@@ -1,11 +1,11 @@
-"""Storage for accounts and one-time codes.
+"""Storage for signed-in accounts.
 
 Production (Vercel) uses a hosted Postgres database, configured with the
 DATABASE_URL (or POSTGRES_URL) environment variable. Vercel's filesystem is
 temporary, so a local database file can NOT be used there.
 
 For local development, when no database URL is set, a SQLite file is used so
-the whole login flow can be tried without creating a database first.
+the login can be tried without creating a database first.
 """
 import os
 import sqlite3
@@ -46,40 +46,24 @@ def sqlite_path() -> str:
 
 _DDL = {
     "postgres": [
-        """CREATE TABLE IF NOT EXISTS vg_users (
+        """CREATE TABLE IF NOT EXISTS vg_accounts (
                id BIGSERIAL PRIMARY KEY,
+               google_sub TEXT NOT NULL UNIQUE,
+               email TEXT NOT NULL,
                name TEXT NOT NULL,
-               phone TEXT NOT NULL UNIQUE,
-               created_at BIGINT NOT NULL)""",
-        """CREATE TABLE IF NOT EXISTS vg_otps (
-               id BIGSERIAL PRIMARY KEY,
-               phone TEXT NOT NULL,
-               purpose TEXT NOT NULL,
-               name TEXT,
-               code_hash TEXT NOT NULL,
-               expires_at BIGINT NOT NULL,
-               attempts INTEGER NOT NULL DEFAULT 0,
-               used INTEGER NOT NULL DEFAULT 0,
-               created_at BIGINT NOT NULL)""",
-        "CREATE INDEX IF NOT EXISTS idx_vg_otps_phone ON vg_otps (phone, created_at)",
+               picture TEXT,
+               created_at BIGINT NOT NULL,
+               last_login_at BIGINT NOT NULL)""",
     ],
     "sqlite": [
-        """CREATE TABLE IF NOT EXISTS vg_users (
+        """CREATE TABLE IF NOT EXISTS vg_accounts (
                id INTEGER PRIMARY KEY AUTOINCREMENT,
+               google_sub TEXT NOT NULL UNIQUE,
+               email TEXT NOT NULL,
                name TEXT NOT NULL,
-               phone TEXT NOT NULL UNIQUE,
-               created_at INTEGER NOT NULL)""",
-        """CREATE TABLE IF NOT EXISTS vg_otps (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               phone TEXT NOT NULL,
-               purpose TEXT NOT NULL,
-               name TEXT,
-               code_hash TEXT NOT NULL,
-               expires_at INTEGER NOT NULL,
-               attempts INTEGER NOT NULL DEFAULT 0,
-               used INTEGER NOT NULL DEFAULT 0,
-               created_at INTEGER NOT NULL)""",
-        "CREATE INDEX IF NOT EXISTS idx_vg_otps_phone ON vg_otps (phone, created_at)",
+               picture TEXT,
+               created_at INTEGER NOT NULL,
+               last_login_at INTEGER NOT NULL)""",
     ],
 }
 
@@ -128,7 +112,7 @@ class Store:
                     self.conn.commit()
                     break
                 except Exception as exc:
-                    # Two cold starts creating the tables at once can collide: retry once.
+                    # Two cold starts creating the table at once can collide: retry once.
                     self.conn.rollback()
                     if attempt == 1:
                         raise StoreUnavailable(f"Could not prepare the database: {exc}") from exc
@@ -149,78 +133,22 @@ class Store:
     def commit(self):
         self.conn.commit()
 
-    def rollback(self):
-        self.conn.rollback()
-
     def close(self):
         try:
             self.conn.close()
         except Exception:
             pass
 
-    # ----- users -----
-    def user_by_phone(self, phone):
-        return self.one("SELECT id, name, phone FROM vg_users WHERE phone = ?", (phone,))
-
-    def create_user(self, name, phone, now):
-        """Insert a user; if the number is already registered, return that user."""
+    # ----- accounts -----
+    def sign_in(self, google_sub, email, name, picture, now):
+        """Create the account on first sign-in; refresh name, email and photo afterwards."""
         row = self.one(
-            "INSERT INTO vg_users (name, phone, created_at) VALUES (?, ?, ?) "
-            "ON CONFLICT (phone) DO NOTHING RETURNING id, name, phone",
-            (name, phone, now),
+            "INSERT INTO vg_accounts (google_sub, email, name, picture, created_at, last_login_at) "
+            "VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT (google_sub) DO UPDATE SET email = excluded.email, name = excluded.name, "
+            "picture = excluded.picture, last_login_at = excluded.last_login_at "
+            "RETURNING id, name, email, picture",
+            (google_sub, email, name, picture, now, now),
         )
         self.commit()
-        return row or self.user_by_phone(phone)
-
-    # ----- one-time codes -----
-    def last_otp_time(self, phone):
-        row = self.one(
-            "SELECT created_at FROM vg_otps WHERE phone = ? ORDER BY created_at DESC LIMIT 1",
-            (phone,),
-        )
-        return row["created_at"] if row else None
-
-    def count_otps_since(self, phone, since):
-        row = self.one(
-            "SELECT COUNT(*) AS n FROM vg_otps WHERE phone = ? AND created_at > ?", (phone, since)
-        )
-        return int(row["n"])
-
-    def replace_open_otp(self, phone, purpose, name, code_hash, expires_at, now):
-        self.execute("UPDATE vg_otps SET used = 1 WHERE phone = ? AND used = 0", (phone,))
-        self.execute(
-            "INSERT INTO vg_otps (phone, purpose, name, code_hash, expires_at, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (phone, purpose, name, code_hash, expires_at, now),
-        )
-        self.commit()
-
-    def close_open_otps(self, phone):
-        self.execute("UPDATE vg_otps SET used = 1 WHERE phone = ? AND used = 0", (phone,))
-        self.commit()
-
-    def purge_old_otps(self, before):
-        self.execute("DELETE FROM vg_otps WHERE created_at < ?", (before,))
-        self.commit()
-
-    def open_otp(self, phone):
-        return self.one(
-            "SELECT id, purpose, name, code_hash, expires_at, attempts FROM vg_otps "
-            "WHERE phone = ? AND used = 0 ORDER BY created_at DESC LIMIT 1",
-            (phone,),
-        )
-
-    def add_failed_attempt(self, otp_id):
-        """Atomically count a wrong guess; returns the new total (None if already closed)."""
-        row = self.one(
-            "UPDATE vg_otps SET attempts = attempts + 1 WHERE id = ? AND used = 0 RETURNING attempts",
-            (otp_id,),
-        )
-        self.commit()
-        return row["attempts"] if row else None
-
-    def consume_otp(self, otp_id):
-        """Mark a code as used. True only for the single request that wins the race."""
-        changed = self.execute("UPDATE vg_otps SET used = 1 WHERE id = ? AND used = 0", (otp_id,))
-        self.commit()
-        return changed == 1
+        return row

@@ -1,4 +1,4 @@
-// Turns the "Log in" link in the top bar into "<name> · Log out" once signed in.
+// Turns the "Log in" link in the top bar into "<photo> <name> · Log out" once signed in.
 (function () {
   "use strict";
   var link = document.getElementById("authNav");
@@ -10,10 +10,23 @@
       if (!me || !me.success) return;
       var chip = document.createElement("span");
       chip.className = "auth-nav auth-nav-user";
+      chip.title = me.email || "";
+
+      if (me.picture && /^https:\/\//.test(me.picture)) {
+        var img = document.createElement("img");
+        img.className = "auth-nav-avatar";
+        img.src = me.picture;
+        img.alt = "";
+        img.referrerPolicy = "no-referrer";
+        img.addEventListener("error", function () { img.remove(); });
+        chip.appendChild(img);
+      }
+
       var label = document.createElement("span");
       label.className = "auth-nav-name";
       label.textContent = me.name || "Signed in";
-      label.title = me.phone || "";
+      chip.appendChild(label);
+
       var out = document.createElement("button");
       out.type = "button";
       out.className = "auth-nav-out";
@@ -27,7 +40,6 @@
           body: "{}",
         }).finally(function () { window.location.reload(); });
       });
-      chip.appendChild(label);
       chip.appendChild(out);
       link.replaceWith(chip);
     })

@@ -46,7 +46,7 @@ CORS(app)
 app.config["MAX_CONTENT_LENGTH"] = 4_000_000
 app.register_blueprint(bihar_live_bp)
 app.register_blueprint(bihar_v1_bp)
-init_accounts(app)  # WhatsApp OTP login: /api/auth/*
+init_accounts(app)  # Sign in with Google: /api/auth/*
 
 
 def now_iso():
