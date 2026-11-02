@@ -9,3 +9,6 @@ venv/
 data/bihar_live/research/cwc_bihar_gauge_hourly.csv
 data/bihar_live/research/cwc_bihar_gauge_hourly.metadata.json
 data/bihar_live/research/cwc_bihar_gauge_24h_stage_research_holdout_predictions.csv
+
+# Local dev database for the WhatsApp login
+.auth_dev.sqlite3

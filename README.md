@@ -49,6 +49,36 @@ This endpoint calls the [Open-Meteo Flood API](https://open-meteo.com/en/docs/fl
 
 **Interpretation limit:** this is modelled river-discharge context, not a flood probability, CWC warning-level prediction, neighborhood inundation estimate, or official alert. It is deliberately kept separate from the CWC classifier and does not change its probability. Use the provider's returned units and metadata; do not assume the API's discharge series is directly interchangeable with a CWC gauge stage reading.
 
+## Login and sign-up (WhatsApp one-time code)
+
+People sign up with a name and WhatsApp number and log in with a 6-digit code sent on WhatsApp (no passwords). The pages are `frontend/login.html` (+ `auth.css`, `auth.js`); the top bar of the dashboards shows **Log in**, or the user's name and **Log out** once signed in. The existing dashboards stay public: nothing is gated behind login yet.
+
+```http
+POST /api/auth/otp/request   {"purpose": "signup" | "login", "phone": "9876543210", "name": "..."}
+POST /api/auth/otp/verify    {"phone": "9876543210", "code": "123456"}
+GET  /api/auth/me
+POST /api/auth/logout
+```
+
+Code lives in `backend/accounts/` (`api.py` routes, `store.py` database, `whatsapp.py` sender).
+
+**Run locally.** No setup needed: with no `DATABASE_URL` it uses a SQLite file (`.auth_dev.sqlite3`), and with no WhatsApp keys the code is printed in the terminal running `python backend/app.py` ("dev mode").
+
+**Deploy on Vercel.** The filesystem there is temporary, so accounts need a hosted Postgres (Neon or Supabase). Add these environment variables (see `.env.example`):
+
+| Variable | What it is |
+|---|---|
+| `SECRET_KEY` | Long random string. Login is switched off without it. |
+| `DATABASE_URL` | Postgres connection string (`POSTGRES_URL` also works). Tables `vg_users` and `vg_otps` are created automatically. |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID` | From the Meta WhatsApp Cloud API. Login is switched off without them: dev mode never runs on Vercel, so codes are never written to logs. |
+| `WHATSAPP_TEMPLATE` | Name of an approved **Authentication** message template with a copy-code button (default `varshaguard_otp`). |
+
+Meta's free test number can only message numbers you have added as verified recipients; a production number needs a verified business.
+
+**Rules built in:** codes are random, stored only as a hash, valid for 5 minutes and usable once; 5 wrong guesses lock a code; 30 seconds between codes and 5 codes per number per hour; the session cookie is HttpOnly, SameSite=Lax and Secure in production. Not included yet: a limit per IP address or overall WhatsApp spend cap, so consider one before opening sign-up to the public.
+
+Tests: `pytest tests/test_accounts_auth.py` (SQLite). Set `TEST_DATABASE_URL` to a throwaway Postgres to run the same tests there too.
+
 ## Model training and validation
 
 Training entry point:

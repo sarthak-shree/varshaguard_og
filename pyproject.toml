@@ -11,6 +11,7 @@ dependencies = [
     "joblib",
     "requests>=2.32,<3",
     "edge-tts>=7.3,<8",
+    "psycopg2-binary>=2.9,<3",
 ]
 
 [tool.vercel]
