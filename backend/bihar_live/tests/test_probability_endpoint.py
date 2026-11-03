@@ -2,6 +2,13 @@ from backend.app import app
 from backend.bihar_live.research import live_prediction
 
 
+def _signed_in_client():
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["uid"] = 1
+    return client
+
+
 def test_probability_endpoint_returns_only_supported_flood_probability(monkeypatch):
     monkeypatch.setattr(live_prediction, "get_live_predictions", lambda: {
         "success": True,
@@ -17,7 +24,7 @@ def test_probability_endpoint_returns_only_supported_flood_probability(monkeypat
             "message": "Research estimate only.",
         }],
     })
-    response = app.test_client().get("/api/bihar-live/probability?district=patna&type=flood")
+    response = _signed_in_client().get("/api/bihar-live/probability?district=patna&type=flood")
     body = response.get_json()
 
     assert response.status_code == 200
@@ -28,11 +35,14 @@ def test_probability_endpoint_returns_only_supported_flood_probability(monkeypat
     assert body["operational"] is False
 
 
-def test_probability_endpoint_does_not_invent_heavy_rain_probability():
+def test_probability_endpoint_requires_login_for_heavy_rainfall():
     response = app.test_client().get("/api/bihar-live/probability?district=patna&type=heavy_rainfall")
-    body = response.get_json()
+    assert response.status_code == 401
+    assert response.get_json()["login_required"] is True
 
-    assert response.status_code == 200
+
+def test_probability_endpoint_does_not_invent_heavy_rain_probability():
+    body = _signed_in_client().get("/api/bihar-live/probability?district=patna&type=heavy_rainfall").get_json()
     assert body["available"] is False
     assert body["probability_percent"] is None
     assert body["status"] == "model_not_available"

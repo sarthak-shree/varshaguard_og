@@ -1,6 +1,13 @@
 from backend.bihar_live.app import create_app
 
 
+def _signed_in_client(app):
+    client = app.test_client(use_cookies=True)
+    with client.session_transaction() as session:
+        session["uid"] = 1
+    return client
+
+
 def test_fusion_endpoint_never_claims_live_multi_source_data():
     app = create_app()
     with app.test_client() as client:
@@ -16,7 +23,7 @@ def test_fusion_endpoint_never_claims_live_multi_source_data():
 
 def test_evaluation_endpoint_reports_real_history_status_not_synthetic_metrics():
     app = create_app()
-    with app.test_client() as client:
+    with _signed_in_client(app) as client:
         response = client.get("/api/bihar-live/model/evaluation")
 
     assert response.status_code == 200

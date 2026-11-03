@@ -262,3 +262,63 @@ def test_verify_falls_back_to_email_name_when_google_sends_none(real_verify):
 def test_clean_pg_url_drops_unknown_options():
     url = "postgresql://u:p@host:5432/db?sslmode=require&supa=base-pooler.x&connect_timeout=5"
     assert store.clean_pg_url(url) == "postgresql://u:p@host:5432/db?sslmode=require&connect_timeout=5"
+
+
+# ---------- protected VarshaGuard features ----------
+@pytest.fixture
+def production_client(monkeypatch, tmp_path):
+    # The production app reads VERCEL during account/session configuration.
+    # Use local SQLite and a deterministic secret for the route-level checks.
+    for name in ("VERCEL", "APP_ENV", "DATABASE_URL", "POSTGRES_URL"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("SECRET_KEY", "route-test-secret")
+    monkeypatch.setenv("AUTH_SQLITE_PATH", str(tmp_path / "route-auth.sqlite3"))
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", CLIENT_ID)
+    from backend.app import app as production_app
+    production_app.config.update(TESTING=True, SECRET_KEY="route-test-secret")
+    yield production_app.test_client()
+    if "accounts" in production_app.blueprints:
+        pass
+
+
+def test_ai_and_prediction_details_require_sign_in(production_client):
+    endpoints = [
+        ("/api/assistant", "post", {"message": "hello", "context": {}}),
+        ("/api/assistant/voice", "post", {}),
+        ("/api/bihar-live/model/live", "get", None),
+        ("/api/bihar-live/model/evaluation", "get", None),
+        ("/api/bihar-live/model/evaluation/synthetic-demo", "get", None),
+    ]
+    for path, method, payload in endpoints:
+        response = production_client.post(path, json=payload) if method == "post" else production_client.get(path)
+        assert response.status_code == 401, (path, response.status_code)
+        assert response.json["success"] is False
+
+
+def test_bihar_public_weather_endpoints_remain_public(production_client, monkeypatch):
+    response = production_client.get("/api/bihar-live/health")
+    assert response.status_code == 200
+
+    # Source requests are external; stub only the provider for deterministic coverage.
+    from backend.bihar_live import public_weather
+    monkeypatch.setattr(public_weather, "get_rainfall_forecast", lambda district: {
+        "success": True, "available": False, "district": district
+    })
+    assert production_client.get("/api/bihar-live/weather?district=patna").status_code != 401
+    assert production_client.get("/api/bihar-live/forecast/rainfall?district=patna").status_code != 401
+
+
+def test_flood_probability_and_river_stage_are_public():
+    from backend.app import app as production_app
+
+    client = production_app.test_client()
+    flood = client.get("/api/bihar-live/probability?district=patna&type=flood")
+    river = client.get("/api/bihar-live/forecast/river-stage?district=patna")
+    assert flood.status_code != 401
+    assert river.status_code != 401
+
+
+def test_heavy_rainfall_probability_requires_sign_in(production_client):
+    response = production_client.get("/api/bihar-live/probability?district=patna&type=heavy_rainfall")
+    assert response.status_code == 401
+    assert response.json["login_required"] is True

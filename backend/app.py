@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timezone
 
 import requests
-from flask import Flask, jsonify, request, send_from_directory, make_response
+from flask import Flask, jsonify, request, send_from_directory, make_response, session
 from flask_cors import CORS
 
 try:
@@ -54,6 +54,8 @@ def now_iso():
 
 
 def error_response(message, status_code=400):
+    # Keep authentication failures machine-readable for the frontend login gate.
+
     response = jsonify({"success": False, "error": message, "timestamp": now_iso()})
     response.status_code = status_code
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -278,6 +280,9 @@ def stations():
 
 @app.route("/api/assistant", methods=["POST"])
 def assistant():
+    if "uid" not in session:
+        return error_response("Please sign in to use VarshaGuard AI.", 401)
+
     payload = request.get_json(silent=True) or {}
     message = str(payload.get("message", "")).strip()
     context = payload.get("context") or {}
@@ -297,6 +302,8 @@ def assistant():
 @app.route("/api/assistant/voice", methods=["POST"])
 def assistant_voice():
     """Transcribe one short recording, answer with the dashboard LLM, and speak it."""
+    if "uid" not in session:
+        return error_response("Please sign in to use VarshaGuard AI.", 401)
     audio_file = request.files.get("audio")
     if audio_file is None or not audio_file.filename:
         return error_response("Record a short question before sending it", 400)

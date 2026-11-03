@@ -6,7 +6,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 
 from .config import DATA_MODE, PREDICTION_HORIZON_HOURS, SUPPORTED_DISTRICTS
 from .adapters.sources import build_adapters
@@ -15,6 +15,15 @@ from .fusion import fuse, weights_for_lead
 from .models.training import train_evaluate
 
 bp = Blueprint("bihar_live", __name__, url_prefix="/api/bihar-live")
+
+def _login_required():
+    if "uid" not in session:
+        response = jsonify({"success": False, "error": "Sign in to view prediction details.", "login_required": True})
+        response.status_code = 401
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
+    return None
+
 
 
 @bp.get("/health")
@@ -64,10 +73,47 @@ def fusion():
 
 @bp.get("/model/live")
 def live_model():
+    """Return live model detail only to signed-in users."""
+
+    login_error = _login_required()
+    if login_error:
+        return login_error
+
     # Load the CWC connection only when this live endpoint is requested.
     from .research.live_prediction import get_live_predictions
 
     return jsonify(get_live_predictions())
+
+
+
+@bp.get("/public/live")
+def public_live():
+    """Return public flood-risk and river-observation data, excluding model evaluation internals."""
+    from .research.live_prediction import get_live_predictions
+
+    payload = get_live_predictions()
+    public_fields = {
+        "district", "station_name", "status", "risk_level", "risk_percentage",
+        "risk_basis", "signal", "message", "forecast_date", "forecast_end_ist",
+        "observed_at_ist", "data_age_hours", "current_stage_m", "warning_level_m",
+        "danger_level_m", "stage_history", "latitude", "longitude",
+    }
+    predictions = [
+        {key: value for key, value in item.items() if key in public_fields}
+        for item in payload.get("predictions", [])
+    ]
+    response = jsonify({
+        "success": True,
+        "available": bool(payload.get("available")),
+        "mode": payload.get("mode", "unavailable"),
+        "generated_at_ist": payload.get("generated_at_ist"),
+        "source": payload.get("source", {}),
+        "error": payload.get("error"),
+        "limitations": payload.get("limitations", []),
+        "predictions": predictions,
+    })
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
 
 
 @bp.get("/data-quality")
@@ -161,7 +207,7 @@ def rainfall_forecast():
 
 @bp.get("/forecast/river-stage")
 def river_stage_forecast():
-    """Return a transparent trend extrapolation from recent CWC stage observations."""
+    """Return a public river-stage trend based on CWC observations."""
     district = request.args.get("district", "patna").strip().lower()
     if district not in SUPPORTED_DISTRICTS:
         return jsonify({"success": False, "error": "Choose Patna or Muzaffarpur."}), 400
@@ -198,13 +244,18 @@ def river_stage_forecast():
 
 @bp.get("/probability")
 def probability():
-    """Return only a supported 24-hour probability summary for the frontend."""
+    """Return public flood probability and protected heavy-rainfall details."""
     district = request.args.get("district", "patna").strip().lower()
     forecast_type = request.args.get("type", "flood").strip().lower()
     if district not in SUPPORTED_DISTRICTS:
         return jsonify({"success": False, "error": "Choose Patna or Muzaffarpur."}), 400
     if forecast_type not in {"flood", "heavy_rainfall"}:
         return jsonify({"success": False, "error": "Choose flood or heavy_rainfall."}), 400
+
+    if forecast_type == "heavy_rainfall":
+        login_error = _login_required()
+        if login_error:
+            return login_error
 
     if forecast_type == "heavy_rainfall":
         response = jsonify({
@@ -276,6 +327,30 @@ def public_weather():
     return response
 
 
+
+@bp.get("/protected/heavy-rainfall-context")
+def protected_heavy_rainfall_context():
+    """Return provider rainfall context only after sign-in; this is not a heavy-rainfall risk score."""
+    login_error = _login_required()
+    if login_error:
+        return login_error
+    district = request.args.get("district", "patna").strip().lower()
+    if district not in SUPPORTED_DISTRICTS:
+        return jsonify({"success": False, "error": "Choose Patna or Muzaffarpur."}), 400
+    from .public_weather import get_rainfall_forecast
+    result = get_rainfall_forecast(district)
+    result["type"] = "heavy_rainfall_context"
+    result["probability_percent"] = None
+    result["risk_score_available"] = False
+    result["message"] = (
+        "A validated heavy-rainfall probability model is not available. "
+        "The provider's precipitation chance and rainfall totals are weather context only."
+    )
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
+
+
 @bp.get("/flood-discharge")
 def flood_discharge():
     """Return Open-Meteo daily discharge context, separate from model probability."""
@@ -292,7 +367,10 @@ def flood_discharge():
 
 @bp.get("/model/evaluation")
 def evaluation():
-    """Return persisted chronological forecast evaluation; never substitute synthetic scores."""
+    """Return protected model evaluation details."""
+    login_error = _login_required()
+    if login_error:
+        return login_error
     report_path = Path(os.environ.get("VARSHAGUARD_EVALUATION_REPORT", "models/forecast_research/training_evaluation.json"))
     db_path = Path(os.environ.get("VARSHAGUARD_HISTORY_DB", "data/bihar_live/history.sqlite3"))
     stored_rows = 0
@@ -325,7 +403,10 @@ def evaluation():
 
 @bp.get("/model/evaluation/synthetic-demo")
 def synthetic_evaluation_demo():
-    """Explicitly isolated synthetic demonstration; never evidence for live forecast skill."""
+    """Return protected synthetic demo evaluation."""
+    login_error = _login_required()
+    if login_error:
+        return login_error
     rows = generate_observations(hours=96, seed=26071)
     model, metrics = train_evaluate(rows)
     return jsonify({

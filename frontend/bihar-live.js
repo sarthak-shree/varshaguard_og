@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const API = "/api/bihar-live/model/live";
+  const API = "/api/bihar-live/public/live";
   const DISTRICTS = {
     patna: { name: "Patna", center: [25.5941, 85.1376] },
     muzaffarpur: { name: "Muzaffarpur", center: [26.1209, 85.3647] }
@@ -255,8 +255,8 @@
     const state = signalState(prediction);
     const observedWarning = prediction?.status === "warning_level_reached";
     const observedDanger = prediction?.status === "danger_level_reached";
-    const probability = prediction?.status === "predicted" && finiteNumber(prediction.model_probability)
-      ? (finiteNumber(prediction.risk_percentage) ? Number(prediction.risk_percentage) : Number(prediction.model_probability) * 100)
+    const probability = prediction?.status === "predicted" && finiteNumber(prediction.risk_percentage)
+      ? Number(prediction.risk_percentage)
       : null;
 
     if (card) {
@@ -625,10 +625,11 @@
     try {
       const data = await getJson(API);
       updateDashboard(data);
-      loadWeatherForecast($("districtSelect").value);
-      loadDischargeContext($("districtSelect").value);
-      loadForecastOutlook($("districtSelect").value);
-      if (!data.available) showError(data.error || "CWC live data is currently unavailable.");
+      const districtKey = $("districtSelect").value;
+      loadWeatherForecast(districtKey);
+      loadDischargeContext(districtKey);
+      loadForecastOutlook(districtKey);
+      loadPublicFloodPrediction(districtKey);
     } catch (error) {
       showError(error.message);
       currentData.live = {
@@ -644,6 +645,16 @@
       loadForecastOutlook($("districtSelect").value);
     }
   }
+  async function loadPublicFloodPrediction(districtKey) {
+    try {
+      const result = await getJson("/api/bihar-live/probability?district=" + encodeURIComponent(districtKey) + "&type=flood");
+      currentData.publicFlood ||= {};
+      currentData.publicFlood[districtKey] = result;
+    } catch (error) {
+      currentData.publicFlood ||= {};
+      currentData.publicFlood[districtKey] = { available: false, message: error.message };
+    }
+  }
   function setupMap() {
     if (!window.L || !$("map")) return;
     map = L.map("map").setView([25.86, 85.24], 8);
@@ -656,6 +667,7 @@
 
   function selectDistrict(moveMap = true) {
     const district = DISTRICTS[$("districtSelect").value];
+    loadDashboard();
     updateSelectedRiskCard();
     renderMap(currentData.live?.predictions || []);
     renderSources(currentData.live || {}, currentData.weather?.[$("districtSelect").value]);

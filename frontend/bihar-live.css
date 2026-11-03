@@ -323,3 +323,291 @@ body.bihar-live-page .topbar-assistant-btn{min-height:44px;padding:9px 12px;bord
 .forecast-stage-value span{font-size:10px;color:var(--muted)}
 .forecast-stage-value strong{font-size:16px;color:var(--text)}
 @media(max-width:760px){.forecast-outlook-grid{grid-template-columns:1fr}.forecast-rain-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* Auth-aware forecast selector polishing and small-screen layout */
+#probabilitySelectorCard .probability-result{position:relative;overflow:hidden}
+#probabilitySelectorCard .probability-login-button{font:inherit;font-weight:800}
+#probabilitySelectorCard.is-locked .probability-result__content{filter:blur(8px);transform:scale(1.01);transition:filter .2s ease}
+#probabilitySelectorCard .probability-lock-overlay{backdrop-filter:blur(4px)}
+@media(max-width:520px){
+  #probabilitySelectorCard{border-radius:15px}
+  #probabilitySelectorCard .probability-result{min-height:155px;padding:16px 12px}
+  #probabilitySelectorCard .probability-login-button{width:min(100%,250px)}
+}
+
+
+/* Locked heavy-rainfall forecast: polished glass panel, clear hierarchy, accessible CTA. */
+#probabilitySelectorCard.is-locked{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  border:1px solid rgba(24,132,143,.22);
+  border-radius:18px;
+  background:linear-gradient(145deg,rgba(244,251,250,.98),rgba(232,244,246,.96));
+  box-shadow:0 14px 38px rgba(19,70,82,.09);
+}
+#probabilitySelectorCard.is-locked::before{
+  content:"";
+  position:absolute;
+  inset:0 0 auto;
+  height:4px;
+  background:linear-gradient(90deg,#0f766e,#38bdf8,#14b8a6);
+  z-index:2;
+}
+#probabilitySelectorCard .probability-result{
+  isolation:isolate;
+  border:1px solid rgba(28,104,118,.12);
+  border-radius:14px;
+  background:linear-gradient(135deg,#f8fcfc,#eaf5f6);
+}
+#probabilitySelectorCard.is-locked .probability-result__content{
+  filter:blur(9px);
+  opacity:.62;
+  transform:scale(1.025);
+  user-select:none;
+  pointer-events:none;
+}
+#probabilitySelectorCard .probability-lock-overlay{
+  position:absolute;
+  z-index:3;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  padding:22px 18px;
+  text-align:center;
+  background:linear-gradient(135deg,rgba(248,253,253,.72),rgba(231,245,246,.82));
+  -webkit-backdrop-filter:blur(7px);
+  backdrop-filter:blur(7px);
+}
+#probabilitySelectorCard .probability-lock-overlay::before{
+  content:"";
+  width:42px;
+  height:42px;
+  border:1px solid rgba(15,118,110,.18);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 5px 16px rgba(15,118,110,.12);
+}
+#probabilitySelectorCard .probability-lock-overlay strong{
+  color:#123c43;
+  font-size:clamp(15px,2vw,18px);
+  line-height:1.25;
+}
+#probabilitySelectorCard .probability-lock-overlay p{
+  max-width:38ch;
+  margin:0;
+  color:#42636a;
+  font-size:12px;
+  line-height:1.55;
+}
+#probabilitySelectorCard .probability-login-button{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin-top:3px;
+  padding:11px 18px;
+  border:1px solid #0f766e;
+  border-radius:11px;
+  background:linear-gradient(135deg,#0f766e,#117c87);
+  color:#fff;
+  box-shadow:0 7px 16px rgba(15,118,110,.2);
+  font-size:13px;
+  font-weight:800;
+  text-decoration:none;
+  transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;
+}
+#probabilitySelectorCard .probability-login-button:hover{
+  transform:translateY(-1px);
+  box-shadow:0 10px 22px rgba(15,118,110,.26);
+  filter:saturate(1.08);
+}
+#probabilitySelectorCard .probability-login-button:focus-visible{
+  outline:3px solid #0f766e;
+  outline-offset:3px;
+}
+@media(prefers-reduced-motion:reduce){
+  #probabilitySelectorCard .probability-login-button,
+  #probabilitySelectorCard.is-locked .probability-result__content{transition:none}
+}
+@media(max-width:520px){
+  #probabilitySelectorCard.is-locked{border-radius:15px}
+  #probabilitySelectorCard .probability-lock-overlay{padding:18px 12px}
+  #probabilitySelectorCard .probability-login-button{width:min(100%,260px)}
+}
+
+
+/* Final Bihar Live visual pass — readable at a glance, no clipped lock panel. */
+body.bihar-live-page .probability-top-controls{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:12px;
+  min-width:0;
+}
+body.bihar-live-page #probabilitySelectorCard{
+  position:relative;
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  padding:clamp(16px,2vw,22px);
+  overflow:visible;
+  border:1px solid #d7e4e8;
+  border-radius:16px;
+  color:#16343d;
+  background:linear-gradient(145deg,#ffffff 0%,#f2f8f8 100%);
+  box-shadow:0 10px 28px rgba(21,54,66,.08);
+}
+body.bihar-live-page #probabilitySelectorCard .small-title{
+  color:#0d7f83;
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.14em;
+}
+body.bihar-live-page #probabilitySelectorCard h2{
+  color:#102f3d;
+  font-size:clamp(20px,2vw,25px);
+  line-height:1.16;
+}
+body.bihar-live-page #probabilitySelectorCard .probability-heading>p:last-child{
+  max-width:46ch;
+  margin:.45rem 0 .9rem;
+  color:#526a73;
+  font-size:12px;
+  line-height:1.55;
+}
+body.bihar-live-page #probabilitySelectorCard .probability-options{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+  margin:12px 0;
+}
+body.bihar-live-page #probabilitySelectorCard .probability-option{
+  min-width:0;
+  min-height:88px;
+  padding:12px;
+  border:1px solid #d5e2e6;
+  border-radius:12px;
+  background:#fff;
+  color:#173e48;
+  box-shadow:0 2px 8px rgba(17,54,67,.035);
+}
+body.bihar-live-page #probabilitySelectorCard .probability-option small{
+  color:#5d737b;
+  font-size:11px;
+}
+body.bihar-live-page #probabilitySelectorCard .probability-option.is-selected{
+  border-color:#0c8584;
+  background:#eaf7f6;
+  color:#075d5c;
+  box-shadow:inset 0 0 0 1px #0c8584,0 4px 12px rgba(12,133,132,.09);
+}
+body.bihar-live-page #probabilitySelectorCard .probability-option.is-selected small{color:#42686b}
+body.bihar-live-page #probabilitySelectorCard .probability-result{
+  position:relative;
+  display:flex;
+  min-height:132px;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  box-sizing:border-box;
+  padding:16px;
+  overflow:hidden;
+  border:1px solid #d7e5e7;
+  border-radius:13px;
+  background:#f5faf9;
+  color:#163b45;
+}
+body.bihar-live-page #probabilityResultLabel{color:#536d75;font-size:12px}
+body.bihar-live-page #probabilityValue{color:#0c7776;font-size:clamp(32px,4vw,42px)}
+body.bihar-live-page #probabilityStatus{max-width:52ch;color:#49636d;font-size:11px}
+body.bihar-live-page #probabilitySelectorCard .probability-disclaimer{
+  margin:10px 0 0;
+  color:#647982;
+  font-size:10px;
+  line-height:1.5;
+}
+body.bihar-live-page #probabilitySelectorCard.is-locked{
+  isolation:isolate;
+  overflow:visible;
+  background:linear-gradient(145deg,#ffffff 0%,#f1f8f8 100%);
+}
+body.bihar-live-page #probabilitySelectorCard.is-locked .probability-result__content{
+  filter:blur(7px);
+  opacity:.48;
+  transform:scale(1.015);
+}
+body.bihar-live-page #probabilitySelectorCard .probability-lock-overlay{
+  inset:0;
+  z-index:4;
+  display:none;
+  box-sizing:border-box;
+  min-height:100%;
+  padding:18px;
+  gap:9px;
+  border:1px solid rgba(14,105,105,.15);
+  border-radius:13px;
+  background:rgba(245,251,250,.9);
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+}
+body.bihar-live-page #probabilitySelectorCard.is-locked .probability-lock-overlay{display:flex}
+body.bihar-live-page #probabilitySelectorCard .probability-lock-icon{
+  display:grid;
+  width:40px;
+  height:40px;
+  margin:0 0 2px;
+  place-items:center;
+  border:1px solid #d5e7e5;
+  border-radius:12px;
+  background:#e8f5f2;
+  color:#096c69;
+  font-size:19px;
+}
+body.bihar-live-page #probabilitySelectorCard .probability-lock-overlay strong{
+  color:#143d45;
+  font-size:15px;
+  line-height:1.25;
+}
+body.bihar-live-page #probabilitySelectorCard .probability-lock-overlay p{
+  max-width:34ch;
+  margin:0;
+  color:#526b73;
+  font-size:11px;
+  line-height:1.45;
+}
+body.bihar-live-page #probabilitySelectorCard .probability-login-button{
+  min-height:42px;
+  width:auto;
+  margin-top:2px;
+  padding:10px 18px;
+  border:0;
+  border-radius:9px;
+  background:linear-gradient(135deg,#087b73,#0c8990);
+  color:#fff;
+  font-size:12px;
+  font-weight:800;
+  box-shadow:0 5px 13px rgba(8,123,115,.2);
+}
+body.bihar-live-page #probabilitySelectorCard :focus-visible{
+  outline:3px solid #e6a827;
+  outline-offset:3px;
+}
+body.bihar-live-page .stage-trend-panel{min-width:0;overflow:hidden}
+body.bihar-live-page .stage-trend-chart-wrap{min-width:0;overflow-x:auto;overscroll-behavior-x:contain}
+body.bihar-live-page #stageTrendSvg{min-width:420px}
+@media(max-width:900px){
+  body.bihar-live-page .probability-top-controls{grid-template-columns:minmax(0,1fr)}
+  body.bihar-live-page #probabilitySelectorCard{padding:16px}
+}
+@media(max-width:520px){
+  body.bihar-live-page #probabilitySelectorCard .probability-option{min-height:82px;padding:10px}
+  body.bihar-live-page #probabilitySelectorCard .probability-result{min-height:142px;padding:12px}
+  body.bihar-live-page #probabilitySelectorCard .probability-lock-overlay{padding:12px;gap:7px}
+  body.bihar-live-page #probabilitySelectorCard .probability-login-button{width:min(100%,230px)}
+}
