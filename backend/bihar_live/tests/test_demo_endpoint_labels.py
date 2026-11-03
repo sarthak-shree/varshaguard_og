@@ -2,7 +2,7 @@ from backend.bihar_live.app import create_app
 
 
 def _signed_in_client(app):
-    client = app.test_client()
+    client = app.test_client(use_cookies=True)
     with client.session_transaction() as session:
         session["uid"] = 1
     return client
